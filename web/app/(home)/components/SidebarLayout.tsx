@@ -22,11 +22,6 @@ export default function SidebarLayout({
     return (
         <SidebarProvider>
             <AppSidebar
-                top={top}
-                second={second}
-                third={third}
-                fourth={fourth}
-                bottom={bottom}
             />
             <main>
                 <SidebarTrigger />
