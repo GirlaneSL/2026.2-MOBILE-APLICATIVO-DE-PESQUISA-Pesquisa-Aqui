@@ -1,0 +1,29 @@
+// use prisma-next
+
+enum Profile {
+  SUPERADMINISTRATOR
+  ADMINISTRATOR
+  RESEARCHER
+}
+
+model Company {
+  id                  Int      @id @default(autoincrement())
+  legalName           String
+  contactInformation  String
+  isActive             Boolean  @default(true)
+  users               User[]
+  createdAt            TimestamptzString @default(now())
+  updatedAt            temporal.updatedAtString()
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  username     String   @unique
+  passwordHash String
+  profile      Profile
+  companyId    Int
+  company      Company  @relation(fields: [companyId], references: [id])
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+}
