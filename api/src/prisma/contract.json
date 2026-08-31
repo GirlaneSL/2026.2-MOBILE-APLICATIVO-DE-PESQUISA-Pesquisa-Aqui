@@ -145,7 +145,7 @@
           "User": {
             "fields": {
               "companyId": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
                   "kind": "scalar"
@@ -343,7 +343,7 @@
                 "companyId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
-                  "nullable": false
+                  "nullable": true
                 },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
@@ -459,7 +459,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "1075c8e9701e6148cf4da69b143d293e5b010c34f197c013fc3ff380f317be66"
+    "storageHash": "3a063f1234cbc388fea722c51f7266f58fa988679d72fde6fda15d62759b94da"
   },
   "execution": {
     "executionHash": "785b84423f7d9de19a3cb0781a331c0dd9a0037c096be828cd04bb02632bd70b",

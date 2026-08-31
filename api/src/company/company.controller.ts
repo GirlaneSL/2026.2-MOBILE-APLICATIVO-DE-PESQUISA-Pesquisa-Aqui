@@ -1,7 +1,9 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { CompanyService } from './company.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
+import { AuthGuard } from '../auth/auth.guard.js';
 
+@UseGuards(AuthGuard)
 @Controller('company')
 export class CompanyController {
     constructor(private readonly companyService: CompanyService) { }
