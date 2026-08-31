@@ -1,5 +1,10 @@
 // use prisma-next
 
+enum CompanySituation {
+    ACTIVE
+    INACTIVE
+}
+
 enum Profile {
   SUPERADMINISTRATOR
   ADMINISTRATOR
@@ -10,10 +15,10 @@ model Company {
   id                  Int      @id @default(autoincrement())
   legalName           String
   contactInformation  String
-  isActive             Boolean  @default(true)
+  situation           CompanySituation @default(ACTIVE)
   users               User[]
-  createdAt            TimestamptzString @default(now())
-  updatedAt            temporal.updatedAtString()
+  createdAt           TimestamptzString @default(now())
+  updatedAt           temporal.updatedAtString()
 }
 
 model User {

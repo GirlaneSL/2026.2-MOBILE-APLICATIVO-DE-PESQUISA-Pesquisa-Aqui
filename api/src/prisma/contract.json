@@ -17,6 +17,19 @@
     "namespaces": {
       "public": {
         "enum": {
+          "CompanySituation": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "ACTIVE",
+                "value": "ACTIVE"
+              },
+              {
+                "name": "INACTIVE",
+                "value": "INACTIVE"
+              }
+            ]
+          },
           "Profile": {
             "codecId": "pg/text@1",
             "members": [
@@ -59,18 +72,24 @@
                   "kind": "scalar"
                 }
               },
-              "isActive": {
-                "nullable": false,
-                "type": {
-                  "codecId": "pg/bool@1",
-                  "kind": "scalar"
-                }
-              },
               "legalName": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
+                }
+              },
+              "situation": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "CompanySituation",
+                  "namespaceId": "public",
+                  "plane": "domain"
                 }
               },
               "updatedAt": {
@@ -109,11 +128,11 @@
                 "id": {
                   "column": "id"
                 },
-                "isActive": {
-                  "column": "isActive"
-                },
                 "legalName": {
                   "column": "legalName"
+                },
+                "situation": {
+                  "column": "situation"
                 },
                 "updatedAt": {
                   "column": "updatedAt"
@@ -246,6 +265,13 @@
         "entries": {
           "table": {
             "company": {
+              "checks": [
+                {
+                  "expression": "\"situation\" IN ('ACTIVE', 'INACTIVE')",
+                  "name": "company_situation_check_0eafbbbd",
+                  "prefix": "company_situation_check"
+                }
+              ],
               "columns": {
                 "contactInformation": {
                   "codecId": "pg/text@1",
@@ -270,19 +296,25 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
-                "isActive": {
-                  "codecId": "pg/bool@1",
-                  "default": {
-                    "kind": "literal",
-                    "value": true
-                  },
-                  "nativeType": "bool",
-                  "nullable": false
-                },
                 "legalName": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "situation": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "ACTIVE"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "CompanySituation",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
                 },
                 "updatedAt": {
                   "codecId": "pg/timestamptz-string@1",
@@ -406,6 +438,13 @@
             }
           },
           "valueSet": {
+            "CompanySituation": {
+              "kind": "valueSet",
+              "values": [
+                "ACTIVE",
+                "INACTIVE"
+              ]
+            },
             "Profile": {
               "kind": "valueSet",
               "values": [
@@ -420,7 +459,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "1565f8bf280d6e057a07a5b92d3c40f593c14025ee3a20349ca487f421910729"
+    "storageHash": "1075c8e9701e6148cf4da69b143d293e5b010c34f197c013fc3ff380f317be66"
   },
   "execution": {
     "executionHash": "785b84423f7d9de19a3cb0781a331c0dd9a0037c096be828cd04bb02632bd70b",
