@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-    House,
-    NotebookPen,
-    UsersRound,
-    LogOut,
-} from "lucide-react";
+import { House, NotebookPen, UsersRound, LogOut, LogIn } from "lucide-react";
 
 import {
     Sidebar,
@@ -20,6 +15,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Button } from "./button";
 
 const items = [
     {
@@ -92,8 +88,16 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton>
-                            <LogOut />
-                            <span>Sair</span>
+                            <div className="flex gap-2 items-center">
+                                <div className="flex gap-2 items-center">
+                                    <LogIn></LogIn>
+                                    <Link href={"/login"}>Login</Link>
+                                </div>
+                                <div className="flex gap-2 items-center ">
+                                    <LogOut />
+                                    <Link href={"/cadastrar"}>Cadastrar</Link>
+                                </div>
+                            </div>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
