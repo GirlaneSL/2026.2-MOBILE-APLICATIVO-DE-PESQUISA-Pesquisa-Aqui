@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
+import SidebarLayout from "./(home)/components/SidebarLayout";
 import "./globals.css";
-import SidebarLayout from "./(home)/components/layout";
+import { House, LogOut, NotebookPen, UsersRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,14 +28,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SidebarLayout top="PESQUISA AQUI" second={
-          <div className="flex flex-col">
-            <a href="teste1">teste1</a>
-            <a href="teste2">teste2</a>
-            <a href="teste3">teste3</a>
-            <a href="teste4">teste4</a>
-          </div>
-        }>
+        <SidebarLayout top="PESQUISA AQUI"
+          second={
+            <div className="flex flex-col gap-4">
+              <Link className="flex gap-2" href="/" > <House></House>Home</Link>
+              <Link className="flex gap-2" href="pesquisa/" ><NotebookPen></NotebookPen>Pesquisa</Link>
+              <Link className="flex gap-2" href="pesquisadores/" ><UsersRound></UsersRound>Pesquisadores</Link>
+            </div>
+          }
+          bottom={<Button variant="ghost"><LogOut></LogOut> Sair</Button>
+          }>
           {children}</SidebarLayout>
       </body>
     </html>

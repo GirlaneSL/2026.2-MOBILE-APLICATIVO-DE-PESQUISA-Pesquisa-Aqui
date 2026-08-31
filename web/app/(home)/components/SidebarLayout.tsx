@@ -8,6 +8,7 @@ type LayoutProps = {
     second?: React.ReactNode;
     third?: React.ReactNode;
     fourth?: React.ReactNode;
+    bottom?: React.ReactNode;
 };
 
 export default function SidebarLayout({
@@ -16,6 +17,7 @@ export default function SidebarLayout({
     second,
     third,
     fourth,
+    bottom,
 }: LayoutProps) {
     return (
         <SidebarProvider>
@@ -24,6 +26,7 @@ export default function SidebarLayout({
                 second={second}
                 third={third}
                 fourth={fourth}
+                bottom={bottom}
             />
             <main>
                 <SidebarTrigger />

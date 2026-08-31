@@ -6,7 +6,7 @@ import {
     SidebarHeader,
 } from "@/components/ui/sidebar"
 
-export function AppSidebar({ top, second, third, fourth }: any) {
+export function AppSidebar({ top, second, third, fourth, bottom }: any) {
     return (
         <Sidebar variant="floating">
             <span className="p-2">
@@ -27,6 +27,9 @@ export function AppSidebar({ top, second, third, fourth }: any) {
                 </span>
             </SidebarContent>
             <SidebarFooter />
+            <span className="p-2 ">
+                {bottom}
+            </span>
         </Sidebar>
     );
 }
