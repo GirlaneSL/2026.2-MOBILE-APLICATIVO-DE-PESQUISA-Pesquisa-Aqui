@@ -1,24 +1,31 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { CustomTabBar } from '@/components/CustomTabBar';
+import { Tabs } from 'expo-router';
+import React from 'react';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+export default function TabLayout() {
+    return (
+        <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+            <Tabs.Screen
+                name="(home)/index"
+                options={{ title: 'Home', headerShown: false }}
+            />
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+            <Tabs.Screen
+                name="pesquisas/index"
+                options={{ title: 'Pesquisas', headerShown: false }}
+            />
 
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
+            <Tabs.Screen
+                name="sincronizacao/index"
+                options={{ title: 'Sinc', headerShown: false }}
+            />
+            
+            <Tabs.Screen
+                name="usuario/index"
+                options={{ title: 'Perfil', headerShown: false }}
+            />
+
+        </Tabs>
+    );
 }
