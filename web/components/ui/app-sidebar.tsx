@@ -22,7 +22,7 @@ export function AppSidebar() {
         <Sidebar collapsible="icon">
             <SidebarHeader>
                 <div className="flex gap-1 items-center group-data-[collapsible=icon]:justify-center">
-                    <Home />
+                    <img width={25} src="/logo.svg" alt="" />
                     <span className="group-data-[collapsible=icon]:hidden truncate">Pesquisa Aqui</span>
                 </div>
             </SidebarHeader>
