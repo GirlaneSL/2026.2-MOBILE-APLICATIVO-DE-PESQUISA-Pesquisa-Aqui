@@ -11,6 +11,13 @@ enum Profile {
   RESEARCHER
 }
 
+enum ResearchStatus {
+  DRAFT
+  PUBLISHED
+  IN_FIELD
+  CLOSED
+}
+
 model Company {
   id                  Int      @id @default(autoincrement())
   legalName           String
@@ -31,4 +38,19 @@ model User {
   company      Company?  @relation(fields: [companyId], references: [id])
   createdAt    TimestamptzString @default(now())
   updatedAt    temporal.updatedAtString()
+}
+
+model Research {
+  id             Int      @id @default(autoincrement())
+  title          String
+  description    String
+  objective      String
+  startDate      DateTime
+  endDate        DateTime
+  targetAudience String
+  status         ResearchStatus   @default(DRAFT)
+  companyId      Int
+  company        Company  @relation(fields: [companyId], references: [id])
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
 }
