@@ -1,8 +1,13 @@
+import InfoCard from "../(home)/components/infoCards";
 
 export default function Pesquisas() {
     return (
         <>
-            Pesquisas
+            <section>
+                <section>
+                    <InfoCard cardTitle="Cadastrar"  />
+                </section>
+            </section>
         </>
     )
 }
