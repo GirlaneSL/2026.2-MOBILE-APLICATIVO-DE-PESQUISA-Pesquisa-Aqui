@@ -24,7 +24,7 @@ export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dial
         <>
             <Dialog>
                 <DialogTrigger><Button variant={triggerButtonVariant}>{dialogTrigger}</Button></DialogTrigger>
-                <DialogContent>
+                <DialogContent className={"min-w-1/2"}>
                     <DialogHeader>
                         <DialogTitle>{dialogTitle}</DialogTitle>
                         <DialogDescription>
