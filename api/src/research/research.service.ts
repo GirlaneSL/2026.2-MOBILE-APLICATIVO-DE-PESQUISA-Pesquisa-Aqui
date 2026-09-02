@@ -1,14 +1,15 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service.js';
 import { CreateResearchDto } from './dto/create-research.dto.js';
-import type { UserPayLoad } from '../auth/current-user.type';
+import type { UserPayLoad } from '../auth/current-user.type.js';
+import { UpdateResearchDto } from './dto/update-research.dto.js';
 
 @Injectable()
 export class ResearchService {
     constructor(private prisma: PrismaService) { }
 
     async create(createResearchDto: CreateResearchDto, currentUser: UserPayLoad) {
-        if (new Date(createResearchDto.endDate) < new Date(createResearchDto.startDate)) throw new BadRequestException('The end date cannot be earlier than the start date.');
+        if (new Date(createResearchDto.endDate) < new Date(createResearchDto.startDate)) throw new BadRequestException('The end date cannot be earlier than the start date');
 
         let companyId = currentUser.companyId;
 
@@ -52,4 +53,18 @@ export class ResearchService {
 
         return research;
     }
+
+    async update(id: number, updateResearchDto: UpdateResearchDto, currentUser: UserPayLoad) {
+        const research = await this.findOne(id, currentUser)
+
+        if (research.status === 'CLOSED') throw new BadRequestException('Closed research cannot be modified');
+
+        if (updateResearchDto.startDate && updateResearchDto.endDate) {
+            if (new Date(updateResearchDto.endDate) < new Date(updateResearchDto.startDate)) throw new BadRequestException('The end date cannot be earlier than the start date');
+        }
+
+        return await this.prisma.client.orm.public.Research.where({ id }).update(updateResearchDto);
+    }
+
+
 }
