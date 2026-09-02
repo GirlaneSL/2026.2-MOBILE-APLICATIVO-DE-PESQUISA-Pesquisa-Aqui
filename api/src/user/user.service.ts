@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
@@ -36,6 +36,10 @@ export class UserService {
 
     async create(createUserDto: CreateUserDto, currentUser: UserPayLoad) {
         if (currentUser.profile !== 'SUPERADMINISTRATOR') throw new ForbiddenException('Only super administrators can register new users');
+
+        const existingUser = await this.prisma.client.orm.public.User.where({ username: createUserDto.username }).first();
+
+        if (existingUser) throw new ConflictException('Username already exists')
 
         const passwordHash = await bcrypt.hash(createUserDto.password, 10)
 
