@@ -34,7 +34,8 @@ export function AppSidebar() {
                         <SidebarMenu className="flex flex-col gap-1">
                             <SidebarMenuItem>
                                 <Link href="/" >
-                                    <SidebarMenuButton style={pathname === "/" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
+                                    <SidebarMenuButton
+                                        style={pathname === "/" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
                                         className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
                                         size={"lg"} variant={"outline"}
                                         isActive={pathname === "/"}   >

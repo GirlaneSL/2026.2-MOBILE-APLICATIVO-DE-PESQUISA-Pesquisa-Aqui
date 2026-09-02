@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <hr />
         <section className="relative h-screen">
           <div
-            className="absolute inset-0"
+            className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
             style={{
               backgroundImage: "url('/background.jpeg')",
               backgroundSize: "cover",
@@ -20,7 +20,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             }}
           />
 
-          <div className="relative z-10 p-3">
+          <div className="relative z-10 p-6">
             {children}
           </div>
         </section>
