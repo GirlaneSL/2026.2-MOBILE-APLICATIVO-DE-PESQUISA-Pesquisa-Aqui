@@ -45,8 +45,8 @@ model Research {
   title          String
   description    String
   objective      String
-  startDate      DateTime
-  endDate        DateTime
+  startDate      TimestamptzString @default(now())
+  endDate        TimestamptzString @default(now())
   targetAudience String
   status         ResearchStatus   @default(DRAFT)
   companyId      Int

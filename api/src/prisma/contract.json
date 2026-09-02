@@ -193,7 +193,7 @@
               "endDate": {
                 "nullable": false,
                 "type": {
-                  "codecId": "pg/timestamptz-temporal@1",
+                  "codecId": "pg/timestamptz-string@1",
                   "kind": "scalar"
                 }
               },
@@ -214,7 +214,7 @@
               "startDate": {
                 "nullable": false,
                 "type": {
-                  "codecId": "pg/timestamptz-temporal@1",
+                  "codecId": "pg/timestamptz-string@1",
                   "kind": "scalar"
                 }
               },
@@ -528,7 +528,11 @@
                   "nullable": false
                 },
                 "endDate": {
-                  "codecId": "pg/timestamptz-temporal@1",
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
                   "nativeType": "timestamptz",
                   "nullable": false
                 },
@@ -547,7 +551,11 @@
                   "nullable": false
                 },
                 "startDate": {
-                  "codecId": "pg/timestamptz-temporal@1",
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
                   "nativeType": "timestamptz",
                   "nullable": false
                 },
@@ -754,7 +762,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "c39b6b10ee43534a1233f5668a1cdd5f8a3e5110eb335c55c7d8fbdce9c53f90"
+    "storageHash": "3cc2fb2b290ad0a3cf289ec1761d1b775162a56ca0b62249fc1cf855b1603cb1"
   },
   "execution": {
     "executionHash": "fe03eeefff63242d2af2ed07d13b9fbd060a0d662165be74a085b2ded62287f8",
