@@ -34,7 +34,7 @@ export function AppSidebar() {
                         <SidebarMenu className="flex flex-col gap-1">
                             <SidebarMenuItem>
                                 <Link href="/" >
-                                    <SidebarMenuButton style={pathname === "/" ? { backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/background.jpeg')", backgroundSize: '650%' } : undefined}
+                                    <SidebarMenuButton style={pathname === "/" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
                                         className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
                                         size={"lg"} variant={"outline"}
                                         isActive={pathname === "/"}   >
@@ -47,7 +47,7 @@ export function AppSidebar() {
                             </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <Link href="/pesquisa">
-                                    <SidebarMenuButton style={pathname === "/pesquisa" ? { backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/background.jpeg')", backgroundSize: '650%' } : undefined}
+                                    <SidebarMenuButton style={pathname === "/pesquisa" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
                                         className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisa" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
                                         size={"lg"} variant={"outline"}
                                         isActive={pathname === "/pesquisa"}>
@@ -60,11 +60,10 @@ export function AppSidebar() {
                             </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <Link href="/pesquisadores">
-                                    <SidebarMenuButton
+                                    <SidebarMenuButton style={pathname === "/pesquisadores" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
                                         size={"lg"}
                                         variant={"outline"}
                                         isActive={pathname === "/pesquisadores"}
-                                        style={pathname === "/pesquisadores" ? { backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/background.jpeg')", backgroundSize: '650%' } : undefined}
                                         className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisadores" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
                                     >
                                         <Link href="/pesquisadores">
