@@ -10,7 +10,81 @@ export default function EmpresaPage() {
         <>
             <section className="flex flex-col gap-6">
                 <BannerComponent title="Empresas"></BannerComponent>
-                <section className="grid grid-cols-3 gap-4">
+                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <InfoCard
+                        isCardFooter={false}
+                        cardTitle="Cadastrar Empresa"
+                        cardDescription="Cadastre Uma Nova Empresa"
+                        cardContent={
+                            <div>
+                                <DialogLayout
+                                    triggerButtonVariant="outline"
+                                    dialogTrigger="Cadastro"
+                                    dialogTitle="Cadastramento de Empresas"
+                                    dialogDescription="Informe os Dados da Empresa"
+                                    dialogContent={
+                                        <div>
+                                            <form>
+                                                <div className="flex flex-col gap-5">
+                                                    <div>
+                                                        <label htmlFor="name">Nome da Empresa*</label>
+                                                        <Input required id="name" placeholder="Razão Social "></Input>
+                                                    </div>
+                                                    <div>
+                                                        <label htmlFor="contact">Contato*</label>
+                                                        <Input required id="contact" placeholder="+00 00 0000-0000"></Input>
+                                                    </div>
+                                                    <div>
+                                                        <label htmlFor="status">Status*</label>
+                                                        <ComboBoxLayout></ComboBoxLayout>
+                                                    </div>
+
+                                                    <div className="flex justify-end">
+                                                        <Button className={"w-fit"} >Cadastrar Empresa</Button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    } ></DialogLayout>
+                            </div>
+                        } />
+                    <InfoCard
+                        isCardFooter={false}
+                        cardTitle="Cadastrar Empresa"
+                        cardDescription="Cadastre Uma Nova Empresa"
+                        cardContent={
+                            <div>
+                                <DialogLayout
+                                    triggerButtonVariant="outline"
+                                    dialogTrigger="Cadastro"
+                                    dialogTitle="Cadastramento de Empresas"
+                                    dialogDescription="Informe os Dados da Empresa"
+                                    dialogContent={
+                                        <div>
+                                            <form>
+                                                <div className="flex flex-col gap-5">
+                                                    <div>
+                                                        <label htmlFor="name">Nome da Empresa*</label>
+                                                        <Input required id="name" placeholder="Razão Social "></Input>
+                                                    </div>
+                                                    <div>
+                                                        <label htmlFor="contact">Contato*</label>
+                                                        <Input required id="contact" placeholder="+00 00 0000-0000"></Input>
+                                                    </div>
+                                                    <div>
+                                                        <label htmlFor="status">Status*</label>
+                                                        <ComboBoxLayout></ComboBoxLayout>
+                                                    </div>
+
+                                                    <div className="flex justify-end">
+                                                        <Button className={"w-fit"} >Cadastrar Empresa</Button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    } ></DialogLayout>
+                            </div>
+                        } />
                     <InfoCard
                         isCardFooter={false}
                         cardTitle="Cadastrar Empresa"
