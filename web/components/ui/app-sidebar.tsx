@@ -1,16 +1,28 @@
 "use client"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, } from "@/components/ui/sidebar"
+import { jwtDecode } from "jwt-decode"
 import { Bolt, Building2, Home, LogIn, LogOut, NotebookPen, User2, UsersRound } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-
-
-import { usuario } from "@/usuarios"
-
+import { useEffect, useState } from "react"
 
 export function AppSidebar() {
+    const pathname = usePathname();
+    const [user, setUser] = useState<any>(null);
 
-    const pathname = usePathname()
+    useEffect(() => {
+        const token = localStorage.getItem('access_token');
+
+        if (token) {
+            try {
+                const decodificated = jwtDecode(token);
+                setUser(decodificated);
+            } catch (error) {
+                console.log('Invalid token');
+            }
+        }
+    }, [])
+
     return (
         <Sidebar collapsible="icon">
             <SidebarHeader>
@@ -42,7 +54,7 @@ export function AppSidebar() {
                                     </SidebarMenuButton>
                                 </Link>
                             </SidebarMenuItem>
-                            {usuario.profile === 'SUPERADMINISTRATOR' && (
+                            {user?.profile === 'SUPERADMINISTRATOR' && (
                                 <SidebarMenuItem>
                                     <Link href="/empresas">
                                         <SidebarMenuButton style={pathname === "/empresas" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
@@ -61,7 +73,7 @@ export function AppSidebar() {
                                     </Link>
                                 </SidebarMenuItem>
                             )}
-                            {usuario.profile === 'ADMINISTRATOR' && (
+                            {user?.profile === 'ADMINISTRATOR' && (
                                 <SidebarMenuItem>
                                     <Link href="/empresa">
                                         <SidebarMenuButton style={pathname === "/empresa" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
@@ -80,7 +92,7 @@ export function AppSidebar() {
                                     </Link>
                                 </SidebarMenuItem>
                             )}
-                            {usuario.profile === 'ADMINISTRATOR' && (
+                            {user?.profile === 'ADMINISTRATOR' && (
                                 <SidebarMenuItem>
                                     <Link href="/pesquisadores">
                                         <SidebarMenuButton style={pathname === "/pesquisadores" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
@@ -99,7 +111,7 @@ export function AppSidebar() {
                                     </Link>
                                 </SidebarMenuItem>
                             )}
-                            {(usuario.profile === 'ADMINISTRATOR' || usuario.profile === 'RESEARCHER') && (
+                            {(user?.profile === 'ADMINISTRATOR' || user?.profile === 'RESEARCHER') && (
                                 <SidebarMenuItem>
                                     <Link href="/pesquisa">
                                         <SidebarMenuButton style={pathname === "/pesquisa" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
@@ -125,12 +137,12 @@ export function AppSidebar() {
             <hr />
             <SidebarFooter>
                 <SidebarMenu>
-                    {usuario ?
+                    {user ?
                         (
                             <SidebarMenuItem>
                                 <Link href={"/perfil"}>
                                     <SidebarMenuButton>
-                                        <User2 /> {usuario.name} {usuario.profile}
+                                        <User2 /> {user?.name} {user?.profile}
                                     </SidebarMenuButton>
                                 </Link>
                                 <Link href={"#"}>

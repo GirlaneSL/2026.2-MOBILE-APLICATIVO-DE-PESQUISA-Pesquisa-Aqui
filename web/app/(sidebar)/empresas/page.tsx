@@ -6,17 +6,28 @@ import { ComboBoxLayout } from "@/components/ui/comboboxLayout";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { Input } from "@/components/ui/input";
 import { createCompany } from "@/lib/company";
-import { SubmitEventHandler, useState } from "react";
+import { SubmitEventHandler, useEffect, useState } from "react";
 import InfoCard from "../(home)/components/infoCards";
-
-
-import { usuario } from "@/usuarios";
-
+import { jwtDecode } from "jwt-decode";
 
 export default function EmpresaPage() {
     const [legalName, setLegalName] = useState('');
     const [contact, setContact] = useState('');
     const [situation, setSituation] = useState<'ACTIVE' | 'INACTIVE' | ''>('');
+    const [user, setUser] = useState<any>(null)
+
+    useEffect(() => {
+        const token = localStorage.getItem('access_token');
+
+        if (token) {
+            try {
+                const decodificated = jwtDecode(token);
+                setUser(decodificated)
+            } catch (error) {
+                console.log('Invalid token');
+            }
+        }
+    }, [])
 
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
@@ -53,7 +64,7 @@ export default function EmpresaPage() {
 
                 <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-                    {usuario.profile === 'SUPERADMINISTRATOR' && (
+                    {user?.profile === 'SUPERADMINISTRATOR' && (
 
                         <InfoCard
                             isCardFooter={false}
