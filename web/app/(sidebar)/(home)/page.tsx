@@ -3,6 +3,7 @@ import { Chart } from "./components/grafico";
 import InfoCard from "./components/infoCards";
 import Tabela from "./components/tabela";
 import { Activity, Bolt } from "lucide-react";
+import BannerComponent from "@/components/ui/bannerComponent";
 
 
 const pesquisas = [
@@ -42,23 +43,7 @@ const columns = [
 export default function Home() {
     return (
         <section className="relative min-h-screen flex flex-col gap-10">
-            <div className="relative h-50 rounded-2xl overflow-hidden flex justify-center items-center shadow-lg min-h-60 max-sm:min-h-30">
-                <div
-                    className="absolute -inset-2 bg-cover bg-center bg-no-repeat blur-xs"
-                    style={{
-                        backgroundImage: "url('/backgroundGreen.jpeg')",
-                        backgroundSize: "110%",
-                    }}
-                />
-
-                <span className="relative z-10 text-white text-3xl">
-                    Painel de Dados
-                </span>
-                <Bolt size={13} color="white" className="absolute top-2 right-2 opacity-15"></Bolt>
-                <Bolt size={13} color="white" className="absolute top-2 left-2 opacity-15"></Bolt>
-                <Bolt size={13} color="white" className="absolute bottom-2 right-2 opacity-15"></Bolt>
-                <Bolt size={13} color="white" className="absolute bottom-2 left-2 opacity-15"></Bolt>
-            </div>
+            <BannerComponent title="Painel de Dados"></BannerComponent>
 
             <section className="flex flex-col gap-10 max-lg:gap-4 ">
                 <div className="grid grid-cols-3 gap-10 max-lg:grid-cols-1 max-lg:gap-4">
