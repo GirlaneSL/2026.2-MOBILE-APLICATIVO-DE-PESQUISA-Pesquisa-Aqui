@@ -2,8 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+<<<<<<< HEAD
 import { login } from "@/lib/auth";
 import { LockKeyhole, User } from "lucide-react";
+=======
+import { LockKeyhole, MapPin, User } from "lucide-react";
+>>>>>>> origin/dev-kaiky
 import Link from "next/link";
 import { SubmitEventHandler, useState } from "react";
 
@@ -25,6 +29,7 @@ export default function Login() {
     }
 
     return (
+<<<<<<< HEAD
         <main
             className="flex items-center justify-center min-h-screen w-full p-4 bg-cover bg-center"
             style={{
@@ -33,11 +38,22 @@ export default function Login() {
             }}
         >
             <div className="flex flex-col md:flex-row w-full max-w-[900px] min-h-[500px] bg-white border rounded-2xl overflow-hidden shadow-2xl">
+=======
+        <main className="relative flex items-center justify-center min-h-screen w-full p-4 bg-cover bg-center overflow-hidden  ">
+            <div
+                className="absolute -inset-8 bg-cover bg-center blur-[8px] "
+                style={{
+                    backgroundImage:
+                        "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/backgroundGreen.jpeg')",
+                }}
+            />
+            <div className="flex flex-col md:flex-row w-full max-w-225 min-h-125 bg-white rounded-2xl overflow-hidden shadow-2xl">
+>>>>>>> origin/dev-kaiky
 
                 <div
-                    className="hidden md:flex md:w-1/2 bg-cover bg-center flex-col items-center justify-center p-8 text-center relative"
-                    style={{ backgroundImage: "url('/background.jpeg')" }}
+                    className="bg-[#124B52] hidden md:flex md:w-1/2 bg-cover bg-center flex-col items-center justify-center p-8 text-center relative  bg-linear-to-br from-white/20 to-[#133135]"
                 >
+                    <MapPin className="absolute left-1 top-2 opacity-10" color="white" size={30}></MapPin>
                     <div className="absolute inset-0 bg-black/30"></div>
 
                     <div className="relative z-10 text-white">
@@ -54,6 +70,7 @@ export default function Login() {
                     </div>
                 </div>
 
+<<<<<<< HEAD
                 <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-8 lg:p-12">
                     <h1 className="text-3xl font-bold mb-8">
                         Login
@@ -63,6 +80,13 @@ export default function Login() {
                         onSubmit={handleSubmit}
                         className="flex flex-col gap-5 w-full max-w-[320px]"
                     >
+=======
+                <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-8 lg:p-12 bg-white! z-10 max-md:rounded-2xl">
+                    <h1 className="text-3xl font-bold  mb-8">Login</h1>
+
+                    <div className="flex flex-col gap-5 w-full max-w-[320px]">
+
+>>>>>>> origin/dev-kaiky
                         <div className="relative w-full">
                             <User
                                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -104,6 +128,7 @@ export default function Login() {
                             </div>
                         </div>
 
+<<<<<<< HEAD
                         {error && (
                             <span className="text-sm text-red-500 font-medium text-center">
                                 {error}
@@ -115,6 +140,9 @@ export default function Login() {
                             variant="default"
                             className="w-full h-11 text-base font-semibold mt-2 bg-[#AFAFAF]"
                         >
+=======
+                        <Button variant="default" className="w-full h-11 text-base font-semibold mt-2 bg-[#133135] hover:bg-[#124b52f5]">
+>>>>>>> origin/dev-kaiky
                             Entrar
                         </Button>
 

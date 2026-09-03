@@ -121,10 +121,39 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
+}
+
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #124b527e;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b66d567e;
+}
+
+.verde{
+  @apply bg-[#447762] hover:bg-[#447762cb] active:bg-[#447762cb] text-white
+}
+
+.introduction-card {
+  @apply animate-in fade-in slide-in-from-bottom-6 duration-500 ease-out fill-mode-both;
 }
