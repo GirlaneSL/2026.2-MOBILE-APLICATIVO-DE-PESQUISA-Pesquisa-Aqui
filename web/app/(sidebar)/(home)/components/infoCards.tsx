@@ -22,10 +22,8 @@ export default function InfoCard({
 }: InfoCardProps) {
     return (
         <>
-
-
             <Card
-                className={`${cardClassName} relative bg-gradient-to-br from-[#B66D56]/10 via-white/10 to-[#124B52]/10`}
+                className={`${cardClassName} relative bg-linear-to-br from-[#B66D56]/10 via-white/10 to-[#124B52]/10 shadow-md`}
             >
                 <Bolt size={13} className="absolute top-2 right-2 opacity-15"></Bolt>
                 <Bolt size={13} className="absolute top-2 left-2 opacity-15"></Bolt>
@@ -38,7 +36,7 @@ export default function InfoCard({
                     <CardAction>{cardAction}</CardAction>
                 </CardHeader>
                 <CardContent>
-                    <p>{cardContent}</p>
+                    {cardContent}
                 </CardContent>
                 {isCardFooter ?
                     <CardFooter>

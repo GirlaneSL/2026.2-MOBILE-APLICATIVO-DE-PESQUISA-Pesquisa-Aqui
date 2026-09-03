@@ -24,7 +24,7 @@ export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dial
     return (
         <>
             <Dialog>
-                <DialogTrigger><Button variant={triggerButtonVariant}>{dialogTrigger}</Button></DialogTrigger>
+                <DialogTrigger><Button className={"verde"} variant={triggerButtonVariant}>{dialogTrigger}</Button></DialogTrigger>
                 <DialogContent className={" min-w-1/2  bg-linear-to-br from-[#B66D56]/10 via-white/10 to-[#124B52]/10 p-5"}>
                     <DialogHeader>
                         <DialogTitle className={"text-2xl"}>{dialogTitle}</DialogTitle>

@@ -149,3 +149,7 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #b66d567e;
 }
+
+.verde {
+  @apply bg-[#447762] hover:bg-[#447762cb] active:bg-[#447762cb] text-white
+}

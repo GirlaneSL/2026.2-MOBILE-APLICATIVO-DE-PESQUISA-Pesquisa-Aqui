@@ -16,10 +16,10 @@ export default function EmpresaPage() {
                         cardTitle="Cadastrar Empresa"
                         cardDescription="Cadastre Uma Nova Empresa"
                         cardContent={
-                            <div>
+                            <div className="flex justify-end">
                                 <DialogLayout
                                     triggerButtonVariant="outline"
-                                    dialogTrigger="Cadastro"
+                                    dialogTrigger="Cadastrar"
                                     dialogTitle="Cadastramento de Empresas"
                                     dialogDescription="Informe os Dados da Empresa"
                                     dialogContent={
@@ -40,90 +40,17 @@ export default function EmpresaPage() {
                                                     </div>
 
                                                     <div className="flex justify-end">
-                                                        <Button className={"w-fit"} >Cadastrar Empresa</Button>
+                                                        <Button className={"w-fit verde"} >Cadastrar Empresa</Button>
                                                     </div>
                                                 </div>
                                             </form>
                                         </div>
-                                    } ></DialogLayout>
-                            </div>
-                        } />
-                    <InfoCard
-                        isCardFooter={false}
-                        cardTitle="Cadastrar Empresa"
-                        cardDescription="Cadastre Uma Nova Empresa"
-                        cardContent={
-                            <div>
-                                <DialogLayout
-                                    triggerButtonVariant="outline"
-                                    dialogTrigger="Cadastro"
-                                    dialogTitle="Cadastramento de Empresas"
-                                    dialogDescription="Informe os Dados da Empresa"
-                                    dialogContent={
-                                        <div>
-                                            <form>
-                                                <div className="flex flex-col gap-5">
-                                                    <div>
-                                                        <label htmlFor="name">Nome da Empresa*</label>
-                                                        <Input required id="name" placeholder="Razão Social "></Input>
-                                                    </div>
-                                                    <div>
-                                                        <label htmlFor="contact">Contato*</label>
-                                                        <Input required id="contact" placeholder="+00 00 0000-0000"></Input>
-                                                    </div>
-                                                    <div>
-                                                        <label htmlFor="status">Status*</label>
-                                                        <ComboBoxLayout></ComboBoxLayout>
-                                                    </div>
-
-                                                    <div className="flex justify-end">
-                                                        <Button className={"w-fit"} >Cadastrar Empresa</Button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    } ></DialogLayout>
-                            </div>
-                        } />
-                    <InfoCard
-                        isCardFooter={false}
-                        cardTitle="Cadastrar Empresa"
-                        cardDescription="Cadastre Uma Nova Empresa"
-                        cardContent={
-                            <div>
-                                <DialogLayout
-                                    triggerButtonVariant="outline"
-                                    dialogTrigger="Cadastro"
-                                    dialogTitle="Cadastramento de Empresas"
-                                    dialogDescription="Informe os Dados da Empresa"
-                                    dialogContent={
-                                        <div>
-                                            <form>
-                                                <div className="flex flex-col gap-5">
-                                                    <div>
-                                                        <label htmlFor="name">Nome da Empresa*</label>
-                                                        <Input required id="name" placeholder="Razão Social "></Input>
-                                                    </div>
-                                                    <div>
-                                                        <label htmlFor="contact">Contato*</label>
-                                                        <Input required id="contact" placeholder="+00 00 0000-0000"></Input>
-                                                    </div>
-                                                    <div>
-                                                        <label htmlFor="status">Status*</label>
-                                                        <ComboBoxLayout></ComboBoxLayout>
-                                                    </div>
-
-                                                    <div className="flex justify-end">
-                                                        <Button className={"w-fit"} >Cadastrar Empresa</Button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    } ></DialogLayout>
+                                    } >
+                                </DialogLayout>
                             </div>
                         } />
                 </section>
-            </section>
+            </section >
         </>
     )
 }

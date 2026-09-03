@@ -21,7 +21,7 @@ export function Chart() {
         <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
             <LineChart accessibilityLayer data={chartData}>
                 <CartesianGrid vertical={false} />
-                
+
                 <XAxis
                     dataKey="month"
                     tickLine={false}
