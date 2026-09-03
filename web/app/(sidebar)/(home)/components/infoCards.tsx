@@ -9,6 +9,7 @@ type InfoCardProps = {
     isCardFooter?: boolean;
     cardFooter?: React.ReactNode;
     cardClassName?: React.ReactNode;
+    animationDelayN?: number;
 };
 
 export default function InfoCard({
@@ -18,12 +19,14 @@ export default function InfoCard({
     cardContent,
     isCardFooter = true,
     cardFooter,
-    cardClassName
+    cardClassName,
+    animationDelayN = 1,
 }: InfoCardProps) {
     return (
         <>
             <Card
-                className={`${cardClassName} relative bg-linear-to-br from-[#B66D56]/10 via-white/10 to-[#124B52]/10 shadow-md`}
+                style={{ animationDelay: `${animationDelayN * 150}ms` }}
+                className={`${cardClassName} introduction-card relative bg-linear-to-br from-[#B66D56]/10 via-white/10 to-[#124B52]/10 shadow-md`}
             >
                 <Bolt size={13} className="absolute top-2 right-2 opacity-15"></Bolt>
                 <Bolt size={13} className="absolute top-2 left-2 opacity-15"></Bolt>

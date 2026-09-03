@@ -153,3 +153,7 @@
 .verde{
   @apply bg-[#447762] hover:bg-[#447762cb] active:bg-[#447762cb] text-white
 }
+
+.introduction-card {
+  @apply animate-in fade-in slide-in-from-bottom-6 duration-500 ease-out fill-mode-both;
+}

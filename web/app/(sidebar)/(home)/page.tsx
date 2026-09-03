@@ -42,13 +42,14 @@ const columns = [
 
 export default function Home() {
     return (
-        <section className="relative min-h-screen flex flex-col gap-10">
+        <section className="relative min-h-screen flex flex-col gap-5">
             <BannerComponent title="Painel de Dados"></BannerComponent>
 
-            <section className="flex flex-col gap-10 max-lg:gap-4 ">
-                <div className="grid grid-cols-3 gap-10 max-lg:grid-cols-1 max-lg:gap-4">
+            <section className="flex flex-col gap-5 max-lg:gap-4 ">
+                <div className="grid grid-cols-3 gap-5 max-lg:grid-cols-1 max-lg:gap-4">
                     <InfoCard
-                        cardClassName=" shadow-md "
+                        cardClassName=" shadow-md introduction-card"
+                        animationDelayN={2}
                         isCardFooter={false}
                         cardTitle="Pesquisas Ativas"
                         cardContent={
@@ -64,7 +65,8 @@ export default function Home() {
                         }>
                     </InfoCard >
                     <InfoCard
-                        cardClassName=" shadow-md "
+                        cardClassName=" shadow-md introduction-card"
+                        animationDelayN={3}
                         isCardFooter={false}
                         cardTitle="Ultimas Atualizações"
                         cardContent={
@@ -107,7 +109,9 @@ export default function Home() {
                             </div>
                         }>
                     </InfoCard >
-                    <InfoCard cardClassName="shadow-md"
+                    <InfoCard
+                        cardClassName="shadow-md"
+                        animationDelayN={4}
                         isCardFooter={false}
                         cardTitle="Pesquisadores Ativos"
                         cardContent={
@@ -122,9 +126,10 @@ export default function Home() {
                             </div>
                         } />
                 </div>
-                <div className="grid grid-cols-5 gap-10 max-lg:grid-cols-1 max-lg:gap-4">
+                <div className="grid grid-cols-5 gap-5 max-lg:grid-cols-1 max-lg:gap-4">
                     <InfoCard
                         cardClassName="shadow-md col-span-3 "
+                        animationDelayN={5}
                         isCardFooter={false}
                         cardTitle="Pesquisas"
                         cardContent={
@@ -139,6 +144,7 @@ export default function Home() {
 
                     <InfoCard
                         cardClassName="shadow-md col-span-2 max-lg:col-span-3 "
+                        animationDelayN={5}
                         isCardFooter={false}
                         cardTitle="Outras Coisas Coisadas"
                         cardContent={
