@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { ComboBoxLayout } from "@/components/ui/comboboxLayout";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { Input } from "@/components/ui/input";
-import InfoCard from "../(home)/components/infoCards";
-import { SubmitEventHandler, useState } from "react";
 import { createCompany } from "@/lib/company";
+import { SubmitEventHandler, useState } from "react";
+import InfoCard from "../(home)/components/infoCards";
+
+
+import { usuario } from "@/usuarios";
+
 
 export default function EmpresaPage() {
     const [legalName, setLegalName] = useState('');
@@ -49,94 +53,97 @@ export default function EmpresaPage() {
 
                 <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-                    <InfoCard
-                        isCardFooter={false}
-                        animationDelayN={2}
-                        cardTitle="Cadastrar Empresa"
-                        cardDescription="Cadastre Uma Nova Empresa"
-                        cardContent={
-                            <div className="flex justify-end">
+                    {usuario.profile === 'SUPERADMINISTRATOR' && (
 
-                                <DialogLayout
-                                    triggerButtonVariant="outline"
-                                    dialogTrigger="Cadastrar"
-                                    dialogTitle="Cadastramento de Empresas"
-                                    dialogDescription="Informe os Dados da Empresa"
+                        <InfoCard
+                            isCardFooter={false}
+                            animationDelayN={2}
+                            cardTitle="Cadastrar Empresa"
+                            cardDescription="Cadastre Uma Nova Empresa"
+                            cardContent={
+                                <div className="flex justify-end">
 
-                                    dialogContent={
-                                        <div>
-                                            <form onSubmit={handleSubmit}>
+                                    <DialogLayout
+                                        triggerButtonVariant="outline"
+                                        dialogTrigger="Cadastrar"
+                                        dialogTitle="Cadastramento de Empresas"
+                                        dialogDescription="Informe os Dados da Empresa"
 
-                                                <div className="flex flex-col gap-5">
+                                        dialogContent={
+                                            <div>
+                                                <form onSubmit={handleSubmit}>
 
-                                                    {/* Nome da empresa */}
-                                                    <div>
-                                                        <label htmlFor="name">
-                                                            Nome da Empresa*
-                                                        </label>
+                                                    <div className="flex flex-col gap-5">
 
-                                                        <Input
-                                                            required
-                                                            id="name"
-                                                            placeholder="Razão Social"
-                                                            value={legalName}
-                                                            onChange={(e) =>
-                                                                setLegalName(e.target.value)
-                                                            }
-                                                        />
+                                                        {/* Nome da empresa */}
+                                                        <div>
+                                                            <label htmlFor="name">
+                                                                Nome da Empresa*
+                                                            </label>
+
+                                                            <Input
+                                                                required
+                                                                id="name"
+                                                                placeholder="Razão Social"
+                                                                value={legalName}
+                                                                onChange={(e) =>
+                                                                    setLegalName(e.target.value)
+                                                                }
+                                                            />
+                                                        </div>
+
+                                                        {/* Contato */}
+                                                        <div>
+                                                            <label htmlFor="contact">
+                                                                Contato*
+                                                            </label>
+
+                                                            <Input
+                                                                required
+                                                                id="contact"
+                                                                placeholder="+00 00 0000-0000"
+                                                                value={contact}
+                                                                onChange={(e) =>
+                                                                    setContact(e.target.value)
+                                                                }
+                                                            />
+                                                        </div>
+
+                                                        {/* Situação */}
+                                                        <div>
+                                                            <label htmlFor="situation">
+                                                                Situação*
+                                                            </label>
+
+                                                            <ComboBoxLayout
+                                                                value={situation}
+                                                                onValueChange={setSituation}
+                                                            />
+                                                        </div>
+
+                                                        {/* Botão */}
+                                                        <div className="flex justify-end">
+
+                                                            <Button
+                                                                type="submit"
+                                                                className="w-fit verde"
+                                                            >
+                                                                Cadastrar Empresa
+                                                            </Button>
+
+                                                        </div>
+
                                                     </div>
 
-                                                    {/* Contato */}
-                                                    <div>
-                                                        <label htmlFor="contact">
-                                                            Contato*
-                                                        </label>
+                                                </form>
+                                            </div>
+                                        }
+                                    />
 
-                                                        <Input
-                                                            required
-                                                            id="contact"
-                                                            placeholder="+00 00 0000-0000"
-                                                            value={contact}
-                                                            onChange={(e) =>
-                                                                setContact(e.target.value)
-                                                            }
-                                                        />
-                                                    </div>
-
-                                                    {/* Situação */}
-                                                    <div>
-                                                        <label htmlFor="situation">
-                                                            Situação*
-                                                        </label>
-
-                                                        <ComboBoxLayout
-                                                            value={situation}
-                                                            onValueChange={setSituation}
-                                                        />
-                                                    </div>
-
-                                                    {/* Botão */}
-                                                    <div className="flex justify-end">
-
-                                                        <Button
-                                                            type="submit"
-                                                            className="w-fit verde"
-                                                        >
-                                                            Cadastrar Empresa
-                                                        </Button>
-
-                                                    </div>
-
-                                                </div>
-
-                                            </form>
-                                        </div>
-                                    }
-                                />
-
-                            </div>
-                        }
-                    />
+                                </div>
+                            }
+                        />
+                    )}
 
                 </section>
 

@@ -6,11 +6,13 @@ import { login } from "@/lib/auth";
 import { LockKeyhole, MapPin, User } from "lucide-react";
 import Link from "next/link";
 import { SubmitEventHandler, useState } from "react";
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState<string | null>(null)
+    const router = useRouter();
 
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
@@ -18,6 +20,7 @@ export default function Login() {
         try {
             const data = await login(username, password);
             localStorage.setItem('access_token', data.access_token);
+            router.push('/');
         } catch (error) {
             setError('Nome de usuário ou senha incorretos');
         }

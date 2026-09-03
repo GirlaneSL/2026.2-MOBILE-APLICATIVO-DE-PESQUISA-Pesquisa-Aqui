@@ -1,19 +1,12 @@
 "use client"
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-} from "@/components/ui/sidebar"
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, } from "@/components/ui/sidebar"
 import { Bolt, Building2, Home, LogIn, LogOut, NotebookPen, User2, UsersRound } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+
+
+import { usuario } from "@/usuarios"
+
 
 export function AppSidebar() {
 
@@ -49,56 +42,81 @@ export function AppSidebar() {
                                     </SidebarMenuButton>
                                 </Link>
                             </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <Link href="/empresas">
-                                    <SidebarMenuButton style={pathname === "/empresas" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
-                                        size={"lg"}
-                                        variant={"outline"}
-                                        className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/empresas" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
-                                        isActive={pathname === "/empresas"}>
-                                        <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
-                                            <div className="flex gap-2 items-center">
-                                                <Building2 />
-                                                <span className="group-data-[collapsible=icon]:hidden">Empresas</span>
+                            {usuario.profile === 'SUPERADMINISTRATOR' && (
+                                <SidebarMenuItem>
+                                    <Link href="/empresas">
+                                        <SidebarMenuButton style={pathname === "/empresas" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
+                                            size={"lg"}
+                                            variant={"outline"}
+                                            className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/empresas" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
+                                            isActive={pathname === "/empresas"}>
+                                            <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
+                                                <div className="flex gap-2 items-center">
+                                                    <Building2 />
+                                                    <span className="group-data-[collapsible=icon]:hidden">Empresas</span>
+                                                </div>
+                                                <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
                                             </div>
-                                            <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
-                                        </div>
-                                    </SidebarMenuButton>
-                                </Link>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <Link href="/pesquisa">
-                                    <SidebarMenuButton style={pathname === "/pesquisa" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
-                                        className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisa" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
-                                        size={"lg"} variant={"outline"}
-                                        isActive={pathname === "/pesquisa"}>
-                                        <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
-                                            <div className="flex gap-2 items-center">
-                                                <NotebookPen />
-                                                <span className="group-data-[collapsible=icon]:hidden">Pesquisas</span>
+                                        </SidebarMenuButton>
+                                    </Link>
+                                </SidebarMenuItem>
+                            )}
+                            {usuario.profile === 'ADMINISTRATOR' && (
+                                <SidebarMenuItem>
+                                    <Link href="/empresa">
+                                        <SidebarMenuButton style={pathname === "/empresa" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
+                                            size={"lg"}
+                                            variant={"outline"}
+                                            className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/empresa" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
+                                            isActive={pathname === "/empresa"}>
+                                            <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
+                                                <div className="flex gap-2 items-center">
+                                                    <Building2 />
+                                                    <span className="group-data-[collapsible=icon]:hidden">Empresa</span>
+                                                </div>
+                                                <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
                                             </div>
-                                            <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
-                                        </div>
-                                    </SidebarMenuButton>
-                                </Link>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <Link href="/pesquisadores">
-                                    <SidebarMenuButton style={pathname === "/pesquisadores" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
-                                        size={"lg"}
-                                        variant={"outline"}
-                                        isActive={pathname === "/pesquisadores"}
-                                        className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisadores" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}>
-                                        <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
-                                            <div className="flex gap-2 items-center">
-                                                <UsersRound />
-                                                <span className="group-data-[collapsible=icon]:hidden">Pesquisadores</span>
+                                        </SidebarMenuButton>
+                                    </Link>
+                                </SidebarMenuItem>
+                            )}
+                            {usuario.profile === 'ADMINISTRATOR' && (
+                                <SidebarMenuItem>
+                                    <Link href="/pesquisadores">
+                                        <SidebarMenuButton style={pathname === "/pesquisadores" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
+                                            size={"lg"}
+                                            variant={"outline"}
+                                            isActive={pathname === "/pesquisadores"}
+                                            className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisadores" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}>
+                                            <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
+                                                <div className="flex gap-2 items-center">
+                                                    <UsersRound />
+                                                    <span className="group-data-[collapsible=icon]:hidden">Pesquisadores</span>
+                                                </div>
+                                                <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
                                             </div>
-                                            <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
-                                        </div>
-                                    </SidebarMenuButton>
-                                </Link>
-                            </SidebarMenuItem>
+                                        </SidebarMenuButton>
+                                    </Link>
+                                </SidebarMenuItem>
+                            )}
+                            {(usuario.profile === 'ADMINISTRATOR' || usuario.profile === 'RESEARCHER') && (
+                                <SidebarMenuItem>
+                                    <Link href="/pesquisa">
+                                        <SidebarMenuButton style={pathname === "/pesquisa" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
+                                            className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisa" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
+                                            size={"lg"} variant={"outline"}
+                                            isActive={pathname === "/pesquisa"}>
+                                            <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
+                                                <div className="flex gap-2 items-center">
+                                                    <NotebookPen />
+                                                    <span className="group-data-[collapsible=icon]:hidden">Pesquisas</span>
+                                                </div>
+                                                <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
+                                            </div>
+                                        </SidebarMenuButton>
+                                    </Link>
+                                </SidebarMenuItem>
+                            )}
 
                         </SidebarMenu>
                     </SidebarGroupContent>
@@ -107,27 +125,28 @@ export function AppSidebar() {
             <hr />
             <SidebarFooter>
                 <SidebarMenu>
-                    <SidebarMenuItem>
-                        <Link href={"/perfil"}>
-                            <SidebarMenuButton>
-                                <User2 /> Nome
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <Link href={"login"}>
-                            <SidebarMenuButton>
-                                <LogIn /> Login
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <Link href={"#"}>
-                            <SidebarMenuButton>
-                                <LogOut /> Sair
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
+                    {usuario ?
+                        (
+                            <SidebarMenuItem>
+                                <Link href={"/perfil"}>
+                                    <SidebarMenuButton>
+                                        <User2 /> {usuario.name} {usuario.profile}
+                                    </SidebarMenuButton>
+                                </Link>
+                                <Link href={"#"}>
+                                    <SidebarMenuButton>
+                                        <LogOut /> Sair
+                                    </SidebarMenuButton>
+                                </Link>
+                            </SidebarMenuItem>
+                        ) :
+                        <SidebarMenuItem>
+                            <Link href={"login"}>
+                                <SidebarMenuButton>
+                                    <LogIn /> Login
+                                </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>}
                 </SidebarMenu>
             </SidebarFooter>
         </Sidebar>
