@@ -66,5 +66,12 @@ export class ResearchService {
         return await this.prisma.client.orm.public.Research.where({ id }).update(updateResearchDto);
     }
 
+    async delete(id: number, currentUser: UserPayLoad) {
+        const research = await this.findOne(id, currentUser)
+
+        if (research.status !== 'DRAFT') throw new BadRequestException('Only draft research can be deleted.');
+
+        return this.prisma.client.orm.public.Research.where({ id }).delete()
+    }
 
 }

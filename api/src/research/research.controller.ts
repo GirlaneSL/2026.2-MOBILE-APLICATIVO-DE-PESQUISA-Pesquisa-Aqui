@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ResearchService } from './research.service.js';
 import { CreateResearchDto } from './dto/create-research.dto.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
@@ -27,7 +27,12 @@ export class ResearchController {
     }
 
     @Patch(':id')
-    update(@Param(':id') id: number, @Body() updateResearchDto: UpdateResearchDto, @CurrentUser() currentUser: UserPayLoad) {
+    update(@Param('id', ParseIntPipe) id: number, @Body() updateResearchDto: UpdateResearchDto, @CurrentUser() currentUser: UserPayLoad) {
         return this.researchService.update(id, updateResearchDto, currentUser)
+    }
+
+    @Delete(':id')
+    delete(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+        return this.researchService.delete(id, currentUser);
     }
 }
