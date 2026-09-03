@@ -9,7 +9,7 @@ export default function EmpresaPage() {
     return (
         <>
             <section className="flex flex-col gap-6">
-                <BannerComponent title="Empresas"></BannerComponent>
+                <BannerComponent title="Dados das Empresas"></BannerComponent>
                 <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <InfoCard
                         isCardFooter={false}
