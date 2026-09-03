@@ -39,12 +39,12 @@ export function AppSidebar() {
                                         className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
                                         size={"lg"} variant={"outline"}
                                         isActive={pathname === "/"}   >
-                                        <div className="flex gap-2 items-center justify-between w-full ">
+                                        <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
                                             <div className="flex gap-2 items-center">
                                                 <Home />
                                                 <span className="group-data-[collapsible=icon]:hidden">Home</span>
                                             </div>
-                                            <Bolt size={13} color="white" className="opacity-15"></Bolt>
+                                            <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
                                         </div>
                                     </SidebarMenuButton>
                                 </Link>
@@ -56,12 +56,12 @@ export function AppSidebar() {
                                         variant={"outline"}
                                         className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/empresas" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
                                         isActive={pathname === "/empresas"}>
-                                        <div className="flex gap-2 items-center justify-between w-full ">
+                                        <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
                                             <div className="flex gap-2 items-center">
                                                 <Building2 />
                                                 <span className="group-data-[collapsible=icon]:hidden">Empresas</span>
                                             </div>
-                                            <Bolt size={13} color="white" className="opacity-15"></Bolt>
+                                            <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
                                         </div>
                                     </SidebarMenuButton>
                                 </Link>
@@ -72,12 +72,12 @@ export function AppSidebar() {
                                         className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisa" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
                                         size={"lg"} variant={"outline"}
                                         isActive={pathname === "/pesquisa"}>
-                                        <div className="flex gap-2 items-center justify-between w-full ">
+                                        <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
                                             <div className="flex gap-2 items-center">
                                                 <NotebookPen />
                                                 <span className="group-data-[collapsible=icon]:hidden">Pesquisas</span>
                                             </div>
-                                            <Bolt size={13} color="white" className="opacity-15"></Bolt>
+                                            <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
                                         </div>
                                     </SidebarMenuButton>
                                 </Link>
@@ -89,12 +89,12 @@ export function AppSidebar() {
                                         variant={"outline"}
                                         isActive={pathname === "/pesquisadores"}
                                         className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisadores" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}>
-                                        <div className="flex gap-2 items-center justify-between w-full ">
+                                        <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
                                             <div className="flex gap-2 items-center">
                                                 <UsersRound />
                                                 <span className="group-data-[collapsible=icon]:hidden">Pesquisadores</span>
                                             </div>
-                                            <Bolt size={13} color="white" className="opacity-15"></Bolt>
+                                            <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
                                         </div>
                                     </SidebarMenuButton>
                                 </Link>

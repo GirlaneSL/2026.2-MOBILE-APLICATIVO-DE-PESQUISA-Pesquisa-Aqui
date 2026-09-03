@@ -132,24 +132,24 @@
 }
 
 
-.custom-scrollbar::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: #124b527e;
   border-radius: 9999px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: #b66d567e;
 }
 
-.verde {
+.verde{
   @apply bg-[#447762] hover:bg-[#447762cb] active:bg-[#447762cb] text-white
 }

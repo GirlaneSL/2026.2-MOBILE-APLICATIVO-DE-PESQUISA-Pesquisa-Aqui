@@ -25,7 +25,7 @@ export default function Tabela<T>({
     caption,
 }: TabelaProps<T>) {
     return (
-        <div className="w-full overflow-x-auto custom-scrollbar">
+        <div className="w-full overflow-x-auto">
             <Table className="min-w-[600px]">
                 {caption && (
                     <caption className="text-muted-foreground mt-4 text-sm">

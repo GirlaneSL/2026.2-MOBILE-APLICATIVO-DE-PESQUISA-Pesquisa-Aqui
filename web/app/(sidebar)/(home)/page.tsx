@@ -68,7 +68,7 @@ export default function Home() {
                         isCardFooter={false}
                         cardTitle="Ultimas Atualizações"
                         cardContent={
-                            <div className="flex flex-col gap-2 overflow-y-auto h-55 custom-scrollbar">
+                            <div className="flex flex-col gap-2 overflow-y-auto h-55">
                                 <Skeleton className="w-full h-10 flex items-center gap-2 px-3 min-h-10">
                                     <Activity className="shrink-0" />
 

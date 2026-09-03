@@ -1,8 +1,11 @@
+import BannerComponent from "@/components/ui/bannerComponent";
 
 export default function Pesquisadores() {
     return (
         <>
-            Pesquisadores 
+            <section>
+                <BannerComponent title="Dados dos Pesquisadores"></BannerComponent>
+            </section>
         </>
     )
 }
