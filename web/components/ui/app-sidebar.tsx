@@ -11,7 +11,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Home, LogIn, LogOut, NotebookPen, User2, UsersRound } from "lucide-react"
+import { Building2, Home, LogIn, LogOut, NotebookPen, User2, UsersRound } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -56,7 +56,7 @@ export function AppSidebar() {
                                     >
                                         <Link href="/empresas">
                                             <div className="flex gap-2 items-center justify-center">
-                                                <UsersRound />
+                                                <Building2 />
                                                 <span className="group-data-[collapsible=icon]:hidden">Empresas</span>
                                             </div>
                                         </Link>
