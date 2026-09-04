@@ -16,23 +16,46 @@ const chartConfig = {
     },
 } satisfies ChartConfig
 
-export function Chart() {
+type ChartProps = {
+    variant?: "line" | 'bar';
+};
+
+export function Chart({ variant }: ChartProps) {
     return (
         <ChartContainer config={chartConfig} className="max-h-175 max-w-175 w-full">
-            <LineChart accessibilityLayer data={chartData}>
-                <CartesianGrid vertical={false} />
 
-                <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    tickMargin={10}
-                    axisLine={false}
-                    tickFormatter={(value) => value.slice(0, 3)}
-                />
-                <Line type="natural" dataKey="Pesquisas" fill="var(--color-Pesquisas)" radius={4} />
-                <ChartLegend content={<ChartLegendContent />} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-            </LineChart>
+            {variant === 'line' ? (
+                <LineChart accessibilityLayer data={chartData}>
+                    <CartesianGrid vertical={false} />
+
+                    <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tickFormatter={(value) => value.slice(0, 3)}
+                    />
+                    <Line type="natural" dataKey="Pesquisas" fill="var(--color-Pesquisas)" radius={4} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                </LineChart>
+            ) : (
+                <BarChart accessibilityLayer data={chartData}>
+                    <CartesianGrid vertical={false} />
+
+                    <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tickFormatter={(value) => value.slice(0, 3)}
+                    />
+                    <Bar type="natural" dataKey="Pesquisas" fill="var(--color-Pesquisas)" radius={4} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                </BarChart>
+            )}
+
         </ChartContainer>
     )
 }

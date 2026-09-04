@@ -13,7 +13,6 @@ import InfoCard from "../(home)/components/infoCards";
 import { usuario } from "@/usuarios";
 import { Chart } from "../(home)/components/grafico";
 import Tabela from "../(home)/components/tabela";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const columns = [
     { key: "nome", label: "Pesquisa" },
@@ -340,7 +339,7 @@ export default function EmpresaPage() {
                         cardContent={
                             <div className="grid grid-cols-12 ">
                                 <div className="col-span-1"></div>
-                                <div className="flex justify-center col-span-10 "> <div className="w-90"><Chart></Chart></div></div>
+                                <div className="flex justify-center col-span-10 "> <div className="w-90"><Chart variant="bar"></Chart></div></div>
                                 <div className="col-span-1"></div>
 
                             </div>
@@ -354,7 +353,7 @@ export default function EmpresaPage() {
                             <>
                                 <div className="grid grid-cols-12 ">
                                     <div className="col-span-1"></div>
-                                    <div className="flex justify-center col-span-10 "> <div className="w-90"><Chart></Chart></div></div>
+                                    <div className="flex justify-center col-span-10 "> <div className="w-90"><Chart variant="line"></Chart></div></div>
                                     <div className="col-span-1"></div>
                                 </div>
                             </>
