@@ -301,11 +301,14 @@ export default function EmpresaPage() {
 
                     <InfoCard
                         cardTitle="Edição / Exclusão"
+                        cardDescription="Edite ou Exclua um Administrador / Empresa"
                         isCardFooter={false}
                         animationDelayN={2}
                         cardClassName="relative"
                         cardContent={
                             <div className=" ">
+                                <br />
+                                <br />
                                 <div className="absolute bottom-5 right-5">
                                     <DialogLayout
                                         dialogTrigger="Exibir"
@@ -358,7 +361,6 @@ export default function EmpresaPage() {
                         }
                     />
                 </section>
-
             </section>
         </>
     );
