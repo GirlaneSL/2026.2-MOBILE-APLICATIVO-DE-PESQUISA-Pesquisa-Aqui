@@ -18,7 +18,7 @@ const chartConfig = {
 
 export function Chart() {
     return (
-        <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+        <ChartContainer config={chartConfig} className="max-h-175 max-w-175 w-full">
             <LineChart accessibilityLayer data={chartData}>
                 <CartesianGrid vertical={false} />
 
