@@ -58,6 +58,115 @@ export default function EmpresaPage() {
                         <InfoCard
                             isCardFooter={false}
                             animationDelayN={2}
+                            cardTitle="Cadastrar Administrador"
+                            cardDescription="Cadastre Um Novo Administrador"
+                            cardContent={
+                                <div className="flex justify-end">
+
+                                    <DialogLayout
+                                        triggerButtonVariant="outline"
+                                        dialogTrigger="Cadastrar"
+                                        dialogTitle="Cadastramento de Administrador"
+                                        dialogDescription="Informe os Dados do Administrador"
+
+                                        dialogContent={
+                                            <div>
+                                                <form onSubmit={handleSubmit}>
+
+                                                    <div className="flex flex-col gap-5">
+
+                                                        {/* Nome da empresa */}
+                                                        <div>
+                                                            <label htmlFor="name">
+                                                                Nome*
+                                                            </label>
+
+                                                            <Input
+                                                                required
+                                                                id="name"
+                                                                placeholder="João"
+                                                                value={legalName}
+                                                                onChange={(e) =>
+                                                                    setLegalName(e.target.value)
+                                                                }
+                                                            />
+                                                        </div>
+
+                                                        {/* Contato */}
+                                                        <div>
+                                                            <label htmlFor="password">
+                                                                Senha*
+                                                            </label>
+
+                                                            <Input
+                                                                type="password"
+                                                                required
+                                                                id="password"
+                                                                placeholder="123456"
+                                                                value={contact}
+                                                                onChange={(e) =>
+                                                                    setContact(e.target.value)
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label htmlFor="Cpassword">
+                                                                Confirmar Senha*
+                                                            </label>
+
+                                                            <Input
+                                                                type="password"
+                                                                required
+                                                                id="Cpassword"
+                                                                placeholder="123456"
+                                                                value={contact}
+                                                                onChange={(e) =>
+                                                                    setContact(e.target.value)
+                                                                }
+                                                            />
+                                                        </div>
+
+                                                        {/* Situação */}
+                                                        <div>
+                                                            <label htmlFor="Empresa">
+                                                                Empresa*
+                                                            </label>
+
+                                                            <ComboBoxLayout
+                                                                value={situation}
+                                                                onValueChange={setSituation}
+                                                            />
+                                                        </div>
+
+                                                        {/* Botão */}
+                                                        <div className="flex justify-end">
+
+                                                            <Button
+                                                                type="submit"
+                                                                className="w-fit verde"
+                                                            >
+                                                                Cadastrar Adminstrador
+                                                            </Button>
+
+                                                        </div>
+
+                                                    </div>
+
+                                                </form>
+                                            </div>
+                                        }
+                                    />
+
+                                </div>
+                            }
+                        />
+                    )}
+
+                    {usuario.profile === 'SUPERADMINISTRATOR' && (
+
+                        <InfoCard
+                            isCardFooter={false}
+                            animationDelayN={2}
                             cardTitle="Cadastrar Empresa"
                             cardDescription="Cadastre Uma Nova Empresa"
                             cardContent={
