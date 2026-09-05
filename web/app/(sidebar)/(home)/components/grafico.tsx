@@ -16,23 +16,53 @@ const chartConfig = {
     },
 } satisfies ChartConfig
 
-export function Chart() {
-    return (
-        <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-            <LineChart accessibilityLayer data={chartData}>
-                <CartesianGrid vertical={false} />
+type ChartProps = {
+    variant?: "line" | 'bar';
+};
 
-                <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    tickMargin={10}
-                    axisLine={false}
-                    tickFormatter={(value) => value.slice(0, 3)}
-                />
-                <Line type="natural" dataKey="Pesquisas" fill="var(--color-Pesquisas)" radius={4} />
-                <ChartLegend content={<ChartLegendContent />} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-            </LineChart>
+export function Chart({ variant }: ChartProps) {
+    return (
+        <ChartContainer config={chartConfig} className="max-h-175 max-w-175 w-full">
+
+            {variant === 'line' ? (
+                <LineChart accessibilityLayer data={chartData}>
+                    <CartesianGrid vertical={false} />
+
+                    <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tickFormatter={(value) => value.slice(0, 3)}
+                    />
+                    <Line
+                        type="natural"
+                        dataKey="Pesquisas"
+                        stroke="var(--color-Pesquisas)"
+                        strokeWidth={2}
+                        dot={{ fill: "var(--color-Pesquisas)" }}
+                        activeDot={{ r: 6 }}
+                    />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                </LineChart>
+            ) : (
+                <BarChart accessibilityLayer data={chartData}>
+                    <CartesianGrid vertical={false} />
+
+                    <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tickFormatter={(value) => value.slice(0, 3)}
+                    />
+                    <Bar type="natural" dataKey="Pesquisas" fill="var(--color-Pesquisas)" radius={4} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                </BarChart>
+            )}
+
         </ChartContainer>
     )
 }

@@ -113,11 +113,11 @@ export function AppSidebar() {
                             )}
                             {(user?.profile === 'ADMINISTRATOR' || user?.profile === 'RESEARCHER') && (
                                 <SidebarMenuItem>
-                                    <Link href="/pesquisa">
-                                        <SidebarMenuButton style={pathname === "/pesquisa" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
-                                            className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisa" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
+                                    <Link href="/pesquisas">
+                                        <SidebarMenuButton style={pathname === "/pesquisas" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
+                                            className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisas" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
                                             size={"lg"} variant={"outline"}
-                                            isActive={pathname === "/pesquisa"}>
+                                            isActive={pathname === "/pesquisas"}>
                                             <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
                                                 <div className="flex gap-2 items-center">
                                                     <NotebookPen />

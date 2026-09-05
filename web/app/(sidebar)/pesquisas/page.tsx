@@ -7,7 +7,7 @@ export default function Pesquisas() {
             <section>
                 <BannerComponent title="Dados das Pesquisas"></BannerComponent>
                 <section>
-                    
+
                 </section>
             </section>
         </>
