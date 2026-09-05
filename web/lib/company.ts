@@ -28,3 +28,19 @@ export const createCompany = async (
 
     return response.json();
 }
+
+export const getCompanies = async () => {
+    const token = localStorage.getItem('access_token');
+
+    const response = await fetch('http://localhost:3001/company', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) throw new Error('Failed to get companies');
+
+    return response.json();
+}

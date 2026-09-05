@@ -6,10 +6,19 @@ import { Input } from "@/components/ui/input";
 import { createCompany } from "@/lib/company";
 import { SubmitEventHandler, useState } from "react";
 
+export type Situation = "ACTIVE" | "INACTIVE";
+
+export const situations: Situation[] = ["ACTIVE", "INACTIVE"];
+
+export const situationLabels: Record<Situation, string> = {
+    ACTIVE: "Ativo",
+    INACTIVE: "Inativo",
+};
+
 export default function CadastrarEmpresaForm() {
     const [legalName, setLegalName] = useState('');
     const [contact, setContact] = useState('');
-    const [situation, setSituation] = useState<'ACTIVE' | 'INACTIVE' | ''>('');
+    const [situation, setSituation] = useState<Situation | ''>('');
 
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
@@ -59,9 +68,13 @@ export default function CadastrarEmpresaForm() {
 
                 <div>
                     <label htmlFor="company-situation">Situação*</label>
-                    <ComboBoxLayout
+                    <ComboBoxLayout<Situation>
+                        items={situations}
+                        labels={situationLabels}
                         value={situation}
                         onValueChange={setSituation}
+                        placeholder="Selecione Um Status"
+                        emptyMessage="Nenhum Status Encontrado!"
                     />
                 </div>
 

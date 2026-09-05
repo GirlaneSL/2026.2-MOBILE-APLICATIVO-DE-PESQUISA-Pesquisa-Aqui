@@ -3,27 +3,67 @@
 import { Button } from "@/components/ui/button";
 import { ComboBoxLayout } from "@/components/ui/comboboxLayout";
 import { Input } from "@/components/ui/input";
-import { SubmitEventHandler, useState } from "react";
+import { getCompanies } from "@/lib/company";
+import { createUser } from "@/lib/user";
+import { SubmitEventHandler, useEffect, useState } from "react";
+
+interface Company {
+    id: number;
+    legalName: string;
+}
 
 export default function CadastrarAdministradorForm() {
-    const [nome, setNome] = useState('');
-    const [senha, setSenha] = useState('');
-    const [confirmarSenha, setConfirmarSenha] = useState('');
-    const [empresa, setEmpresa] = useState<'ACTIVE' | 'INACTIVE' | ''>('');
+    const [name, setName] = useState('');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    const [companies, setCompanies] = useState<Company[]>([])
+    const [companyId, setCompanyId] = useState<string>('')
+
+    useEffect(() => {
+        getCompanies()
+            .then(setCompanies)
+            .catch((error) => {
+                console.log(error);
+                alert("Erro ao carregar empresas");
+
+            });
+    }, []);
+
+    const sortedCompanies = [...companies].sort((a, b) => a.legalName.localeCompare(b.legalName, 'pt-BR', { sensitivity: 'base' }))
+
+    const companyIds = sortedCompanies.map((c) => String(c.id));
+    const companyLabels: Record<string, string> = sortedCompanies.reduce(
+        (acc, c) => ({ ...acc, [String(c.id)]: c.legalName }),
+        {}
+    );
 
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
 
-        if (!empresa) {
+        if (!companyId) {
             alert("Selecione uma empresa");
             return;
         }
 
+        if (password !== confirmPassword) {
+            alert("As senhas não coincidem");
+            return;
+        }
+
         try {
-            // Lógica de cadastro do administrador
+            await createUser(name, username, password, 'ADMINISTRATOR', Number(companyId))
             alert("Administrador cadastrado com sucesso!");
+
+            setName('');
+            setUsername('');
+            setPassword('');
+            setConfirmPassword('');
+            setCompanyId('');
         } catch (error) {
             console.error(error);
+            alert(error instanceof Error ? error.message : "Erro ao cadastrar administrador");
         }
     };
 
@@ -36,8 +76,18 @@ export default function CadastrarAdministradorForm() {
                         required
                         id="admin-name"
                         placeholder="João"
-                        value={nome}
-                        onChange={(e) => setNome(e.target.value)}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label htmlFor="admin-name">Username*</label>
+                    <Input
+                        required
+                        id="admin-username"
+                        placeholder="João.admin"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                     />
                 </div>
 
@@ -48,8 +98,8 @@ export default function CadastrarAdministradorForm() {
                         required
                         id="admin-password"
                         placeholder="123456"
-                        value={senha}
-                        onChange={(e) => setSenha(e.target.value)}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                     />
                 </div>
 
@@ -60,16 +110,18 @@ export default function CadastrarAdministradorForm() {
                         required
                         id="admin-cpassword"
                         placeholder="123456"
-                        value={confirmarSenha}
-                        onChange={(e) => setConfirmarSenha(e.target.value)}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                 </div>
 
                 <div>
                     <label htmlFor="admin-empresa">Empresa*</label>
                     <ComboBoxLayout
-                        value={empresa}
-                        onValueChange={setEmpresa}
+                        items={companyIds}
+                        labels={companyLabels}
+                        value={companyId}
+                        onValueChange={setCompanyId}
                     />
                 </div>
 

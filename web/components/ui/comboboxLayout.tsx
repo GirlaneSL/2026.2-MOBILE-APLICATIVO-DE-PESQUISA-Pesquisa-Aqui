@@ -9,47 +9,46 @@ import {
     ComboboxList,
 } from "@/components/ui/combobox"
 
-type Situation = "ACTIVE" | "INACTIVE" | "";
-
-interface ComboBoxLayoutProps {
-    value: Situation;
-    onValueChange: (value: Situation) => void;
+interface ComboBoxLayoutProps<T extends string> {
+    items: readonly T[];
+    labels: Record<T, string>;
+    value: T | "";
+    onValueChange: (value: T) => void;
+    placeholder?: string;
+    emptyMessage?: string;
 }
 
-const situations: Situation[] = ["ACTIVE", "INACTIVE"];
-
-const situationLabels: Record<Exclude<Situation, "">, string> = {
-    ACTIVE: "Ativo",
-    INACTIVE: "Inativo",
-};
-
-export function ComboBoxLayout({
+export function ComboBoxLayout<T extends string>({
+    items,
+    labels,
     value,
     onValueChange,
-}: ComboBoxLayoutProps) {
+    placeholder = "Selecione uma opção",
+    emptyMessage = "Nenhum resultado encontrado!",
+}: ComboBoxLayoutProps<T>) {
     return (
-        <Combobox
-            items={situations}
-            value={value}
-            onValueChange={(value) => {
-                if (value !== null) {
-                    onValueChange(value);
+        <Combobox<T>
+            items={items}
+            value={value === "" ? null : value}
+            onValueChange={(newValue) => {
+                if (newValue !== null && newValue !== undefined) {
+                    onValueChange(newValue);
                 }
             }}
-            itemToStringLabel={(item) => situationLabels[item as Exclude<Situation, "">] ?? ""}
+            itemToStringLabel={(item) => labels[item] ?? ""}
             itemToStringValue={(item) => item}
         >
-            <ComboboxInput placeholder="Selecione Um Status" />
+            <ComboboxInput placeholder={placeholder} />
 
             <ComboboxContent>
                 <ComboboxEmpty>
-                    Nenhum Status Encontrado!
+                    {emptyMessage}
                 </ComboboxEmpty>
 
                 <ComboboxList>
-                    {(item) => (
+                    {(item: T) => (
                         <ComboboxItem key={item} value={item}>
-                            {situationLabels[item as Exclude<Situation, "">]}
+                            {labels[item]}
                         </ComboboxItem>
                     )}
                 </ComboboxList>
