@@ -1,6 +1,10 @@
 'use client'
 
 import BannerComponent from "@/components/ui/bannerComponent";
+import { Button } from "@/components/ui/button";
+import DialogLayout from "@/components/ui/dialogLayout";
+import { Input } from "@/components/ui/input";
+import InfoCard from "../(home)/components/infoCards";
 
 export default function EmpresaPage() {
     return (
@@ -10,7 +14,141 @@ export default function EmpresaPage() {
                 <BannerComponent title="Dados das Empresa" />
 
                 <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <InfoCard
+                        isCardFooter={false}
+                        animationDelayN={2}
+                        cardTitle="Cadastrar Pesquisa"
+                        cardDescription="Cadastre Uma Nova Pesquisa"
+                        cardClassName={"relative"}
+                        cardContent={
+                            <>
+                                <br />
+                                <br />
+                                <div className="absolute bottom-5 right-5 flex justify-end ">
 
+                                    <DialogLayout
+                                        triggerButtonVariant="outline"
+                                        dialogTrigger="Cadastrar"
+                                        dialogTitle="Cadastramento de Pesquisa"
+                                        dialogDescription="Informe os Dados da Pesquisa"
+
+                                        dialogContent={
+                                            <div>
+                                                <form
+                                                // onSubmit={handleSubmit}
+                                                >
+
+                                                    <div className="flex flex-col gap-5">
+
+                                                        {/* Nome da empresa */}
+                                                        <div>
+                                                            <label htmlFor="title">
+                                                                Titulo*
+                                                            </label>
+
+                                                            <Input
+                                                                required
+                                                                id="title"
+                                                                placeholder="Pesquisa Exemplo"
+                                                            // value={legalName}
+                                                            // onChange={(e) =>
+                                                            //     setLegalName(e.target.value)
+                                                            // }
+                                                            />
+                                                        </div>
+
+                                                        {/* Contato */}
+                                                        <div>
+                                                            <label htmlFor="desc">
+                                                                Descrição*
+                                                            </label>
+
+                                                            <Input
+                                                                type="text"
+                                                                required
+                                                                id="desc"
+                                                                placeholder="Descrição exemplo"
+                                                            // value={contact}
+                                                            // onChange={(e) =>
+                                                            //     setContact(e.target.value)
+                                                            // }
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label htmlFor="Ob">
+                                                                Objetivo*
+                                                            </label>
+
+                                                            <Input
+                                                                type="text"
+                                                                required
+                                                                id="Ob"
+                                                                placeholder="Objetivo exemplo"
+                                                            // value={contact}
+                                                            // onChange={(e) =>
+                                                            //     setContact(e.target.value)
+                                                            // }
+                                                            />
+                                                        </div>
+
+                                                        {/* Situação */}
+                                                        <div>
+                                                            <label htmlFor="Vigência">
+                                                                Vigência*
+                                                            </label>
+
+                                                            <Input
+                                                                type="text"
+                                                                required
+                                                                id="Vigência"
+                                                                placeholder="Objetivo Exemplo"
+                                                            // value={contact}
+                                                            // onChange={(e) =>
+                                                            //     setContact(e.target.value)
+                                                            // }
+                                                            />
+                                                        </div>
+
+                                                        <div>
+                                                            <label htmlFor="Público">
+                                                                Público Alvo*
+                                                            </label>
+
+                                                            <Input
+                                                                type="text"
+                                                                required
+                                                                id="Público"
+                                                                placeholder="Público Alvo Exemplo"
+                                                            // value={contact}
+                                                            // onChange={(e) =>
+                                                            //     setContact(e.target.value)
+                                                            // }
+                                                            />
+                                                        </div>
+
+                                                        {/* Botão */}
+                                                        <div className="flex justify-end">
+
+                                                            <Button
+                                                                type="submit"
+                                                                className="w-fit verde"
+                                                            >
+                                                                Cadastrar Pesquisa
+                                                            </Button>
+
+                                                        </div>
+
+                                                    </div>
+
+                                                </form>
+                                            </div>
+                                        }
+                                    />
+
+                                </div>
+                            </>
+                        }
+                    />
                 </section>
 
             </section>

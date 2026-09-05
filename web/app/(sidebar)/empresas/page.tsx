@@ -205,7 +205,7 @@ export default function EmpresaPage() {
 
                         <InfoCard
                             isCardFooter={false}
-                            animationDelayN={2}
+                            animationDelayN={3}
                             cardTitle="Cadastrar Empresa"
                             cardDescription="Cadastre Uma Nova Empresa"
                             cardClassName="relative"
@@ -300,9 +300,9 @@ export default function EmpresaPage() {
 
                     <InfoCard
                         cardTitle="Edição / Exclusão"
-                        cardDescription="Edite ou Exclua um Administrador / Empresa"
+                        cardDescription="Edite ou Exclua Um Administrador / Empresa"
                         isCardFooter={false}
-                        animationDelayN={2}
+                        animationDelayN={4}
                         cardClassName="relative"
                         cardContent={
                             <div className=" ">
@@ -322,6 +322,7 @@ export default function EmpresaPage() {
                 <section className="grid grid-cols-5 gap-5 row-span-2 ">
                     <InfoCard
                         cardTitle="Empresas / Administradires"
+                        animationDelayN={5}
                         cardClassName="col-span-3 row-span-1 max-h-100 overflow-auto "
                         isCardFooter={false}
                         cardContent={
@@ -334,6 +335,7 @@ export default function EmpresaPage() {
                     />
                     <InfoCard
                         cardTitle="Administradores"
+                        animationDelayN={5}
                         cardClassName="max-h-100 overflow-auto"
                         isCardFooter={false}
                         cardContent={
@@ -347,6 +349,7 @@ export default function EmpresaPage() {
                     />
                     <InfoCard
                         cardTitle="Empresas"
+                        animationDelayN={5}
                         cardClassName=""
                         isCardFooter={false}
                         cardContent={
