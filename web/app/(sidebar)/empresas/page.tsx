@@ -113,7 +113,6 @@ export default function EmpresaPage() {
 
                                                         <div className="flex flex-col gap-5">
 
-                                                            {/* Nome da empresa */}
                                                             <div>
                                                                 <label htmlFor="name">
                                                                     Nome*
@@ -130,7 +129,6 @@ export default function EmpresaPage() {
                                                                 />
                                                             </div>
 
-                                                            {/* Contato */}
                                                             <div>
                                                                 <label htmlFor="password">
                                                                     Senha*
@@ -164,7 +162,6 @@ export default function EmpresaPage() {
                                                                 />
                                                             </div>
 
-                                                            {/* Situação */}
                                                             <div>
                                                                 <label htmlFor="Empresa">
                                                                     Empresa*
@@ -176,7 +173,6 @@ export default function EmpresaPage() {
                                                                 />
                                                             </div>
 
-                                                            {/* Botão */}
                                                             <div className="flex justify-end">
 
                                                                 <Button
@@ -227,7 +223,6 @@ export default function EmpresaPage() {
 
                                                         <div className="flex flex-col gap-5">
 
-                                                            {/* Nome da empresa */}
                                                             <div>
                                                                 <label htmlFor="name">
                                                                     Nome da Empresa*
@@ -244,7 +239,6 @@ export default function EmpresaPage() {
                                                                 />
                                                             </div>
 
-                                                            {/* Contato */}
                                                             <div>
                                                                 <label htmlFor="contact">
                                                                     Contato*
@@ -261,7 +255,6 @@ export default function EmpresaPage() {
                                                                 />
                                                             </div>
 
-                                                            {/* Situação */}
                                                             <div>
                                                                 <label htmlFor="situation">
                                                                     Situação*
@@ -273,7 +266,6 @@ export default function EmpresaPage() {
                                                                 />
                                                             </div>
 
-                                                            {/* Botão */}
                                                             <div className="flex justify-end">
 
                                                                 <Button
@@ -303,7 +295,7 @@ export default function EmpresaPage() {
                         cardDescription="Edite ou Exclua Um Administrador / Empresa"
                         isCardFooter={false}
                         animationDelayN={4}
-                        cardClassName="relative"
+                        cardClassName="relative col-span-1 md:col-span-2 lg:col-span-1"
                         cardContent={
                             <div className=" ">
                                 <br />
@@ -319,11 +311,11 @@ export default function EmpresaPage() {
                         }
                     />
                 </section>
-                <section className="grid grid-cols-5 gap-5 row-span-2 ">
+                <section className="grid grid-cols-5 gap-5 row-span-2 md:grid-cols-2 lg:grid-cols-5">
                     <InfoCard
                         cardTitle="Empresas / Administradires"
                         animationDelayN={5}
-                        cardClassName="col-span-3 row-span-1 max-h-100 overflow-auto "
+                        cardClassName="row-span-1 max-h-100 overflow-auto col-span-5 md:col-span-2 lg:col-span-3"
                         isCardFooter={false}
                         cardContent={
                             <>
@@ -336,7 +328,7 @@ export default function EmpresaPage() {
                     <InfoCard
                         cardTitle="Administradores"
                         animationDelayN={5}
-                        cardClassName="max-h-100 overflow-auto"
+                        cardClassName="max-h-100 overflow-auto col-span-5 md:col-span-1 lg:col-span-1"
                         isCardFooter={false}
                         cardContent={
                             <div className="grid grid-cols-12 ">
@@ -350,7 +342,7 @@ export default function EmpresaPage() {
                     <InfoCard
                         cardTitle="Empresas"
                         animationDelayN={5}
-                        cardClassName=""
+                        cardClassName="col-span-5 md:col-span-1 lg:col-span-1"
                         isCardFooter={false}
                         cardContent={
                             <>
