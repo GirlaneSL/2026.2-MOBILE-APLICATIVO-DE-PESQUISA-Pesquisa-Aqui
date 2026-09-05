@@ -22,7 +22,7 @@ export default function Login() {
             localStorage.setItem('access_token', data.access_token);
             router.push('/');
         } catch (error) {
-            setError('Nome de usuário ou senha incorretos');
+            setError('Nome de usuário ou senha incorretos/Empresa inativa');
         }
     }
 
