@@ -35,7 +35,14 @@ export function Chart({ variant }: ChartProps) {
                         axisLine={false}
                         tickFormatter={(value) => value.slice(0, 3)}
                     />
-                    <Line type="natural" dataKey="Pesquisas" fill="var(--color-Pesquisas)" radius={4} />
+                    <Line
+                        type="natural"
+                        dataKey="Pesquisas"
+                        stroke="var(--color-Pesquisas)"
+                        strokeWidth={2}
+                        dot={{ fill: "var(--color-Pesquisas)" }}
+                        activeDot={{ r: 6 }}
+                    />
                     <ChartLegend content={<ChartLegendContent />} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                 </LineChart>
