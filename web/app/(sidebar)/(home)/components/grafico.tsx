@@ -3,7 +3,7 @@
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts"
 
-const chartData = [
+const defaultChartData = [
     { month: "January", Pesquisas: 186, },
     { month: "February", Pesquisas: 305, },
     { month: "March", Pesquisas: 237, },
@@ -18,14 +18,15 @@ const chartConfig = {
 
 type ChartProps = {
     variant?: "line" | 'bar';
+    data?: { month: string; Pesquisas: number }[];
 };
 
-export function Chart({ variant }: ChartProps) {
+export function Chart({ variant, data = defaultChartData }: ChartProps) {
     return (
         <ChartContainer config={chartConfig} className="max-h-175 max-w-175 w-full">
 
             {variant === 'line' ? (
-                <LineChart accessibilityLayer data={chartData}>
+                <LineChart accessibilityLayer data={data}>
                     <CartesianGrid vertical={false} />
 
                     <XAxis
@@ -47,7 +48,7 @@ export function Chart({ variant }: ChartProps) {
                     <ChartTooltip content={<ChartTooltipContent />} />
                 </LineChart>
             ) : (
-                <BarChart accessibilityLayer data={chartData}>
+                <BarChart accessibilityLayer data={data}>
                     <CartesianGrid vertical={false} />
 
                     <XAxis

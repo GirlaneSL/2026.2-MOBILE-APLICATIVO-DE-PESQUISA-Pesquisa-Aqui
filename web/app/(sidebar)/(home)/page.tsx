@@ -8,7 +8,7 @@ import EstatisticasChart from "./components/EstatisticasChart";
 import UltimasAtualizacoesList from "./components/UltimasAtualizacoesList";
 import { columns } from "@/app/(sidebar)/(home)/data/pesquisasData";
 import { useEffect, useState } from "react";
-import { getResearches } from "@/lib/research";
+import { getActiveResearchesInMonth, getResearches, getResearchesByMonth } from "@/lib/research";
 
 const statusLabels: Record<string, string> = {
     DRAFT: "Rascunho",
@@ -20,22 +20,34 @@ const statusLabels: Record<string, string> = {
 export default function Home() {
 
     const [researches, setResearches] = useState([])
+    const [rawResearches, setRawResearches] = useState<any[]>([]);
 
     useEffect(() => {
         getResearches()
-            .then((data) =>
-            setResearches(
-                data.map((r: any) => ({
-                    ...r,
-                    status: statusLabels[r.status] ?? r.status
-                }))
-            )
+            .then((data) => {
+                setRawResearches(data);
+                setResearches(
+                    data.map((r: any) => ({
+                        ...r,
+                        status: statusLabels[r.status] ?? r.status
+                    }))
+                )
+            }
             )
             .catch((error) => {
                 console.log(error);
                 alert('Erro ao carregar pesquisas')
             })
     }, [])
+
+    const now = new Date();
+    const activeThisMonth = getActiveResearchesInMonth(
+        rawResearches,
+        now.getMonth() + 1,
+        now.getFullYear()
+    )
+
+    const chartData = getResearchesByMonth(rawResearches, now.getFullYear());
 
     return (
         <section className="relative min-h-screen flex flex-col gap-5">
@@ -48,7 +60,7 @@ export default function Home() {
                         animationDelayN={2}
                         isCardFooter={false}
                         cardTitle="Pesquisas Ativas"
-                        cardContent={<EstatisticasChart valor="67" />}
+                        cardContent={<EstatisticasChart valor={String(activeThisMonth.length)} chartData={chartData} variant="bar" />}
                     />
 
                     <InfoCard
