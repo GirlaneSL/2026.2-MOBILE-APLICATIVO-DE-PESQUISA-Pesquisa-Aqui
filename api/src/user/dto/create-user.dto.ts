@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsNotEmpty, IsString, MinLength, ValidateIf } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 
 export enum Profile {
     SUPERADMINISTRATOR = 'SUPERADMINISTRATOR',
@@ -24,8 +24,7 @@ export class CreateUserDto {
     @IsNotEmpty()
     profile: Profile;
 
-    @ValidateIf((object) => object.profile !== Profile.SUPERADMINISTRATOR)
+    @IsOptional()
     @IsInt()
-    @IsNotEmpty()
     companyId?: number;
 }

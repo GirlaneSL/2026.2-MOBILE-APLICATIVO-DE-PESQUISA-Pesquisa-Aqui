@@ -3,7 +3,7 @@ export const createUser = async (
     username: string,
     password: string,
     profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER' | '',
-    companyId: number
+    companyId?: number
 ) => {
     const token = localStorage.getItem('access_token');
 

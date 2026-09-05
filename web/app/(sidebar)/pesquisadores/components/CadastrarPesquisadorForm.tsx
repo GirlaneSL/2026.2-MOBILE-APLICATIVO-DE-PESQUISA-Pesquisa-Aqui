@@ -1,28 +1,35 @@
 'use client'
 
 import { Button } from "@/components/ui/button";
-import { ComboBoxLayout } from "@/components/ui/comboboxLayout";
 import { Input } from "@/components/ui/input";
+import { createUser } from "@/lib/user";
 import { SubmitEventHandler, useState } from "react";
 
 export default function CadastrarPesquisadorForm() {
-    // Estados do formulário extraídos do componente principal
-    const [Nome, setNome] = useState('');
-    const [Usuario, setUsuario] = useState('');
-    const [Empresa, setEmpresa] = useState<'ACTIVE' | 'INACTIVE' | ''>('');
+    const [name, setName] = useState('');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
 
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
 
-        if (!Empresa) {
-            alert("Selecione uma situação");
+        if (password !== confirmPassword) {
+            alert("As senhas não coincidem");
             return;
         }
 
         try {
-            // Lógica de submissão
+            await createUser(name, username, password, 'RESEARCHER');
+            alert("Pesquisador cadastrado com sucesso!");
+
+            setName('');
+            setUsername('');
+            setPassword('');
+            setConfirmPassword('');
         } catch (error) {
-            // Lógica de erro
+            console.error(error);
+            alert(error instanceof Error ? error.message : "Erro ao cadastrar pesquisador");
         }
     };
 
@@ -35,8 +42,8 @@ export default function CadastrarPesquisadorForm() {
                         required
                         id="name"
                         placeholder="João"
-                        value={Nome}
-                        onChange={(e) => setNome(e.target.value)}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                     />
                 </div>
 
@@ -46,38 +53,32 @@ export default function CadastrarPesquisadorForm() {
                         required
                         id="user"
                         placeholder="Joãozinho"
-                        value={Usuario}
-                        onChange={(e) => setUsuario(e.target.value)}
-                    />
-                </div>
-
-                <div>
-                    <label htmlFor="perfil">Perfil*</label>
-                    <Input
-                        required
-                        id="perfil"
-                        placeholder="Perfil"
-                        value={Usuario}
-                        onChange={(e) => setUsuario(e.target.value)}
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                     />
                 </div>
 
                 <div>
                     <label htmlFor="password">Senha*</label>
                     <Input
+                        type="password"
                         required
                         id="password"
                         placeholder="123456"
-                        value={Usuario}
-                        onChange={(e) => setUsuario(e.target.value)}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="situation">Empresa que Pertence*</label>
-                    <ComboBoxLayout
-                        value={Empresa}
-                        onValueChange={setEmpresa}
+                    <label htmlFor="confirmPassword">Confirmar Senha*</label>
+                    <Input
+                        type="password"
+                        required
+                        id="confirmPassword"
+                        placeholder="123456"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                 </div>
 

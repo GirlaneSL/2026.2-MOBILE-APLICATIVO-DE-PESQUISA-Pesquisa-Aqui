@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
@@ -35,21 +35,41 @@ export class UserService {
     }
 
     async create(createUserDto: CreateUserDto, currentUser: UserPayLoad) {
-        if (currentUser.profile !== 'SUPERADMINISTRATOR') throw new ForbiddenException('Only super administrators can register new users');
+        if (currentUser.profile === 'RESEARCHER') {
+            throw new ForbiddenException('Researchers cannot register users');
+        }
+
+        let companyId = createUserDto.companyId;
+
+        if (currentUser.profile === 'ADMINISTRATOR') {
+            if (createUserDto.profile !== 'RESEARCHER') {
+                throw new ForbiddenException('Administrators can only register researchers');
+            }
+
+            if (!currentUser.companyId) {
+                throw new ForbiddenException('User is not associated with a company');
+            }
+
+            companyId = currentUser.companyId;
+        }
+
+        if (currentUser.profile === 'SUPERADMINISTRATOR' && !companyId) {
+            throw new BadRequestException('The company ID is required for super administrators');
+        }
 
         const existingUser = await this.prisma.client.orm.public.User.where({ username: createUserDto.username }).first();
 
-        if (existingUser) throw new ConflictException('Username already exists')
+        if (existingUser) throw new ConflictException('Username already exists');
 
-        const passwordHash = await bcrypt.hash(createUserDto.password, 10)
+        const passwordHash = await bcrypt.hash(createUserDto.password, 10);
 
         const newUser = await this.prisma.client.orm.public.User.create({
             name: createUserDto.name,
             username: createUserDto.username,
             passwordHash,
             profile: createUserDto.profile,
-            companyId: createUserDto.companyId,
-        })
+            companyId: companyId,
+        });
 
         const { passwordHash: _, ...userWithoutPassword } = newUser;
 

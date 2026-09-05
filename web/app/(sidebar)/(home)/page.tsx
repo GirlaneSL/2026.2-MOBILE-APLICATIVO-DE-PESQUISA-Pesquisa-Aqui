@@ -29,7 +29,7 @@ export default function Home() {
                 setResearches(
                     data.map((r: any) => ({
                         ...r,
-                        status: statusLabels[r.status] ?? r.status
+                        status: statusLabels[r.status] ?? r.status,
                     }))
                 )
             }
