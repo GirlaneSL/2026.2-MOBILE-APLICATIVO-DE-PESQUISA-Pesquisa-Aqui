@@ -38,7 +38,9 @@ export default function Pesquisas() {
                         }
                     />
                     <InfoCard
+                        isCardFooter={false}
                         cardTitle="Montar Pesquisa"
+                        cardDescription="Monte Uma Nova Pesquisa"
                         cardClassName="relative col-span-1 md:col-span-1 lg:col-span-1"
                         animationDelayN={3}
                         cardContent={
@@ -62,6 +64,7 @@ export default function Pesquisas() {
                         }
                     />
                     <InfoCard
+                        isCardFooter={false}
                         cardClassName=" col-span-1 md:col-span-3 lg:col-span-1"
                         animationDelayN={4}
                     />
@@ -69,10 +72,12 @@ export default function Pesquisas() {
 
                 <section className="grid grid-cols-5 gap-5 md:col-span-2">
                     <InfoCard
+                        isCardFooter={false}
                         cardClassName="col-span-5 md:col-span-3 lg:col-span-3"
                         animationDelayN={5}
                     />
                     <InfoCard
+                        isCardFooter={false}
                         cardClassName="col-span-5 md:col-span-2 lg:col-span-2"
                         animationDelayN={5}
                     />
