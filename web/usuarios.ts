@@ -4,7 +4,7 @@ export const usuario = {
     name: 'USER',
     username: 'admin',
     passwordHash: 123,
-    profile: 'SUPERADMINISTRATOR',
+    profile: 'ADMINISTRATOR',
 }
 
 
