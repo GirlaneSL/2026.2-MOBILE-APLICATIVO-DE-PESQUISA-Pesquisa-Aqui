@@ -3,7 +3,7 @@
 import BannerComponent from "@/components/ui/bannerComponent";
 import DialogLayout from "@/components/ui/dialogLayout";
 import InfoCard from "../(home)/components/infoCards";
-import CadastrarPesquisaForm from "./components/CadastrarPesquisaForm";
+import CadastrarPesquisaForm from "../pesquisas/components/CadastrarPesquisaForm";
 
 export default function EmpresaPage() {
     return (
@@ -15,7 +15,7 @@ export default function EmpresaPage() {
                     <InfoCard
                         isCardFooter={false}
                         animationDelayN={2}
-                        cardTitle="Cadastrar Pesquisa"
+                        cardTitle="Cadastrar alguma coisa"
                         cardDescription="Cadastre Uma Nova Pesquisa"
                         cardClassName={"relative"}
                         cardContent={
