@@ -4,10 +4,19 @@ import { Bolt, Building2, Home, LogIn, LogOut, NotebookPen, User2, UsersRound } 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { logout } from "@/lib/auth"
 
 export function AppSidebar() {
     const pathname = usePathname();
     const { user } = useCurrentUser();
+
+    const logoutUser = async () => {
+        try {
+            await logout()
+        } catch (error) {
+            console.log(error);
+        }
+    }
 
     return (
         <Sidebar collapsible="icon">
@@ -131,7 +140,7 @@ export function AppSidebar() {
                                         <User2 /> {user?.name} {user?.profile}
                                     </SidebarMenuButton>
                                 </Link>
-                                <Link href={"#"}>
+                                <Link onClick={(e) => { e.preventDefault(); logoutUser(); }} href={"#"}>
                                     <SidebarMenuButton>
                                         <LogOut /> Sair
                                     </SidebarMenuButton>
