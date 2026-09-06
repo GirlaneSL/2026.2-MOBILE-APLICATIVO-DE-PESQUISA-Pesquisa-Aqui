@@ -65,7 +65,7 @@ export default function Pesquisas() {
                     />
                     <InfoCard
                         isCardFooter={false}
-                        cardClassName=" col-span-1 md:col-span-3 lg:col-span-1"
+                        cardClassName=" col-span-1 md:col-span-2 lg:col-span-1"
                         animationDelayN={4}
                     />
                 </section>
