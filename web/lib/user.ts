@@ -5,16 +5,14 @@ export const createUser = async (
     profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER' | '',
     companyId?: number
 ) => {
-    const token = localStorage.getItem('access_token');
-
     const response = await fetch(
         `http://localhost:3001/user`,
         {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
             },
+            credentials: 'include',
             body: JSON.stringify({
                 name,
                 username,

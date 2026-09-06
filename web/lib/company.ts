@@ -3,16 +3,14 @@ export const createCompany = async (
     contactInformation: string,
     situation: 'ACTIVE' | 'INACTIVE'
 ) => {
-    const token = localStorage.getItem('access_token');
-
     const response = await fetch(
         `http://localhost:3001/company`,
         {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
             },
+            credentials: 'include',
             body: JSON.stringify({
                 legalName,
                 contactInformation,
@@ -30,14 +28,9 @@ export const createCompany = async (
 }
 
 export const getCompanies = async () => {
-    const token = localStorage.getItem('access_token');
-
     const response = await fetch('http://localhost:3001/company', {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
     });
 
     if (!response.ok) throw new Error('Failed to get companies');

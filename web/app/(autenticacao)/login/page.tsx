@@ -18,8 +18,7 @@ export default function Login() {
         e.preventDefault();
 
         try {
-            const data = await login(username, password);
-            localStorage.setItem('access_token', data.access_token);
+            await login(username, password);
             router.push('/');
         } catch (error) {
             setError('Nome de usuário ou senha incorretos/Empresa inativa');
