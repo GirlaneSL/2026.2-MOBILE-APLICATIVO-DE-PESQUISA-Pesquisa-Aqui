@@ -3,9 +3,11 @@
 import { Button } from "@/components/ui/button";
 import { ComboBoxLayout } from "@/components/ui/comboboxLayout";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { getCompanies } from "@/lib/company";
 import { createUser } from "@/lib/user";
 import { SubmitEventHandler, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 interface Company {
     id: number;
@@ -39,22 +41,24 @@ export default function CadastrarAdministradorForm() {
         {}
     );
 
+
+    const [isSubmitLoading, setIsSubmitLoading] = useState(false);
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
 
         if (!companyId) {
-            alert("Selecione uma empresa");
+            toast.error("Selecione uma empresa");
             return;
         }
 
         if (password !== confirmPassword) {
-            alert("As senhas não coincidem");
+            toast.error("As senhas não coincidem");
             return;
         }
-
+        setIsSubmitLoading(true)
         try {
             await createUser(name, username, password, 'ADMINISTRATOR', Number(companyId))
-            alert("Administrador cadastrado com sucesso!");
+            toast.success("Administrador cadastrado com sucesso!")
 
             setName('');
             setUsername('');
@@ -63,7 +67,9 @@ export default function CadastrarAdministradorForm() {
             setCompanyId('');
         } catch (error) {
             console.error(error);
-            alert(error instanceof Error ? error.message : "Erro ao cadastrar administrador");
+            toast.error(error instanceof Error ? error.message : "Erro ao cadastrar administrador")
+        } finally {
+            setIsSubmitLoading(false);
         }
     };
 
@@ -126,8 +132,15 @@ export default function CadastrarAdministradorForm() {
                 </div>
 
                 <div className="flex justify-end">
-                    <Button type="submit" className="w-fit verde">
-                        Cadastrar Administrador
+                    <Button disabled={isSubmitLoading} type="submit" className="w-fit verde">
+                        {isSubmitLoading ? (
+                            <div className="flex gap-2">
+                                <Spinner className=""></Spinner>
+                                Cadastrando...
+                            </div>
+                        ) : (
+                            <span>Cadastrar Administrador</span>
+                        )}
                     </Button>
                 </div>
             </div>

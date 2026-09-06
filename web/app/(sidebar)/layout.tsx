@@ -1,9 +1,11 @@
-import { AppSidebar } from "@/components/ui/app-sidebar"
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/ui/app-sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Toaster } from 'react-hot-toast';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
+      <Toaster></Toaster>
       <AppSidebar />
       <main className="w-full">
         <SidebarTrigger className={"my-0.5"} size={"icon-lg"} />
