@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createResearch } from "@/lib/research";
 import { SubmitEventHandler, useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
+import toast from "react-hot-toast";
 
 export default function CadastrarPesquisaForm() {
     const [title, setTitle] = useState('');
@@ -15,18 +17,29 @@ export default function CadastrarPesquisaForm() {
 
     const datesValid = !startDate || !endDate || startDate <= endDate;
 
+
+    const [isSubmitLoading, setIsSubmitLoading] = useState(false);
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
 
         if (!datesValid) {
-            alert("A data de término não pode ser anterior à data de início");
+            toast.error("A data de término não pode ser anterior à data de início");
             return;
         }
 
-        try {
-            await createResearch(title, description, objective, startDate, endDate, targetAudience);
+        setIsSubmitLoading(true);
 
-            alert("Pesquisa criada com sucesso!");
+        try {
+            await createResearch(
+                title,
+                description,
+                objective,
+                startDate,
+                endDate,
+                targetAudience
+            );
+
+            toast.success("Pesquisa criada com sucesso!");
 
             setTitle('');
             setDescription('');
@@ -36,7 +49,14 @@ export default function CadastrarPesquisaForm() {
             setTargetAudience('');
         } catch (error) {
             console.error(error);
-            alert(error instanceof Error ? error.message : "Erro ao criar pesquisa");
+
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Erro ao criar pesquisa"
+            );
+        } finally {
+            setIsSubmitLoading(false);
         }
     };
 
@@ -51,6 +71,7 @@ export default function CadastrarPesquisaForm() {
                         placeholder="Pesquisa Exemplo"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
+                        disabled={isSubmitLoading}
                     />
                 </div>
 
@@ -63,6 +84,7 @@ export default function CadastrarPesquisaForm() {
                         placeholder="Descrição exemplo"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
+                        disabled={isSubmitLoading}
                     />
                 </div>
 
@@ -75,6 +97,7 @@ export default function CadastrarPesquisaForm() {
                         placeholder="Objetivo exemplo"
                         value={objective}
                         onChange={(e) => setObjective(e.target.value)}
+                        disabled={isSubmitLoading}
                     />
                 </div>
 
@@ -86,6 +109,7 @@ export default function CadastrarPesquisaForm() {
                         id="startDate"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
+                        disabled={isSubmitLoading}
                     />
                 </div>
                 <div>
@@ -96,6 +120,7 @@ export default function CadastrarPesquisaForm() {
                         id="endDate"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
+                        disabled={isSubmitLoading}
                     />
                 </div>
                 {!datesValid && (
@@ -112,12 +137,24 @@ export default function CadastrarPesquisaForm() {
                         placeholder="Público Alvo Exemplo"
                         value={targetAudience}
                         onChange={(e) => setTargetAudience(e.target.value)}
+                        disabled={isSubmitLoading}
                     />
                 </div>
 
                 <div className="flex justify-end">
-                    <Button type="submit" className="w-fit verde">
-                        Cadastrar Pesquisa
+                    <Button
+                        type="submit"
+                        className="w-fit verde"
+                        disabled={isSubmitLoading}
+                    >
+                        {isSubmitLoading ? (
+                            <div className="flex items-center gap-2">
+                                <Spinner />
+                                <span>Cadastrando...</span>
+                            </div>
+                        ) : (
+                            <span>Cadastrar Pesquisa</span>
+                        )}
                     </Button>
                 </div>
             </div>
