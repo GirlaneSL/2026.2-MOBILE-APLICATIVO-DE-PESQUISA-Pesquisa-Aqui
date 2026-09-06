@@ -28,6 +28,6 @@
 export const columns = [
     { key: "title", label: "Pesquisa" },
     { key: "status", label: "Status" },
-    { key: "respostas", label: "Respostas" },
+    // { key: "respostas", label: "Respostas" },
     { key: "endDate", label: "Data" },
 ] as const;

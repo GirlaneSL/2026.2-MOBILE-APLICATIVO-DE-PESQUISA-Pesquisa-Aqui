@@ -1,27 +1,13 @@
 "use client"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, } from "@/components/ui/sidebar"
-import { jwtDecode } from "jwt-decode"
 import { Bolt, Building2, Home, LogIn, LogOut, NotebookPen, User2, UsersRound } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 
 export function AppSidebar() {
     const pathname = usePathname();
-    const [user, setUser] = useState<any>(null);
-
-    useEffect(() => {
-        const token = localStorage.getItem('access_token');
-
-        if (token) {
-            try {
-                const decodificated = jwtDecode(token);
-                setUser(decodificated);
-            } catch (error) {
-                console.log('Invalid token');
-            }
-        }
-    }, [])
+    const { user } = useCurrentUser();
 
     return (
         <Sidebar collapsible="icon">

@@ -8,7 +8,7 @@ import EstatisticasChart from "./components/EstatisticasChart";
 import UltimasAtualizacoesList from "./components/UltimasAtualizacoesList";
 import { columns } from "@/app/(sidebar)/(home)/data/pesquisasData";
 import { useEffect, useState } from "react";
-import { getActiveResearchesInMonth, getResearches, getResearchesByMonth } from "@/lib/research";
+import { getActiveResearchesInMonth, getResearches, getResearchesByMonth, type Research } from "@/lib/research";
 
 const statusLabels: Record<string, string> = {
     DRAFT: "Rascunho",
@@ -17,19 +17,22 @@ const statusLabels: Record<string, string> = {
     CLOSED: "Encerrada",
 };
 
+type ResearchDisplay = Omit<Research, "status"> & { status: string };
+
 export default function Home() {
 
-    const [researches, setResearches] = useState([])
-    const [rawResearches, setRawResearches] = useState<any[]>([]);
+    const [researches, setResearches] = useState<ResearchDisplay[]>([])
+    const [rawResearches, setRawResearches] = useState<Research[]>([]);
 
     useEffect(() => {
         getResearches()
             .then((data) => {
                 setRawResearches(data);
                 setResearches(
-                    data.map((r: any) => ({
+                    data.map((r) => ({
                         ...r,
                         status: statusLabels[r.status] ?? r.status,
+                        respostas: 0,
                     }))
                 )
             }

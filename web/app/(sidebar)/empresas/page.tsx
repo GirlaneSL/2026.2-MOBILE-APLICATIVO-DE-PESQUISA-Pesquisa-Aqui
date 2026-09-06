@@ -3,34 +3,34 @@
 import BannerComponent from "@/components/ui/bannerComponent";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { createCompany } from "@/lib/company";
-import { SubmitEventHandler, useEffect, useState } from "react";
+import { SubmitEventHandler, useState } from "react";
 import InfoCard from "../(home)/components/infoCards";
-import { jwtDecode } from "jwt-decode";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
-import { usuario } from "@/usuarios";
 import { Chart } from "../(home)/components/grafico";
 import Tabela from "../(home)/components/tabela";
 import CadastrarAdministradorForm from "./components/CadastrarAdministradorForm";
 import CadastrarEmpresaForm from "./components/CadastrarEmpresaForm";
 
+const columns = [
+    { key: "nome", label: "Pesquisa" },
+    { key: "status", label: "Status" },
+    { key: "respostas", label: "Respostas" },
+    { key: "data", label: "Data" },
+] as const;
+
+const pesquisas = [
+    { nome: "Pesquisa de satisfação", status: "Ativa", respostas: 120, data: "02/09/2026" },
+    { nome: "Pesquisa de produto1", status: "Encerrada", respostas: 85, data: "01/09/2026" },
+    { nome: "Pesquisa de produto2", status: "Ativa", respostas: 85, data: "01/09/2026" },
+    { nome: "Pesquisa de produto3", status: "Encerrada", respostas: 85, data: "01/09/2026" },
+];
+
 export default function EmpresaPage() {
     const [legalName, setLegalName] = useState('');
     const [contact, setContact] = useState('');
     const [situation, setSituation] = useState<'ACTIVE' | 'INACTIVE' | ''>('');
-    const [user, setUser] = useState<any>(null)
-
-    useEffect(() => {
-        const token = localStorage.getItem('access_token');
-
-        if (token) {
-            try {
-                const decodificated = jwtDecode(token);
-                setUser(decodificated)
-            } catch (error) {
-                console.log('Invalid token');
-            }
-        }
-    }, [])
+    const { user } = useCurrentUser();
 
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
@@ -59,21 +59,6 @@ export default function EmpresaPage() {
         }
     };
 
-
-const columns = [
-    { key: "nome", label: "Pesquisa" },
-    { key: "status", label: "Status" },
-    { key: "respostas", label: "Respostas" },
-    { key: "data", label: "Data" },
-] as const;
-
-const pesquisas = [
-    { nome: "Pesquisa de satisfação", status: "Ativa", respostas: 120, data: "02/09/2026" },
-    { nome: "Pesquisa de produto1", status: "Encerrada", respostas: 85, data: "01/09/2026" },
-    { nome: "Pesquisa de produto2", status: "Ativa", respostas: 85, data: "01/09/2026" },
-    { nome: "Pesquisa de produto3", status: "Encerrada", respostas: 85, data: "01/09/2026" },
-];
-
     return (
         <>
             <section className="flex flex-col gap-5">
@@ -82,7 +67,6 @@ const pesquisas = [
                 <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
                     {user?.profile === 'SUPERADMINISTRATOR' && (
-
                         <InfoCard
                             isCardFooter={false}
                             animationDelayN={2}
@@ -111,7 +95,7 @@ const pesquisas = [
                         />
                     )}
 
-                    {usuario.profile === 'SUPERADMINISTRATOR' && (
+                    {user?.profile === 'SUPERADMINISTRATOR' && (
                         <InfoCard
                             isCardFooter={false}
                             animationDelayN={3}

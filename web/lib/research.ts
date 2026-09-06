@@ -1,9 +1,13 @@
-interface Research {
+// lib/research.ts
+export interface Research {
     id: number;
     title: string;
+    description: string;
+    objective: string;
     status: "DRAFT" | "PUBLISHED" | "IN_FIELD" | "CLOSED";
     startDate: string;
     endDate: string;
+    targetAudience: string;
     companyId: number;
 }
 
@@ -44,7 +48,7 @@ export const createResearch = async (title: string, description: string, objecti
     return response.json();
 }
 
-export const getResearches = async () => {
+export const getResearches = async (): Promise<Research[]> => {
     const token = localStorage.getItem('access_token');
 
     const response = await fetch('http://localhost:3001/research', {
@@ -55,7 +59,11 @@ export const getResearches = async () => {
         },
     });
 
-    if (!response.ok) throw new Error('Failed to get companies');
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        console.error('getResearches failed:', response.status, errorBody);
+        throw new Error(errorBody?.message || `Failed to get researches (status ${response.status})`);
+    }
 
     return response.json();
 }
