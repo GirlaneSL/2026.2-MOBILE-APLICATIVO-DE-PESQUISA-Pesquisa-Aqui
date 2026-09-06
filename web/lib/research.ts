@@ -1,4 +1,3 @@
-// lib/research.ts
 export interface Research {
     id: number;
     title: string;
@@ -19,16 +18,12 @@ const MONTH_NAMES = [
 ];
 
 export const createResearch = async (title: string, description: string, objective: string, startDate: string, endDate: string, targetAudience: string) => {
-    const token = localStorage.getItem('access_token');
-
     const response = await fetch(
         `http://localhost:3001/research`,
         {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
                 title,
                 description,
@@ -49,14 +44,9 @@ export const createResearch = async (title: string, description: string, objecti
 }
 
 export const getResearches = async (): Promise<Research[]> => {
-    const token = localStorage.getItem('access_token');
-
     const response = await fetch('http://localhost:3001/research', {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
     });
 
     if (!response.ok) {
