@@ -1,10 +1,12 @@
 import { AppSidebar } from "@/components/ui/app-sidebar";
+import { BfcacheGuard } from "@/components/ui/BfcacheGuard";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from 'react-hot-toast';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
+      <BfcacheGuard />
       <Toaster></Toaster>
       <AppSidebar />
       <main className="w-full">
