@@ -8,8 +8,16 @@
       "model": "Company",
       "namespace": "public"
     },
+    "question": {
+      "model": "Question",
+      "namespace": "public"
+    },
     "research": {
       "model": "Research",
+      "namespace": "public"
+    },
+    "section": {
+      "model": "Section",
       "namespace": "public"
     },
     "user": {
@@ -48,6 +56,59 @@
               {
                 "name": "RESEARCHER",
                 "value": "RESEARCHER"
+              }
+            ]
+          },
+          "QuestionType": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "FREE_TEXT",
+                "value": "FREE_TEXT"
+              },
+              {
+                "name": "NUMERIC",
+                "value": "NUMERIC"
+              },
+              {
+                "name": "DATE",
+                "value": "DATE"
+              },
+              {
+                "name": "TIME",
+                "value": "TIME"
+              },
+              {
+                "name": "YES_NO",
+                "value": "YES_NO"
+              },
+              {
+                "name": "SINGLE_CHOICE",
+                "value": "SINGLE_CHOICE"
+              },
+              {
+                "name": "MULTIPLE_CHOICE",
+                "value": "MULTIPLE_CHOICE"
+              },
+              {
+                "name": "SCALE_1_5",
+                "value": "SCALE_1_5"
+              },
+              {
+                "name": "PHOTO",
+                "value": "PHOTO"
+              },
+              {
+                "name": "MULTIPLE_PHOTOS",
+                "value": "MULTIPLE_PHOTOS"
+              },
+              {
+                "name": "LOCATION",
+                "value": "LOCATION"
+              },
+              {
+                "name": "AUDIO",
+                "value": "AUDIO"
               }
             ]
           },
@@ -167,6 +228,129 @@
               "table": "company"
             }
           },
+          "Question": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "helpText": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "isRequired": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "order": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "sectionId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "statement": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "type": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "QuestionType",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "section": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "sectionId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Section",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "helpText": {
+                  "column": "helpText"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "isRequired": {
+                  "column": "isRequired"
+                },
+                "order": {
+                  "column": "order"
+                },
+                "sectionId": {
+                  "column": "sectionId"
+                },
+                "statement": {
+                  "column": "statement"
+                },
+                "type": {
+                  "column": "type"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "question"
+            }
+          },
           "Research": {
             "fields": {
               "companyId": {
@@ -268,6 +452,21 @@
                   "model": "Company",
                   "namespace": "public"
                 }
+              },
+              "sections": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "researchId"
+                  ]
+                },
+                "to": {
+                  "model": "Section",
+                  "namespace": "public"
+                }
               }
             },
             "storage": {
@@ -308,6 +507,108 @@
               },
               "namespaceId": "public",
               "table": "research"
+            }
+          },
+          "Section": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "order": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "researchId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "title": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "questions": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "sectionId"
+                  ]
+                },
+                "to": {
+                  "model": "Question",
+                  "namespace": "public"
+                }
+              },
+              "research": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "researchId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Research",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "order": {
+                  "column": "order"
+                },
+                "researchId": {
+                  "column": "researchId"
+                },
+                "title": {
+                  "column": "title"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "section"
             }
           },
           "User": {
@@ -499,6 +800,114 @@
               },
               "uniques": []
             },
+            "question": {
+              "checks": [
+                {
+                  "expression": "\"type\" IN ('FREE_TEXT', 'NUMERIC', 'DATE', 'TIME', 'YES_NO', 'SINGLE_CHOICE', 'MULTIPLE_CHOICE', 'SCALE_1_5', 'PHOTO', 'MULTIPLE_PHOTOS', 'LOCATION', 'AUDIO')",
+                  "name": "question_type_check_6b386099",
+                  "prefix": "question_type_check"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "helpText": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "isRequired": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "order": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "sectionId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "statement": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "type": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "QuestionType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "sectionId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "question"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "section"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "sectionId"
+                  ],
+                  "name": "question_sectionId_idx_5d1ea56b",
+                  "prefix": "question_sectionId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "research": {
               "checks": [
                 {
@@ -615,6 +1024,82 @@
                   ],
                   "name": "research_companyId_idx_33acc5ed",
                   "prefix": "research_companyId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "section": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "order": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "researchId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "title": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "researchId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "section"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "research"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "researchId"
+                  ],
+                  "name": "section_researchId_idx_36f1b4c8",
+                  "prefix": "section_researchId_idx",
                   "unique": false
                 }
               ],
@@ -747,6 +1232,23 @@
                 "RESEARCHER"
               ]
             },
+            "QuestionType": {
+              "kind": "valueSet",
+              "values": [
+                "FREE_TEXT",
+                "NUMERIC",
+                "DATE",
+                "TIME",
+                "YES_NO",
+                "SINGLE_CHOICE",
+                "MULTIPLE_CHOICE",
+                "SCALE_1_5",
+                "PHOTO",
+                "MULTIPLE_PHOTOS",
+                "LOCATION",
+                "AUDIO"
+              ]
+            },
             "ResearchStatus": {
               "kind": "valueSet",
               "values": [
@@ -762,10 +1264,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "3cc2fb2b290ad0a3cf289ec1761d1b775162a56ca0b62249fc1cf855b1603cb1"
+    "storageHash": "f1cc1981f6f2c01729d24306793004256b2013e97ec1ed78608d87a743a34296"
   },
   "execution": {
-    "executionHash": "fe03eeefff63242d2af2ed07d13b9fbd060a0d662165be74a085b2ded62287f8",
+    "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",
     "mutations": {
       "defaults": [
         {
@@ -795,7 +1297,37 @@
           "ref": {
             "column": "updatedAt",
             "namespace": "public",
+            "table": "question"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
             "table": "research"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "section"
           }
         },
         {

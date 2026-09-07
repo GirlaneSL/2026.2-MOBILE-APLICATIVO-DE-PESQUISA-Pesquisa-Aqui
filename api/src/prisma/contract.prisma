@@ -18,6 +18,21 @@ enum ResearchStatus {
   CLOSED
 }
 
+enum QuestionType {
+  FREE_TEXT
+  NUMERIC
+  DATE
+  TIME
+  YES_NO
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  SCALE_1_5
+  PHOTO
+  MULTIPLE_PHOTOS
+  LOCATION
+  AUDIO
+}
+
 model Company {
   id                  Int      @id @default(autoincrement())
   legalName           String
@@ -51,6 +66,31 @@ model Research {
   status         ResearchStatus   @default(DRAFT)
   companyId      Int
   company        Company  @relation(fields: [companyId], references: [id])
+  sections       Section[]
   createdAt      TimestamptzString @default(now())
   updatedAt      temporal.updatedAtString()
+}
+
+model Section {
+  id         Int      @id @default(autoincrement())
+  title      String
+  order      Int
+  researchId Int
+  research   Research   @relation(fields: [researchId], references: [id])
+  questions  Question[]
+  createdAt  TimestamptzString @default(now())
+  updatedAt  temporal.updatedAtString()
+}
+
+model Question {
+  id          Int          @id @default(autoincrement())
+  statement   String
+  type        QuestionType
+  helpText    String?
+  isRequired  Boolean      @default(false)
+  order       Int
+  sectionId   Int
+  section     Section      @relation(fields: [sectionId], references: [id])
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
 }
