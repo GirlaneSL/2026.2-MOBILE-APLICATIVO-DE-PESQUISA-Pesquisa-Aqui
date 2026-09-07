@@ -91,10 +91,13 @@ export const getResearchById = async (id: string): Promise<Research> => {
         method: 'GET',
         credentials: 'include',
     });
+
     if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.message || 'Failed to get research');
+        const error = new Error(errorBody?.message || 'Failed to get research') as Error & { status?: number };
+        error.status = response.status;
+        throw error;
     }
 
     return response.json();
-}
+};

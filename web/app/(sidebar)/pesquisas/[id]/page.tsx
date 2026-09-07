@@ -1,9 +1,11 @@
+// app/(sidebar)/pesquisas/[id]/page.tsx
 'use client'
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getResearchById, type Research } from "@/lib/research";
 import BannerComponent from "@/components/ui/bannerComponent";
+import { ShieldAlert } from "lucide-react";
 
 const statusLabels: Record<string, string> = {
     DRAFT: "Rascunho",
@@ -12,33 +14,63 @@ const statusLabels: Record<string, string> = {
     CLOSED: "Encerrada",
 };
 
+type PageState =
+    | { status: 'loading' }
+    | { status: 'forbidden' }
+    | { status: 'not-found' }
+    | { status: 'error'; message: string }
+    | { status: 'success'; research: Research };
+
 export default function PesquisaDetalhePage() {
     const params = useParams<{ id: string }>();
-    const [research, setResearch] = useState<Research | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [state, setState] = useState<PageState>({ status: 'loading' });
 
     useEffect(() => {
+        setState({ status: 'loading' });
+
         getResearchById(params.id)
-            .then(setResearch)
+            .then((research) => setState({ status: 'success', research }))
             .catch((err) => {
-                console.error(err);
-                setError(err instanceof Error ? err.message : 'Erro ao carregar pesquisa');
-            })
-            .finally(() => setLoading(false));
+                const status = (err as { status?: number })?.status;
+
+                if (status === 403) {
+                    setState({ status: 'forbidden' });
+                } else if (status === 404) {
+                    setState({ status: 'not-found' });
+                } else {
+                    setState({
+                        status: 'error',
+                        message: err instanceof Error ? err.message : 'Erro ao carregar pesquisa',
+                    });
+                }
+            });
     }, [params.id]);
 
-    if (loading) {
+    if (state.status === 'loading') {
         return <p className="text-sm text-muted-foreground">Carregando pesquisa...</p>;
     }
 
-    if (error) {
-        return <p className="text-sm text-red-500">Erro: {error}</p>;
+    if (state.status === 'forbidden') {
+        return (
+            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+                <ShieldAlert className="text-red-500" size={40} />
+                <h2 className="text-lg font-semibold">Acesso negado</h2>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                    Esta pesquisa pertence a outra empresa. Você não tem permissão para visualizá-la.
+                </p>
+            </div>
+        );
     }
 
-    if (!research) {
+    if (state.status === 'not-found') {
         return <p className="text-sm text-muted-foreground">Pesquisa não encontrada.</p>;
     }
+
+    if (state.status === 'error') {
+        return <p className="text-sm text-red-500">Erro: {state.message}</p>;
+    }
+
+    const { research } = state;
 
     return (
         <section className="flex flex-col gap-5">
