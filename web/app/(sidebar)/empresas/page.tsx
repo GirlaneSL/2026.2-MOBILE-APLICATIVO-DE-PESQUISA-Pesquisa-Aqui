@@ -11,6 +11,7 @@ import { Chart } from "../(home)/components/grafico";
 import Tabela from "../(home)/components/tabela";
 import CadastrarAdministradorForm from "./components/CadastrarAdministradorForm";
 import CadastrarEmpresaForm from "./components/CadastrarEmpresaForm";
+import ExibirEditar from "./components/ExibirExcluir";
 
 const columns = [
     { key: "nome", label: "Pesquisa" },
@@ -137,8 +138,11 @@ export default function EmpresaPage() {
                                 <div className="absolute bottom-5 right-5">
                                     <DialogLayout
                                         dialogTrigger="Exibir"
-                                        dialogTitle="Administradores / Empresas"
-                                        dialogDescription="lista dos Administradores / Empresas"
+                                        dialogTitle="Painel Geral"
+                                        dialogDescription="Alterne entre as listagens de Empresas e Administradores"
+                                        dialogContent={
+                                            <ExibirEditar></ExibirEditar>
+                                        }
                                     />
                                 </div>
                             </div>
@@ -150,12 +154,12 @@ export default function EmpresaPage() {
                     <InfoCard
                         cardTitle="Empresas / Administradires"
                         animationDelayN={5}
-                        cardClassName="row-span-1 max-h-100 overflow-auto col-span-5 md:col-span-2 lg:col-span-3"
+                        cardClassName="row-span-1 max-h-100 min-h-75 overflow-auto col-span-5 md:col-span-2 lg:col-span-3"
                         isCardFooter={false}
                         cardContent={
                             <>
-                                <div>
-                                    <Tabela columns={columns} data={pesquisas} />
+                                <div className="">
+                                    <ExibirEditar allowActions={false}></ExibirEditar>
                                 </div>
                             </>
                         }
@@ -163,10 +167,10 @@ export default function EmpresaPage() {
                     <InfoCard
                         cardTitle="Administradores"
                         animationDelayN={5}
-                        cardClassName="max-h-100 overflow-auto col-span-5 md:col-span-1 lg:col-span-1"
+                        cardClassName="col-span-5 md:col-span-1 lg:col-span-1"
                         isCardFooter={false}
                         cardContent={
-                            <div className="grid grid-cols-12 ">
+                            <div className="max-h-100 overflow-auto  grid grid-cols-12 ">
                                 <div className="col-span-1"></div>
                                 <div className="flex justify-center col-span-10 ">
                                     <div className="w-90"><Chart variant="bar" /></div>
@@ -182,7 +186,7 @@ export default function EmpresaPage() {
                         isCardFooter={false}
                         cardContent={
                             <>
-                                <div className="grid grid-cols-12 ">
+                                <div className="max-h-100 overflow-auto grid grid-cols-12 ">
                                     <div className="col-span-1"></div>
                                     <div className="flex justify-center col-span-10 ">
                                         <div className="w-90"><Chart variant="line" /></div>

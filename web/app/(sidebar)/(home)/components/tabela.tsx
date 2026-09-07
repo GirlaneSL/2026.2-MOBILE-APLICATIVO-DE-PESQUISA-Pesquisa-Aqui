@@ -54,7 +54,7 @@ export default function Tabela<T>({
                                     key={String(column.key)}
                                     className={column.className}
                                 >
-                                    {String(row[column.key])}
+                                    {row[column.key] as React.ReactNode}
                                 </TableCell>
                             ))}
                         </TableRow>

@@ -23,7 +23,7 @@ type ChartProps = {
 
 export function Chart({ variant, data = defaultChartData }: ChartProps) {
     return (
-        <ChartContainer config={chartConfig} className="max-h-175 max-w-175 w-full">
+        <ChartContainer config={chartConfig} className="max-h-175 max-w-175 w-full min-w-50">
 
             {variant === 'line' ? (
                 <LineChart accessibilityLayer data={data}>
