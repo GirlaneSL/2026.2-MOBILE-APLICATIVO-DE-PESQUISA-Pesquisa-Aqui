@@ -85,3 +85,19 @@ export function getResearchesByMonth(
         return { month, Pesquisas: activeInThisMonth.length };
     });
 }
+
+export const getResearchById = async (id: string): Promise<Research> => {
+    const response = await fetch(`http://localhost:3001/research/${id}`, {
+        method: 'GET',
+        credentials: 'include',
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        const error = new Error(errorBody?.message || 'Failed to get research') as Error & { status?: number };
+        error.status = response.status;
+        throw error;
+    }
+
+    return response.json();
+};

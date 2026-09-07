@@ -30,3 +30,25 @@ export const createUser = async (
 
     return response.json();
 }
+
+export const getUsersAdmin = async () => {
+    const response = await fetch('http://localhost:3001/user/admins', {
+        method: 'GET',
+        credentials: 'include',
+    });
+
+    if (!response.ok) throw new Error('Failed to get admins');
+
+    return response.json();
+}
+
+export const deleteUser = async (username: string) => {
+    const response = await fetch(`http://localhost:3001/user/${username}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+
+    if (!response.ok) throw new Error('Failed to delete user');
+
+    return response.json();
+}
