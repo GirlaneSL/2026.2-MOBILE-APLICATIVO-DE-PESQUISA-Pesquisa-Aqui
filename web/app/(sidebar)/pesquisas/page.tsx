@@ -4,6 +4,7 @@ import DialogLayout from "@/components/ui/dialogLayout";
 import CadastrarPesquisaForm from "./components/CadastrarPesquisaForm";
 import MontarPesquisaForm from "./components/MontarPesquiaForm";
 import TabelaPesquisas from "./components/TabelaPesquisas";
+import { Button } from "@/components/ui/button";
 
 export default function Pesquisas() {
     return (
@@ -66,8 +67,9 @@ export default function Pesquisas() {
                     />
                     <InfoCard
                         cardTitle="Editar / Deletar"
+                        cardDescription="Consulte e Gerencie As Pesquisas"
                         isCardFooter={false}
-                        cardClassName=" col-span-1 md:col-span-2 lg:col-span-1"
+                        cardClassName="col-span-1 md:col-span-2 lg:col-span-1"
                         animationDelayN={4}
                         cardContent={
                             <>
@@ -109,6 +111,11 @@ export default function Pesquisas() {
                         isCardFooter={false}
                         cardClassName="col-span-5 md:col-span-2 lg:col-span-2"
                         animationDelayN={5}
+                        cardContent={
+                            <div className=" ">
+
+                            </div>
+                        }
                     />
                 </section>
             </section >

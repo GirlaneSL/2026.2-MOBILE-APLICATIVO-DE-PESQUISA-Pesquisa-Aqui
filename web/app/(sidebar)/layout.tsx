@@ -9,7 +9,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <BfcacheGuard />
       <Toaster></Toaster>
       <AppSidebar />
-      <main className="w-full">
+      <main className="w-full capitalize">
         <SidebarTrigger className={"my-0.5"} size={"icon-lg"} />
         <hr />
         <section className="relative h-screen">

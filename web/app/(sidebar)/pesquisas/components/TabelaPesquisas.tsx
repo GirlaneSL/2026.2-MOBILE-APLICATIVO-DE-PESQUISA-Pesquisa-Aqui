@@ -337,14 +337,14 @@ export default function TabelaPesquisas({ allowActions = true }: TabelaPesquisas
         title: (
             <Link
                 href={`/pesquisas/${item.id}`}
-                className="font-medium text-primary hover:underline hover:text-[#447762] transition-colors block"
+                className="font-medium  hover:underline hover:text-[#447762] transition-colors block"
             >
                 {item.title}
             </Link>
         ),
         createdAt: item.createdAt ? new Date(item.createdAt).toLocaleDateString('pt-BR') : '-',
         status: (
-            <Badge variant={item.status === 'ACTIVE' || !item.status ? 'default' : 'secondary'}>
+            <Badge variant={item.status === 'ACTIVE' || !item.status ? 'default' : 'outline'}>
                 {item.status === 'ACTIVE' ? 'Ativa' : item.status || 'Ativa'}
             </Badge>
         ),
