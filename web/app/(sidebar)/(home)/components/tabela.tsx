@@ -26,7 +26,7 @@ export default function Tabela<T>({
 }: TabelaProps<T>) {
     return (
         <div className="w-full overflow-x-auto">
-            <Table className="min-w-[600px]">
+            <Table className="min-w-150">
                 {caption && (
                     <caption className="text-muted-foreground mt-4 text-sm">
                         {caption}
