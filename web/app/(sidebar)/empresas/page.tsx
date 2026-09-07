@@ -158,7 +158,7 @@ export default function EmpresaPage() {
                         isCardFooter={false}
                         cardContent={
                             <>
-                                <div className="">
+                                <div className="max-h-50 overflow-auto">
                                     <ExibirEditar allowActions={false}></ExibirEditar>
                                 </div>
                             </>
