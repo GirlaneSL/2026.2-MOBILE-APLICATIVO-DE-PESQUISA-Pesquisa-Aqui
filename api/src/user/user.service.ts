@@ -34,6 +34,19 @@ export class UserService {
 
     }
 
+    async findAllAdmin(currentUser: UserPayLoad) {
+
+        if (currentUser.profile === 'SUPERADMINISTRATOR') {
+            const users = await this.prisma.client.orm.public.User.where({ profile: 'ADMINISTRATOR' }).all()
+
+            return users.map(user => {
+                const { passwordHash: _, ...userWithoutPassword } = user;
+                return userWithoutPassword;
+            })
+        }
+
+    }
+
     async create(createUserDto: CreateUserDto, currentUser: UserPayLoad) {
         if (currentUser.profile === 'RESEARCHER') {
             throw new ForbiddenException('Researchers cannot register users');
@@ -74,5 +87,17 @@ export class UserService {
         const { passwordHash: _, ...userWithoutPassword } = newUser;
 
         return userWithoutPassword;
+    }
+
+    async delete(username: string, currentUser: UserPayLoad) {
+        if (currentUser.profile !== 'SUPERADMINISTRATOR') {
+            throw new ForbiddenException('Only superadministrators can delete users');
+        }
+
+        const user = await this.findOne(username);
+
+        await this.prisma.client.orm.public.User.where({ username }).delete();
+
+        return user;
     }
 }

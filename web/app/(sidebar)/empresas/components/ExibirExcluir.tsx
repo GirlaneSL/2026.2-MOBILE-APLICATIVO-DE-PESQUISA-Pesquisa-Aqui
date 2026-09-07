@@ -5,6 +5,7 @@ import { deactivate, getCompanies } from '@/lib/company';
 import Tabela from '../../(home)/components/tabela';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { deleteUser, getUsersAdmin } from '@/lib/user';
 
 interface Company {
     id: string;
@@ -18,7 +19,7 @@ interface Company {
 interface Admin {
     id: string;
     name: string;
-    userName: string;
+    username: string;
     profile: string;
     edit?: ReactNode;
     delete?: ReactNode;
@@ -40,7 +41,7 @@ const allCompanyColumns: readonly Column<Company>[] = [
 
 const allAdminColumns: readonly Column<Admin>[] = [
     { key: 'name', label: 'Nome' },
-    { key: 'userName', label: 'Nome de Usuário' },
+    { key: 'username', label: 'Nome de Usuário' },
     { key: 'profile', label: 'Tipo' },
     { key: 'edit', label: 'Editar' },
     { key: 'delete', label: 'Excluir' },
@@ -63,7 +64,7 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
     const [rawCompanies, setRawCompanies] = useState<RawCompany[]>([]);
     const [loadingCompanies, setLoadingCompanies] = useState(true);
 
-    const [admins, setAdmins] = useState<Admin[]>([]);
+    const [rawAdmins, setRawAdmins] = useState<Admin[]>([]);
     const [loadingAdmins, setLoadingAdmins] = useState(true);
 
     const [error, setError] = useState<string | null>(null);
@@ -102,46 +103,51 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
         }
     };
 
-    const handleDeactivateAdmin = async (id: string) => {
-        console.warn('Desativação de administrador ainda não implementada no backend:', id);
-        setActionError('Desativação de administradores ainda não está disponível.');
+    const handleDeactivateAdmin = async (username: string) => {
+        const admins = rawAdmins.find((c) => String(c.username) === username);
+
+        const confirmed = window.confirm(
+            `Tem certeza que deseja excluir o admin "${admins?.name ?? username}"? Isso impedirá o acesso dele ao sistema.`
+        );
+        if (!confirmed) return;
+
+        setActionError(null);
+
+        try {
+            await deleteUser(username);
+
+            setRawAdmins((prev) => prev.filter((a) => a.username !== username));
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Erro ao excluir admin');
+        }
     };
 
-    const dummyAdmins: Omit<Admin, 'edit' | 'delete'>[] = [
-        { id: '1', name: 'Administrador 1', userName: 'abroba', profile: 'ADM' },
-    ];
+    useEffect(() => {
+        getUsersAdmin()
+            .then((data) => {
+                setRawAdmins(data);
+            })
+            .catch((error) => {
+                console.log(error);
+                alert('Erro ao carregar admins');
+            })
+            .finally(() => {
+                setLoadingAdmins(false);
+            })
+    }, [])
 
     useEffect(() => {
-        Promise.all([getCompanies(), Promise.resolve(dummyAdmins)])
-            .then(([companiesData, adminsData]) => {
-                setRawCompanies(companiesData);
-
-                const formattedAdmins = adminsData.map((item: any) => ({
-                    ...item,
-                    ...(allowActions && {
-                        edit: (
-                            <Button variant="outline" size="sm" onClick={() => handleEdit(item.id, 'admin')}>
-                                Editar
-                            </Button>
-                        ),
-                        delete: (
-                            <Button variant="destructive" size="sm" onClick={() => handleDeactivateAdmin(item.id)}>
-                                Excluir
-                            </Button>
-                        ),
-                    }),
-                }));
-
-                setAdmins(formattedAdmins);
+        getCompanies()
+            .then((data) => {
+                setRawCompanies(data);
             })
             .catch((err) => {
                 setError(err.message);
             })
             .finally(() => {
                 setLoadingCompanies(false);
-                setLoadingAdmins(false);
             });
-    }, [allowActions]);
+    }, []);
 
     const companies: Company[] = rawCompanies.map((item) => ({
         ...item,
@@ -169,6 +175,25 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
             ),
         }),
     }));
+
+    const admins: Admin[] = rawAdmins.map((item) => ({
+        id: String(item.id),
+        name: item.name,
+        username: item.username,
+        profile: item.profile,
+        ...(allowActions && {
+            edit: (
+                <Button variant="outline" size="sm" onClick={() => handleEdit(String(item.id), 'admin')}>
+                    Editar
+                </Button>
+            ),
+            delete: (
+                <Button variant="destructive" size="sm" onClick={() => handleDeactivateAdmin(String(item.username))}>
+                    Excluir
+                </Button>
+            ),
+        }),
+    }))
 
     return (
         <div className="flex flex-col gap-4 ">
