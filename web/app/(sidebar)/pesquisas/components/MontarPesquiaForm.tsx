@@ -277,7 +277,7 @@ export default function MontarPesquisaForm({
     }
 
     return (
-        <form onSubmit={handleSubmit} className="mx-auto space-y-6 max-h-[70vh] overflow-y-auto px-1">
+        <form onSubmit={handleSubmit} className="mx-auto space-y-6 max-h-[70vh] px-1">
             <div className="space-y-4 m-1">
                 {questions.map((q, index) => (
                     <Card key={q.id}>
@@ -458,9 +458,9 @@ export default function MontarPesquisaForm({
                 ))}
             </div>
 
-            <div className="flex items-center justify-between p-4 border-t sticky bottom-0 bg-background pb-2 rounded-t-xl border border-b-0">
+            <div className="flex items-center justify-between p-3 sticky bottom-0 bg-background rounded-xl border shadow">
                 <Button type="button" variant="outline" onClick={addQuestion} disabled={isSaving}>
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus className="w-4 h-4" />
                     Adicionar Questão
                 </Button>
 
@@ -472,7 +472,7 @@ export default function MontarPesquisaForm({
                         </div>
                     ) : (
                         <>
-                            <Save className="w-4 h-4 mr-2" />
+                            <Save className="w-4 h-4" />
                             <span>Salvar Questões</span>
                         </>
                     )}

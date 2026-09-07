@@ -4,12 +4,15 @@
 import { Badge } from "@/components/ui/badge";
 import BannerComponent from "@/components/ui/bannerComponent";
 import { Button } from "@/components/ui/button";
+import DialogLayout from "@/components/ui/dialogLayout";
 import { Spinner } from "@/components/ui/spinner";
 import { getResearchById, type Research } from "@/lib/research";
-import { ArrowLeft, Calendar, FileText, ShieldAlert, Target, } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, ShieldAlert, Target } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import InfoCard from "../../(home)/components/infoCards";
+import ModalEditarPesquisa from "../components/ModalEditarPesquisa";
 import MontarPesquisaForm from "../components/MontarPesquiaForm";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -52,6 +55,7 @@ export default function PesquisaDetalhePage() {
                 }
             });
     }, [params.id]);
+
 
     if (state.status === 'loading') {
         return (
@@ -130,16 +134,33 @@ export default function PesquisaDetalhePage() {
                     </Button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Situação:</span>
-                    <Badge variant={currentStatus.variant}>{currentStatus.label}</Badge>
+                {/* Área de Ações e Status */}
+                <div className="flex items-center gap-3">
+                    <DialogLayout
+                        dialogTrigger={
+                            "Editar"
+                        }
+                        dialogTitle="Editar Dados da Pesquisa"
+                        dialogDescription="Atualize os dados principais cadastrados para esta pesquisa."
+                        dialogContent={
+                            <ModalEditarPesquisa
+                                research={research}
+                                onSuccess={() => toast.success('Perguntas salvas com sucesso!')}
+                            />
+                        }
+                    />
+
+                    <div className="flex items-center gap-2 border-l pl-3">
+                        <span className="text-xs text-muted-foreground">Situação:</span>
+                        <Badge variant={currentStatus.variant}>{currentStatus.label}</Badge>
+                    </div>
                 </div>
             </div>
 
             {/* Aba 1: Detalhes e Visão Geral */}
             {activeTab === 'details' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-6">
-                    {/* Card Principal: Ocupa 2 colunas e 2 linhas inteiras */}
+                    {/* Card Principal */}
                     <div className="md:col-span-2 md:row-span-2">
                         <InfoCard
                             cardClassName="h-full"
@@ -155,7 +176,7 @@ export default function PesquisaDetalhePage() {
                             cardContent={
                                 <div className="grid gap-6">
                                     <div>
-                                        <h4 className="text-xs font-semibold uppercase  mb-1">
+                                        <h4 className="text-xs font-semibold uppercase mb-1">
                                             Descrição
                                         </h4>
                                         <p className="text-sm leading-relaxed text-foreground">
@@ -163,7 +184,7 @@ export default function PesquisaDetalhePage() {
                                         </p>
                                     </div>
                                     <hr />
-                                    <div className=" pt-4">
+                                    <div className="pt-4">
                                         <h4 className="text-xs font-semibold uppercase mb-1">
                                             Objetivo
                                         </h4>
@@ -211,7 +232,7 @@ export default function PesquisaDetalhePage() {
                             cardContent={
                                 <div className="grid gap-2 text-sm">
                                     <div className="flex justify-between">
-                                        <span className="">Início:</span>
+                                        <span>Início:</span>
                                         <span className="font-medium">
                                             {research.startDate
                                                 ? new Date(research.startDate).toLocaleDateString('pt-BR')
@@ -219,7 +240,7 @@ export default function PesquisaDetalhePage() {
                                         </span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="">Término:</span>
+                                        <span>Término:</span>
                                         <span className="font-medium">
                                             {research.endDate
                                                 ? new Date(research.endDate).toLocaleDateString('pt-BR')
