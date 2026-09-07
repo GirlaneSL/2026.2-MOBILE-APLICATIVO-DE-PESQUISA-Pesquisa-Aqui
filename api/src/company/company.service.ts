@@ -30,4 +30,12 @@ export class CompanyService {
         })
     }
 
+    async deactivate(id: number, currentUser: UserPayLoad) {
+
+        if (currentUser.profile !== 'SUPERADMINISTRATOR') throw new ForbiddenException('Only super administrators can deactivate companies.');
+
+        return await this.prisma.client.orm.public.Company.where({ id }).update({ situation: 'INACTIVE' })
+
+    }
+
 }

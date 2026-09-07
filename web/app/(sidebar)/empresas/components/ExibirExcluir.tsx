@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
-import { getCompanies } from '@/lib/company';
-import DialogLayout from '@/components/ui/dialogLayout';
+import { deactivate, getCompanies } from '@/lib/company';
 import Tabela from '../../(home)/components/tabela';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +30,6 @@ type Column<T> = {
     className?: string;
 };
 
-// Todas as colunas possíveis
 const allCompanyColumns: readonly Column<Company>[] = [
     { key: 'legalName', label: 'Razão Legal' },
     { key: 'contactInformation', label: 'Contato' },
@@ -49,21 +47,28 @@ const allAdminColumns: readonly Column<Admin>[] = [
 ];
 
 interface ExibirEditarProps {
-    allowActions?: boolean; // Controla se as ações aparecem
+    allowActions?: boolean;
+}
+
+interface RawCompany {
+    id: number;
+    legalName: string;
+    contactInformation: string;
+    situation: 'ACTIVE' | 'INACTIVE';
 }
 
 export default function ExibirEditar({ allowActions = true }: ExibirEditarProps) {
     const [activeTab, setActiveTab] = useState<'companies' | 'admins'>('companies');
 
-    const [companies, setCompanies] = useState<Company[]>([]);
+    const [rawCompanies, setRawCompanies] = useState<RawCompany[]>([]);
     const [loadingCompanies, setLoadingCompanies] = useState(true);
 
     const [admins, setAdmins] = useState<Admin[]>([]);
     const [loadingAdmins, setLoadingAdmins] = useState(true);
 
     const [error, setError] = useState<string | null>(null);
+    const [actionError, setActionError] = useState<string | null>(null);
 
-    // Filtra as colunas caso allowActions seja false
     const companyColumns = allowActions
         ? allCompanyColumns
         : allCompanyColumns.filter((col) => col.key !== 'edit' && col.key !== 'delete');
@@ -76,8 +81,30 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
         console.log(`Editar ${type}:`, id);
     };
 
-    const handleDelete = (id: string, type: 'company' | 'admin') => {
-        console.log(`Excluir ${type}:`, id);
+    const handleDeactivateCompany = async (id: string) => {
+        const company = rawCompanies.find((c) => String(c.id) === id);
+
+        const confirmed = window.confirm(
+            `Tem certeza que deseja desativar a empresa "${company?.legalName ?? id}"? Isso impedirá o acesso de todos os usuários dela ao sistema.`
+        );
+        if (!confirmed) return;
+
+        setActionError(null);
+
+        try {
+            await deactivate(+id);
+
+            setRawCompanies((prev) =>
+                prev.map((c) => (c.id === +id ? { ...c, situation: 'INACTIVE' } : c))
+            );
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Erro ao desativar empresa');
+        }
+    };
+
+    const handleDeactivateAdmin = async (id: string) => {
+        console.warn('Desativação de administrador ainda não implementada no backend:', id);
+        setActionError('Desativação de administradores ainda não está disponível.');
     };
 
     const dummyAdmins: Omit<Admin, 'edit' | 'delete'>[] = [
@@ -87,29 +114,8 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
     useEffect(() => {
         Promise.all([getCompanies(), Promise.resolve(dummyAdmins)])
             .then(([companiesData, adminsData]) => {
-                // Formata empresas
-                const formattedCompanies = companiesData.map((item: any) => ({
-                    ...item,
-                    situation: (
-                        <Badge variant={item.situation === 'ACTIVE' ? 'default' : 'destructive'}>
-                            {item.situation === 'ACTIVE' ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                    ),
-                    ...(allowActions && {
-                        edit: (
-                            <Button variant="outline" size="sm" onClick={() => handleEdit(item.id, 'company')}>
-                                Editar
-                            </Button>
-                        ),
-                        delete: (
-                            <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id, 'company')}>
-                                Excluir
-                            </Button>
-                        ),
-                    }),
-                }));
+                setRawCompanies(companiesData);
 
-                // Formata administradores
                 const formattedAdmins = adminsData.map((item: any) => ({
                     ...item,
                     ...(allowActions && {
@@ -119,14 +125,13 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
                             </Button>
                         ),
                         delete: (
-                            <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id, 'admin')}>
+                            <Button variant="destructive" size="sm" onClick={() => handleDeactivateAdmin(item.id)}>
                                 Excluir
                             </Button>
                         ),
                     }),
                 }));
 
-                setCompanies(formattedCompanies);
                 setAdmins(formattedAdmins);
             })
             .catch((err) => {
@@ -138,8 +143,34 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
             });
     }, [allowActions]);
 
-    return (
+    const companies: Company[] = rawCompanies.map((item) => ({
+        ...item,
+        id: String(item.id),
+        situation: (
+            <Badge variant={item.situation === 'ACTIVE' ? 'default' : 'destructive'}>
+                {item.situation === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+            </Badge>
+        ),
+        ...(allowActions && {
+            edit: (
+                <Button variant="outline" size="sm" onClick={() => handleEdit(String(item.id), 'company')}>
+                    Editar
+                </Button>
+            ),
+            delete: (
+                <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={item.situation === 'INACTIVE'}
+                    onClick={() => handleDeactivateCompany(String(item.id))}
+                >
+                    {item.situation === 'INACTIVE' ? 'Desativada' : 'Excluir'}
+                </Button>
+            ),
+        }),
+    }));
 
+    return (
         <div className="flex flex-col gap-4 ">
             <div className="flex items-center gap-2 border-b pb-3">
                 <Button
@@ -159,6 +190,7 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
             </div>
 
             {error && <p className="text-sm text-red-500">Erro: {error}</p>}
+            {actionError && <p className="text-sm text-red-500">{actionError}</p>}
 
             {activeTab === 'companies' && (
                 <div>

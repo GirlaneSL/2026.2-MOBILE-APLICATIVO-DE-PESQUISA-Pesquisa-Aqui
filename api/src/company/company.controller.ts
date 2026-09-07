@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { CompanyService } from './company.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { AuthGuard } from '../auth/auth.guard.js';
@@ -19,5 +19,10 @@ export class CompanyController {
     @Post()
     create(@Body() createCompanyDto: CreateCompanyDto, @CurrentUser() user: UserPayLoad) {
         return this.companyService.create(createCompanyDto, user);
+    }
+
+    @Patch(':id')
+    deactivate(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+        return this.companyService.deactivate(id, currentUser);
     }
 }

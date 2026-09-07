@@ -37,3 +37,17 @@ export const getCompanies = async () => {
 
     return response.json();
 }
+
+export const deactivate = async (id: number) => {
+    const response = await fetch(`http://localhost:3001/company/${id}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+    })
+
+    if (!response.ok) throw new Error('Failed to deactivate company')
+
+    return response.json();
+}
