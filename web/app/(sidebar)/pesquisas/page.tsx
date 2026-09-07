@@ -3,6 +3,7 @@ import InfoCard from "../(home)/components/infoCards";
 import DialogLayout from "@/components/ui/dialogLayout";
 import CadastrarPesquisaForm from "./components/CadastrarPesquisaForm";
 import MontarPesquisaForm from "./components/MontarPesquiaForm";
+import TabelaPesquisas from "./components/TabelaPesquisas";
 
 export default function Pesquisas() {
     return (
@@ -64,17 +65,45 @@ export default function Pesquisas() {
                         }
                     />
                     <InfoCard
+                        cardTitle="Editar / Deletar"
                         isCardFooter={false}
                         cardClassName=" col-span-1 md:col-span-2 lg:col-span-1"
                         animationDelayN={4}
+                        cardContent={
+                            <>
+                                <br />
+                                <br />
+                                <div className="absolute bottom-5 right-5 flex justify-end ">
+                                    <DialogLayout
+                                        triggerButtonVariant="outline"
+                                        dialogTrigger="Exibir"
+                                        dialogTitle="Cadastramento de Pesquisa"
+                                        dialogDescription="Consulte e gerencie as pesquisas disponíveis no sistema"
+                                        dialogContent={
+                                            <div>
+                                                <TabelaPesquisas  ></TabelaPesquisas>
+                                            </div>
+                                        }
+                                    />
+                                </div>
+                            </>
+                        }
                     />
                 </section>
 
                 <section className="grid grid-cols-5 gap-5 md:col-span-2">
                     <InfoCard
+                        cardTitle="Pesquisas"
                         isCardFooter={false}
-                        cardClassName="col-span-5 md:col-span-3 lg:col-span-3"
+                        cardClassName=" col-span-5 md:col-span-3 lg:col-span-3"
                         animationDelayN={5}
+                        cardContent={
+                            <>
+                                <div className="max-h-50 overflow-auto">
+                                    <TabelaPesquisas allowActions={false}></TabelaPesquisas>
+                                </div>
+                            </>
+                        }
                     />
                     <InfoCard
                         isCardFooter={false}
