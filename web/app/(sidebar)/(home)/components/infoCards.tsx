@@ -10,6 +10,7 @@ type InfoCardProps = {
     cardFooter?: React.ReactNode;
     cardClassName?: React.ReactNode;
     animationDelayN?: number;
+    CardContentClassName?: React.ReactNode;
 };
 
 export default function InfoCard({
@@ -21,6 +22,7 @@ export default function InfoCard({
     cardFooter,
     cardClassName,
     animationDelayN = 1,
+    CardContentClassName,
 }: InfoCardProps) {
     return (
         <>
@@ -38,7 +40,7 @@ export default function InfoCard({
                     <CardDescription>{cardDescription}</CardDescription>
                     <CardAction>{cardAction}</CardAction>
                 </CardHeader>
-                <CardContent>
+                <CardContent className={`${CardContentClassName}`}>
                     {cardContent}
                 </CardContent>
                 {isCardFooter ?
