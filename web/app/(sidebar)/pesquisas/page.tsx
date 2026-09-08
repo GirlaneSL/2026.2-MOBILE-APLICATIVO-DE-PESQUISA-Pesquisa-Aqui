@@ -2,9 +2,8 @@ import BannerComponent from "@/components/ui/bannerComponent";
 import InfoCard from "../(home)/components/infoCards";
 import DialogLayout from "@/components/ui/dialogLayout";
 import CadastrarPesquisaForm from "./components/CadastrarPesquisaForm";
-import MontarPesquisaForm from "./components/MontarPesquiaForm";
 import TabelaPesquisas from "./components/TabelaPesquisas";
-import { Button } from "@/components/ui/button";
+// Removida a importação de MontarPesquisaForm daqui, pois agora é gerenciado via Tabela/Modal
 
 export default function Pesquisas() {
     return (
@@ -12,7 +11,9 @@ export default function Pesquisas() {
             <section className="flex flex-col gap-5">
                 <BannerComponent title="Dados das Pesquisas"></BannerComponent>
 
-                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {/* Alterado para grid-cols-2 em telas grandes, já que removemos um card */}
+                <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    
                     <InfoCard
                         isCardFooter={false}
                         animationDelayN={2}
@@ -39,37 +40,12 @@ export default function Pesquisas() {
                             </>
                         }
                     />
-                    <InfoCard
-                        isCardFooter={false}
-                        cardTitle="Montar Pesquisa"
-                        cardDescription="Monte Uma Nova Pesquisa"
-                        cardClassName="relative col-span-1 md:col-span-1 lg:col-span-1"
-                        animationDelayN={3}
-                        cardContent={
-                            <>
-                                <br />
-                                <br />
-                                <div className="absolute bottom-5 right-5 flex justify-end ">
-                                    <DialogLayout
-                                        triggerButtonVariant="outline"
-                                        dialogTrigger="Montar"
-                                        dialogTitle="Cadastramento de Pesquisa"
-                                        dialogDescription="Informe os Dados da Pesquisa"
-                                        dialogContent={
-                                            <div>
-                                                <MontarPesquisaForm />
-                                            </div>
-                                        }
-                                    />
-                                </div>
-                            </>
-                        }
-                    />
+
                     <InfoCard
                         cardTitle="Editar / Deletar"
                         cardDescription="Consulte e Gerencie As Pesquisas"
                         isCardFooter={false}
-                        cardClassName="col-span-1 md:col-span-2 lg:col-span-1"
+                        cardClassName="relative"
                         animationDelayN={4}
                         cardContent={
                             <>
@@ -79,11 +55,11 @@ export default function Pesquisas() {
                                     <DialogLayout
                                         triggerButtonVariant="outline"
                                         dialogTrigger="Exibir"
-                                        dialogTitle="Cadastramento de Pesquisa"
+                                        dialogTitle="Consultar Pesquisas"
                                         dialogDescription="Consulte e gerencie as pesquisas disponíveis no sistema"
                                         dialogContent={
                                             <div>
-                                                <TabelaPesquisas  ></TabelaPesquisas>
+                                                <TabelaPesquisas />
                                             </div>
                                         }
                                     />
@@ -93,11 +69,11 @@ export default function Pesquisas() {
                     />
                 </section>
 
-                <section className="grid grid-cols-5 gap-5 md:col-span-2">
+                <section className="grid grid-cols-1 gap-5">
                     <InfoCard
                         cardTitle="Pesquisas"
                         isCardFooter={false}
-                        cardClassName=" col-span-5 md:col-span-3 lg:col-span-3"
+                        cardClassName="col-span-1"
                         animationDelayN={5}
                         cardContent={
                             <>
@@ -105,16 +81,6 @@ export default function Pesquisas() {
                                     <TabelaPesquisas allowActions={false}></TabelaPesquisas>
                                 </div>
                             </>
-                        }
-                    />
-                    <InfoCard
-                        isCardFooter={false}
-                        cardClassName="col-span-5 md:col-span-2 lg:col-span-2"
-                        animationDelayN={5}
-                        cardContent={
-                            <div className=" ">
-
-                            </div>
                         }
                     />
                 </section>

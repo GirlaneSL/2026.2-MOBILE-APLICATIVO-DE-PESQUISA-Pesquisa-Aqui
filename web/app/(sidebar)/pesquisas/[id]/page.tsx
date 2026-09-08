@@ -1,4 +1,3 @@
-// app/(sidebar)/pesquisas/[id]/page.tsx
 'use client'
 
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +12,8 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import InfoCard from "../../(home)/components/infoCards";
 import ModalEditarPesquisa from "../components/ModalEditarPesquisa";
-import MontarPesquisaForm from "../components/MontarPesquiaForm";
+import MontarPesquisaForm from "../components/MontarPesquisaForm";
+import ListarQuestoesSalvas from "../components/ListarQuestoesSalvas";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
     DRAFT: { label: "Rascunho", variant: "outline" },
@@ -34,122 +34,75 @@ export default function PesquisaDetalhePage() {
     const router = useRouter();
     const [state, setState] = useState<PageState>({ status: 'loading' });
     const [activeTab, setActiveTab] = useState<'details' | 'questions'>('details');
+    const [subTab, setSubTab] = useState<'list' | 'create'>('list');
 
     useEffect(() => {
         setState({ status: 'loading' });
-
         getResearchById(params.id)
             .then((research) => setState({ status: 'success', research }))
             .catch((err) => {
                 const status = (err as { status?: number })?.status;
-
-                if (status === 403) {
-                    setState({ status: 'forbidden' });
-                } else if (status === 404) {
-                    setState({ status: 'not-found' });
-                } else {
-                    setState({
-                        status: 'error',
-                        message: err instanceof Error ? err.message : 'Erro ao carregar pesquisa',
-                    });
-                }
+                if (status === 403) setState({ status: 'forbidden' });
+                else if (status === 404) setState({ status: 'not-found' });
+                else setState({ status: 'error', message: err instanceof Error ? err.message : 'Erro ao carregar pesquisa' });
             });
     }, [params.id]);
-
 
     if (state.status === 'loading') {
         return (
             <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-2">
-                <Spinner />
-                <p className="text-sm">Carregando detalhes da pesquisa...</p>
+                <Spinner /><p className="text-sm">Carregando detalhes da pesquisa...</p>
             </div>
         );
     }
-
     if (state.status === 'forbidden') {
         return (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
                 <ShieldAlert className="text-destructive w-12 h-12" />
                 <h2 className="text-xl font-semibold">Acesso negado</h2>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                    Esta pesquisa pertence a outra empresa. Você não possui permissão para visualizá-la.
-                </p>
-                <Button variant="outline" size="sm" onClick={() => router.back()} className="mt-2">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Voltar
-                </Button>
+                <p className="text-sm text-muted-foreground max-w-sm">Esta pesquisa pertence a outra empresa.</p>
+                <Button variant="outline" size="sm" onClick={() => router.back()} className="mt-2"><ArrowLeft className="w-4 h-4 mr-2" />Voltar</Button>
             </div>
         );
     }
-
     if (state.status === 'not-found') {
         return (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
                 <p className="text-sm">Pesquisa não encontrada.</p>
-                <Button variant="outline" size="sm" onClick={() => router.back()}>
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Voltar
-                </Button>
+                <Button variant="outline" size="sm" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-2" />Voltar</Button>
             </div>
         );
     }
-
     if (state.status === 'error') {
         return (
             <div className="p-4 border border-destructive/20 bg-destructive/10 rounded-lg text-sm text-destructive">
-                <p className="font-medium">Erro ao carregar a pesquisa</p>
-                <p>{state.message}</p>
+                <p className="font-medium">Erro ao carregar a pesquisa</p><p>{state.message}</p>
             </div>
         );
     }
 
     const { research } = state;
-    const currentStatus = statusConfig[research.status] ?? {
-        label: research.status || "Ativa",
-        variant: "outline",
-    };
+    const currentStatus = statusConfig[research.status] ?? { label: research.status || "Ativa", variant: "outline" };
 
     return (
         <section className="flex flex-col gap-6">
             <BannerComponent title={research.title} />
 
-            {/* Cabeçalho de Navegação e Ações */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-3">
                 <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        variant={activeTab === 'details' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setActiveTab('details')}
-                    >
+                    <Button type="button" variant={activeTab === 'details' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('details')}>
                         Visão Geral
                     </Button>
-                    <Button
-                        type="button"
-                        variant={activeTab === 'questions' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setActiveTab('questions')}
-                    >
+                    <Button type="button" variant={activeTab === 'questions' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('questions')}>
                         Questões e Formulário
                     </Button>
                 </div>
 
-                {/* Área de Ações e Status */}
                 <div className="flex items-center gap-3">
                     <DialogLayout
-                        dialogTrigger={
-                            "Editar"
-                        }
-                        dialogTitle="Editar Dados da Pesquisa"
-                        dialogDescription="Atualize os dados principais cadastrados para esta pesquisa."
-                        dialogContent={
-                            <ModalEditarPesquisa
-                                research={research}
-                                onSuccess={() => toast.success('Perguntas salvas com sucesso!')}
-                            />
-                        }
+                        dialogTrigger="Editar" dialogTitle="Editar Dados da Pesquisa" dialogDescription="Atualize os dados principais."
+                        dialogContent={<ModalEditarPesquisa research={research} onSuccess={() => toast.success('Pesquisa atualizada!')} />}
                     />
-
                     <div className="flex items-center gap-2 border-l pl-3">
                         <span className="text-xs text-muted-foreground">Situação:</span>
                         <Badge variant={currentStatus.variant}>{currentStatus.label}</Badge>
@@ -157,96 +110,43 @@ export default function PesquisaDetalhePage() {
                 </div>
             </div>
 
-            {/* Aba 1: Detalhes e Visão Geral */}
             {activeTab === 'details' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-6">
-                    {/* Card Principal */}
                     <div className="md:col-span-2 md:row-span-2">
                         <InfoCard
-                            cardClassName="h-full"
-                            animationDelayN={2}
-                            isCardFooter={false}
-                            cardTitle={
-                                <div className="flex items-center gap-2">
-                                    <FileText className="w-5 h-5 text-primary" />
-                                    <span>Informações da Pesquisa</span>
-                                </div>
-                            }
+                            cardClassName="h-full" animationDelayN={2} isCardFooter={false}
+                            cardTitle={<div className="flex items-center gap-2"><FileText className="w-5 h-5 text-primary" /><span>Informações da Pesquisa</span></div>}
                             cardDescription="Detalhes estruturais e objetivos cadastrados"
                             cardContent={
                                 <div className="grid gap-6">
                                     <div>
-                                        <h4 className="text-xs font-semibold uppercase mb-1">
-                                            Descrição
-                                        </h4>
-                                        <p className="text-sm leading-relaxed text-foreground">
-                                            {research.description || "Nenhuma descrição informada."}
-                                        </p>
+                                        <h4 className="text-xs font-semibold uppercase mb-1">Descrição</h4>
+                                        <p className="text-sm leading-relaxed text-foreground">{research.description || "Nenhuma descrição informada."}</p>
                                     </div>
                                     <hr />
                                     <div className="pt-4">
-                                        <h4 className="text-xs font-semibold uppercase mb-1">
-                                            Objetivo
-                                        </h4>
-                                        <p className="text-sm leading-relaxed text-foreground">
-                                            {research.objective || "Nenhum objetivo especificado."}
-                                        </p>
+                                        <h4 className="text-xs font-semibold uppercase mb-1">Objetivo</h4>
+                                        <p className="text-sm leading-relaxed text-foreground">{research.objective || "Nenhum objetivo especificado."}</p>
                                     </div>
                                 </div>
                             }
                         />
                     </div>
-
-                    {/* Card Superior Direito: Linha 1 */}
                     <div className="md:col-span-1 md:row-span-1">
                         <InfoCard
-                            cardClassName="h-full"
-                            animationDelayN={3}
-                            isCardFooter={false}
-                            cardTitle={
-                                <div className="flex items-center gap-2 text-base">
-                                    <Target color="#AB6049" className="w-4 h-4 text-primary" />
-                                    <span>Público-Alvo</span>
-                                </div>
-                            }
-                            cardContent={
-                                <p className="text-sm font-medium text-foreground">
-                                    {research.targetAudience || "Não especificado"}
-                                </p>
-                            }
+                            cardClassName="h-full" animationDelayN={3} isCardFooter={false}
+                            cardTitle={<div className="flex items-center gap-2 text-base"><Target color="#AB6049" className="w-4 h-4 text-primary" /><span>Público-Alvo</span></div>}
+                            cardContent={<p className="text-sm font-medium text-foreground">{research.targetAudience || "Não especificado"}</p>}
                         />
                     </div>
-
-                    {/* Card Inferior Direito: Linha 2 */}
                     <div className="md:col-span-1 md:row-span-1">
                         <InfoCard
-                            cardClassName="h-full"
-                            animationDelayN={4}
-                            isCardFooter={false}
-                            cardTitle={
-                                <div className="flex items-center gap-2 text-base">
-                                    <Calendar color="#AB6049" className="w-4 h-4 text-primary" />
-                                    <span>Vigência</span>
-                                </div>
-                            }
+                            cardClassName="h-full" animationDelayN={4} isCardFooter={false}
+                            cardTitle={<div className="flex items-center gap-2 text-base"><Calendar color="#AB6049" className="w-4 h-4 text-primary" /><span>Vigência</span></div>}
                             cardContent={
                                 <div className="grid gap-2 text-sm">
-                                    <div className="flex justify-between">
-                                        <span>Início:</span>
-                                        <span className="font-medium">
-                                            {research.startDate
-                                                ? new Date(research.startDate).toLocaleDateString('pt-BR')
-                                                : "-"}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>Término:</span>
-                                        <span className="font-medium">
-                                            {research.endDate
-                                                ? new Date(research.endDate).toLocaleDateString('pt-BR')
-                                                : "-"}
-                                        </span>
-                                    </div>
+                                    <div className="flex justify-between"><span>Início:</span><span className="font-medium">{research.startDate ? new Date(research.startDate).toLocaleDateString('pt-BR') : "-"}</span></div>
+                                    <div className="flex justify-between"><span>Término:</span><span className="font-medium">{research.endDate ? new Date(research.endDate).toLocaleDateString('pt-BR') : "-"}</span></div>
                                 </div>
                             }
                         />
@@ -254,10 +154,23 @@ export default function PesquisaDetalhePage() {
                 </div>
             )}
 
-            {/* Aba 2: Gerenciador de Questões */}
             {activeTab === 'questions' && (
-                <div className="rounded-lg border bg-card p-4 introduction-card">
-                    <MontarPesquisaForm researchId={params.id} />
+                <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
+                    <div className="flex items-center gap-2 border-b pb-3">
+                        <Button type="button" variant={subTab === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setSubTab('list')}>
+                            Questões Cadastradas
+                        </Button>
+                        <Button type="button" variant={subTab === 'create' ? 'default' : 'outline'} size="sm" onClick={() => setSubTab('create')}>
+                            + Criar Novas Questões
+                        </Button>
+                    </div>
+
+                    <div className="pt-2">
+                        {subTab === 'list' && <ListarQuestoesSalvas researchId={params.id} />}
+                        {subTab === 'create' && (
+                            <MontarPesquisaForm researchId={params.id} onSuccess={() => setSubTab('list')} />
+                        )}
+                    </div>
                 </div>
             )}
         </section>

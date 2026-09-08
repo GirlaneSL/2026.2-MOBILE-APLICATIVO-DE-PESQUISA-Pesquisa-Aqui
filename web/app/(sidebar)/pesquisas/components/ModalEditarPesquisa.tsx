@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 import { Research } from './TabelaPesquisas';
 import FormEditarDadosPesquisa from './FormEditarDadosPesquisa';
-import MontarPesquisaForm from './MontarPesquiaForm';
+import MontarPesquisaForm from './MontarPesquisaForm';
 
 
 interface ModalEditarPesquisaProps {

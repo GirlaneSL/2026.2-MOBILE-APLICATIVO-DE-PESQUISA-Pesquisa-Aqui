@@ -28,7 +28,7 @@ export class QuestionService {
 
   async findAll(sectionId: number, currentUser: UserPayLoad) {
     await this.sectionService.findOne(sectionId, currentUser)
-    return this.prisma.client.orm.public.Question.where({ sectionId }).all();
+    return await this.prisma.client.orm.public.Question.where({ sectionId }).all();
   }
 
   async findOne(id: number, currentUser: UserPayLoad) {
@@ -44,6 +44,6 @@ export class QuestionService {
   async update(id: number, updateQuestionDto: UpdateQuestionDto, currentUser: UserPayLoad) {
     await this.findOne(id, currentUser);
 
-    return this.prisma.client.orm.public.Question.where({ id }).update(updateQuestionDto);
+    return await this.prisma.client.orm.public.Question.where({ id }).update(updateQuestionDto);
   }
 }

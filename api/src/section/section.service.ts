@@ -24,7 +24,7 @@ export class SectionService {
 
   async findAll(researchId: number, currentUser: UserPayLoad) {
     await this.researchService.findOne(researchId, currentUser)
-    return this.prisma.client.orm.public.Section.where({ researchId }).all();
+    return await this.prisma.client.orm.public.Section.where({ researchId }).all();
   }
 
   async findOne(id: number, currentUser: UserPayLoad) {
@@ -40,7 +40,7 @@ export class SectionService {
   async update(id: number, updateSectionDto: UpdateSectionDto, currentUser: UserPayLoad) {
     await this.findOne(id, currentUser);
 
-    return this.prisma.client.orm.public.Section.where({ id }).update(updateSectionDto);
+    return await this.prisma.client.orm.public.Section.where({ id }).update(updateSectionDto);
   }
 
   async remove(id: number) {

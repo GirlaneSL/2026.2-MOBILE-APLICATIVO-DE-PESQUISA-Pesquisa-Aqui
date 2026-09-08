@@ -8,24 +8,9 @@ import InfoCard from "../(home)/components/infoCards";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 import { Chart } from "../(home)/components/grafico";
-import Tabela from "../(home)/components/tabela";
 import CadastrarAdministradorForm from "./components/CadastrarAdministradorForm";
 import CadastrarEmpresaForm from "./components/CadastrarEmpresaForm";
 import ExibirEditar from "./components/ExibirExcluir";
-
-const columns = [
-    { key: "nome", label: "Pesquisa" },
-    { key: "status", label: "Status" },
-    { key: "respostas", label: "Respostas" },
-    { key: "data", label: "Data" },
-] as const;
-
-const pesquisas = [
-    { nome: "Pesquisa de satisfação", status: "Ativa", respostas: 120, data: "02/09/2026" },
-    { nome: "Pesquisa de produto1", status: "Encerrada", respostas: 85, data: "01/09/2026" },
-    { nome: "Pesquisa de produto2", status: "Ativa", respostas: 85, data: "01/09/2026" },
-    { nome: "Pesquisa de produto3", status: "Encerrada", respostas: 85, data: "01/09/2026" },
-];
 
 export default function EmpresaPage() {
     const [legalName, setLegalName] = useState('');
