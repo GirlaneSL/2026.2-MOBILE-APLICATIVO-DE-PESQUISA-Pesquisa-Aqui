@@ -101,3 +101,15 @@ export const getResearchById = async (id: string): Promise<Research> => {
 
     return response.json();
 };
+
+export const deleteResearch = async (id: number): Promise<void> => {
+    const response = await fetch(`http://localhost:3001/research/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || 'Failed to delete research');
+    }
+}

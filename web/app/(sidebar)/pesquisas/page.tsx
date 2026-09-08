@@ -1,17 +1,24 @@
+'use client'
+
+import { useState } from "react";
 import BannerComponent from "@/components/ui/bannerComponent";
 import InfoCard from "../(home)/components/infoCards";
 import DialogLayout from "@/components/ui/dialogLayout";
 import CadastrarPesquisaForm from "./components/CadastrarPesquisaForm";
 import TabelaPesquisas from "./components/TabelaPesquisas";
-// Removida a importação de MontarPesquisaForm daqui, pois agora é gerenciado via Tabela/Modal
 
 export default function Pesquisas() {
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    const forceRefresh = () => {
+        setRefreshTrigger(prev => prev + 1);
+    };
+
     return (
         <>
             <section className="flex flex-col gap-5">
                 <BannerComponent title="Dados das Pesquisas"></BannerComponent>
 
-                {/* Alterado para grid-cols-2 em telas grandes, já que removemos um card */}
                 <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     
                     <InfoCard
@@ -32,7 +39,7 @@ export default function Pesquisas() {
                                         dialogDescription="Informe os Dados da Pesquisa"
                                         dialogContent={
                                             <div>
-                                                <CadastrarPesquisaForm />
+                                                <CadastrarPesquisaForm onSuccess={forceRefresh} />
                                             </div>
                                         }
                                     />
@@ -59,7 +66,10 @@ export default function Pesquisas() {
                                         dialogDescription="Consulte e gerencie as pesquisas disponíveis no sistema"
                                         dialogContent={
                                             <div>
-                                                <TabelaPesquisas />
+                                                <TabelaPesquisas 
+                                                    refreshTrigger={refreshTrigger} 
+                                                    onChange={forceRefresh}
+                                                />
                                             </div>
                                         }
                                     />
@@ -78,7 +88,10 @@ export default function Pesquisas() {
                         cardContent={
                             <>
                                 <div className="max-h-50 overflow-auto">
-                                    <TabelaPesquisas allowActions={false}></TabelaPesquisas>
+                                    <TabelaPesquisas 
+                                        refreshTrigger={refreshTrigger} 
+                                        allowActions={false} 
+                                    />
                                 </div>
                             </>
                         }

@@ -76,7 +76,7 @@ model Section {
   title      String
   order      Int
   researchId Int
-  research   Research   @relation(fields: [researchId], references: [id])
+  research   Research   @relation(fields: [researchId], references: [id], onDelete: Cascade)
   questions  Question[]
   createdAt  TimestamptzString @default(now())
   updatedAt  temporal.updatedAtString()
@@ -90,7 +90,7 @@ model Question {
   isRequired  Boolean      @default(false)
   order       Int
   sectionId   Int
-  section     Section      @relation(fields: [sectionId], references: [id])
+  section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   createdAt   TimestamptzString @default(now())
   updatedAt   temporal.updatedAtString()
 }

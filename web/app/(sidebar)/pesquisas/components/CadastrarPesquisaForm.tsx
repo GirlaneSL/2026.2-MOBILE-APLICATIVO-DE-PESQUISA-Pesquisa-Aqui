@@ -7,7 +7,11 @@ import { SubmitEventHandler, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import toast from "react-hot-toast";
 
-export default function CadastrarPesquisaForm() {
+interface CadastrarPesquisaFormProps {
+    onSuccess?: () => void;
+}
+
+export default function CadastrarPesquisaForm({ onSuccess }: CadastrarPesquisaFormProps) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [objective, setObjective] = useState('');
@@ -17,8 +21,8 @@ export default function CadastrarPesquisaForm() {
 
     const datesValid = !startDate || !endDate || startDate <= endDate;
 
-
     const [isSubmitLoading, setIsSubmitLoading] = useState(false);
+    
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
 
@@ -47,6 +51,11 @@ export default function CadastrarPesquisaForm() {
             setStartDate('');
             setEndDate('');
             setTargetAudience('');
+
+            if (onSuccess) {
+                onSuccess();
+            }
+
         } catch (error) {
             console.error(error);
 

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Tabela from '../../(home)/components/tabela';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getResearches } from '@/lib/research';
+import { deleteResearch, getResearches } from '@/lib/research';
 import DialogLayout from '@/components/ui/dialogLayout';
 import ModalEditarPesquisa from './ModalEditarPesquisa';
 import toast from 'react-hot-toast';
@@ -48,9 +48,11 @@ const allResearchColumns: readonly Column<FormattedResearch>[] = [
 
 interface TabelaPesquisasProps {
     allowActions?: boolean;
+    refreshTrigger?: number;
+    onChange?: () => void;
 }
 
-export default function TabelaPesquisas({ allowActions = true }: TabelaPesquisasProps) {
+export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 0, onChange }: TabelaPesquisasProps) {
     const [rawResearches, setRawResearches] = useState<Research[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -61,16 +63,20 @@ export default function TabelaPesquisas({ allowActions = true }: TabelaPesquisas
         : allResearchColumns.filter((col) => col.key !== 'edit' && col.key !== 'delete');
 
     useEffect(() => {
+        setLoading(true);
         getResearches()
             .then((data) => setRawResearches(data))
             .catch((err) => setError(err instanceof Error ? err.message : 'Erro ao carregar pesquisas'))
             .finally(() => setLoading(false));
-    }, []);
+    }, [refreshTrigger]);
 
     const handleUpdateSuccess = (updatedItem: Research) => {
         setRawResearches((prev) =>
             prev.map((item) => (String(item.id) === String(updatedItem.id) ? updatedItem : item))
         );
+        if (onChange) {
+            onChange();
+        }
     };
 
     const executeDelete = async (id: string, toastId: string) => {
@@ -78,9 +84,13 @@ export default function TabelaPesquisas({ allowActions = true }: TabelaPesquisas
         setActionError(null);
 
         try {
-            // Insira sua chamada de exclusão da API aqui
+            await deleteResearch(+id)
             setRawResearches((prev) => prev.filter((r) => String(r.id) !== id));
             toast.success('Pesquisa excluída com sucesso!');
+            
+            if (onChange) {
+                onChange();
+            }
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : 'Erro ao excluir pesquisa';
             setActionError(errorMsg);
@@ -153,9 +163,17 @@ export default function TabelaPesquisas({ allowActions = true }: TabelaPesquisas
                 />
             ),
             delete: (
-                <Button variant="destructive" size="sm" onClick={() => handleDelete(String(item.id))}>
-                    Excluir
-                </Button>
+                <div>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={item.status !== 'DRAFT'}
+                        className="disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => handleDelete(String(item.id))}
+                    >
+                        Excluir
+                    </Button>
+                </div>
             ),
         }),
     }));
@@ -176,7 +194,11 @@ export default function TabelaPesquisas({ allowActions = true }: TabelaPesquisas
             ) : researches.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhuma pesquisa encontrada.</p>
             ) : (
-                <Tabela<FormattedResearch> columns={columns} data={researches} />
+                <Tabela<FormattedResearch> 
+                    key={rawResearches.length} 
+                    columns={columns} 
+                    data={researches} 
+                />
             )}
         </div>
     );
