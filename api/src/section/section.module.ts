@@ -8,5 +8,6 @@ import { ResearchService } from '../research/research.service.js';
   imports: [PrismaModule],
   controllers: [SectionController],
   providers: [SectionService, ResearchService],
+  exports: [SectionService],
 })
-export class SectionModule {}
+export class SectionModule { }
