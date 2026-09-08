@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiFetcher";
+
 export type FrontendQuestionType =
     | "text" | "number" | "date" | "time" | "boolean"
     | "single-choice" | "multiple-choice" | "rating-1-5"
@@ -45,13 +47,13 @@ export interface FormSection {
 }
 
 export const getSections = async (researchId: number) => {
-    const response = await fetch(`http://localhost:3001/section?researchId=${researchId}`, { method: 'GET', credentials: 'include' });
+    const response = await apiFetch(`/section?researchId=${researchId}`, { method: 'GET', credentials: 'include' });
     if (!response.ok) throw new Error('Failed to get sections');
     return response.json();
 }
 
 export const createSection = async (title: string, order: number, researchId: number) => {
-    const response = await fetch(`http://localhost:3001/section`, {
+    const response = await apiFetch(`/section`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ title, order, researchId }),
     });
@@ -59,18 +61,52 @@ export const createSection = async (title: string, order: number, researchId: nu
     return response.json();
 }
 
+export const updateSectionApi = async (id: number, payload: { title?: string; order?: number }) => {
+    const response = await apiFetch(`/section/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to update section');
+    return response.json();
+}
+
+export const deleteSectionApi = async (id: number) => {
+    const response = await apiFetch(`/section/${id}`, {
+        method: 'DELETE', credentials: 'include',
+    });
+    if (!response.ok) throw new Error('Failed to delete section');
+    return response.json();
+}
+
 export const getQuestions = async (sectionId: number) => {
-    const response = await fetch(`http://localhost:3001/question?sectionId=${sectionId}`, { method: 'GET', credentials: 'include' });
+    const response = await apiFetch(`/question?sectionId=${sectionId}`, { method: 'GET', credentials: 'include' });
     if (!response.ok) throw new Error('Failed to get questions');
     return response.json();
 }
 
 export const createQuestion = async (payload: any) => {
-    const response = await fetch(`http://localhost:3001/question`, {
+    const response = await apiFetch(`/question`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify(payload)
     });
     if (!response.ok) throw new Error('Failed to create question');
+    return response.json();
+}
+
+export const updateQuestionApi = async (id: number, payload: any) => {
+    const response = await apiFetch(`/question/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to update question');
+    return response.json();
+}
+
+export const deleteQuestionApi = async (id: number) => {
+    const response = await apiFetch(`/question/${id}`, {
+        method: 'DELETE', credentials: 'include',
+    });
+    if (!response.ok) throw new Error('Failed to delete question');
     return response.json();
 }
 

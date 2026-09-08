@@ -9,6 +9,8 @@ import UltimasAtualizacoesList from "./components/UltimasAtualizacoesList";
 import { columns } from "@/app/(sidebar)/(home)/data/pesquisasData";
 import { useEffect, useState } from "react";
 import { getActiveResearchesInMonth, getResearches, getResearchesByMonth, type Research } from "@/lib/research";
+import { isSessionExpiredError } from "@/lib/apiFetcher";
+import toast from "react-hot-toast";
 
 const statusLabels: Record<string, string> = {
     DRAFT: "Rascunho",
@@ -38,8 +40,10 @@ export default function Home() {
             }
             )
             .catch((error) => {
+                if (isSessionExpiredError(error)) return;
+
                 console.log(error);
-                alert('Erro ao carregar pesquisas')
+                toast.error('Erro ao carregar pesquisas', { id: 'load-researches-home-error' });
             })
     }, [])
 

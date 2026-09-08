@@ -12,7 +12,6 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import InfoCard from "../../(home)/components/infoCards";
 import ModalEditarPesquisa from "../components/ModalEditarPesquisa";
-import MontarPesquisaForm from "../components/MontarPesquisaForm";
 import ListarQuestoesSalvas from "../components/ListarQuestoesSalvas";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -34,7 +33,6 @@ export default function PesquisaDetalhePage() {
     const router = useRouter();
     const [state, setState] = useState<PageState>({ status: 'loading' });
     const [activeTab, setActiveTab] = useState<'details' | 'questions'>('details');
-    const [subTab, setSubTab] = useState<'list' | 'create'>('list');
 
     useEffect(() => {
         setState({ status: 'loading' });
@@ -156,21 +154,7 @@ export default function PesquisaDetalhePage() {
 
             {activeTab === 'questions' && (
                 <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
-                    <div className="flex items-center gap-2 border-b pb-3">
-                        <Button type="button" variant={subTab === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setSubTab('list')}>
-                            Questões Cadastradas
-                        </Button>
-                        <Button type="button" variant={subTab === 'create' ? 'default' : 'outline'} size="sm" onClick={() => setSubTab('create')}>
-                            + Criar Novas Questões
-                        </Button>
-                    </div>
-
-                    <div className="pt-2">
-                        {subTab === 'list' && <ListarQuestoesSalvas researchId={params.id} />}
-                        {subTab === 'create' && (
-                            <MontarPesquisaForm researchId={params.id} onSuccess={() => setSubTab('list')} />
-                        )}
-                    </div>
+                    <ListarQuestoesSalvas researchId={params.id} />
                 </div>
             )}
         </section>

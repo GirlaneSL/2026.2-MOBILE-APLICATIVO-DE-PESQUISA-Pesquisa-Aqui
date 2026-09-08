@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiFetcher";
+
 export const createUser = async (
     name: string,
     username: string,
@@ -5,8 +7,8 @@ export const createUser = async (
     profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER' | '',
     companyId?: number
 ) => {
-    const response = await fetch(
-        `http://localhost:3001/user`,
+    const response = await apiFetch(
+        `/user`,
         {
             method: 'POST',
             headers: {
@@ -32,7 +34,7 @@ export const createUser = async (
 }
 
 export const getUsersAdmin = async () => {
-    const response = await fetch('http://localhost:3001/user/admins', {
+    const response = await apiFetch('/user/admins', {
         method: 'GET',
         credentials: 'include',
     });
@@ -43,7 +45,7 @@ export const getUsersAdmin = async () => {
 }
 
 export const deleteUser = async (username: string) => {
-    const response = await fetch(`http://localhost:3001/user/${username}`, {
+    const response = await apiFetch(`/user/${username}`, {
         method: 'DELETE',
         credentials: 'include',
     });
