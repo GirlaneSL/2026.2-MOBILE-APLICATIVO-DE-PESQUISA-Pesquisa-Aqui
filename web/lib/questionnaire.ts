@@ -1,5 +1,3 @@
-import { Question } from "@/app/(sidebar)/pesquisas/components/MontarPesquisaForm";
-
 export type FrontendQuestionType =
     | "text" | "number" | "date" | "time" | "boolean"
     | "single-choice" | "multiple-choice" | "rating-1-5"
@@ -11,199 +9,114 @@ export type BackendQuestionType =
     | "PHOTO" | "MULTIPLE_PHOTOS" | "LOCATION" | "AUDIO";
 
 const TYPE_TO_BACKEND: Record<FrontendQuestionType, BackendQuestionType> = {
-    "text": "FREE_TEXT",
-    "number": "NUMERIC",
-    "date": "DATE",
-    "time": "TIME",
-    "boolean": "YES_NO",
-    "single-choice": "SINGLE_CHOICE",
-    "multiple-choice": "MULTIPLE_CHOICE",
-    "rating-1-5": "SCALE_1_5",
-    "photo": "PHOTO",
-    "multiple-photos": "MULTIPLE_PHOTOS",
-    "location": "LOCATION",
-    "audio": "AUDIO",
+    "text": "FREE_TEXT", "number": "NUMERIC", "date": "DATE", "time": "TIME",
+    "boolean": "YES_NO", "single-choice": "SINGLE_CHOICE", "multiple-choice": "MULTIPLE_CHOICE",
+    "rating-1-5": "SCALE_1_5", "photo": "PHOTO", "multiple-photos": "MULTIPLE_PHOTOS",
+    "location": "LOCATION", "audio": "AUDIO",
 };
 
 const TYPE_FROM_BACKEND: Record<BackendQuestionType, FrontendQuestionType> = {
-    "FREE_TEXT": "text",
-    "NUMERIC": "number",
-    "DATE": "date",
-    "TIME": "time",
-    "YES_NO": "boolean",
-    "SINGLE_CHOICE": "single-choice",
-    "MULTIPLE_CHOICE": "multiple-choice",
-    "SCALE_1_5": "rating-1-5",
-    "PHOTO": "photo",
-    "MULTIPLE_PHOTOS": "multiple-photos",
-    "LOCATION": "location",
-    "AUDIO": "audio",
+    "FREE_TEXT": "text", "NUMERIC": "number", "DATE": "date", "TIME": "time",
+    "YES_NO": "boolean", "SINGLE_CHOICE": "single-choice", "MULTIPLE_CHOICE": "multiple-choice",
+    "SCALE_1_5": "rating-1-5", "PHOTO": "photo", "MULTIPLE_PHOTOS": "multiple-photos",
+    "LOCATION": "location", "AUDIO": "audio",
 };
 
-export const toBackendType = (type: FrontendQuestionType): BackendQuestionType => {
-    return TYPE_TO_BACKEND[type];
+export const toBackendType = (type: FrontendQuestionType): BackendQuestionType => TYPE_TO_BACKEND[type];
+export function fromBackendType(type: BackendQuestionType): FrontendQuestionType { return TYPE_FROM_BACKEND[type] ?? "text"; }
+
+export interface Option { id: string; text: string; }
+
+export interface FormQuestion {
+    id: string;
+    title: string;
+    type: FrontendQuestionType;
+    helpText: string;
+    required: boolean;
+    order: number;
+    options: Option[];
 }
 
-export function fromBackendType(type: BackendQuestionType): FrontendQuestionType {
-    return TYPE_FROM_BACKEND[type] ?? "text";
-}
-
-interface BackendSection {
-    id: number;
+export interface FormSection {
+    id: string;
     title: string;
     order: number;
-    researchId: number;
+    questions: FormQuestion[];
 }
 
-export const getSections = async (researchId: number): Promise<BackendSection[]> => {
-    const response = await fetch(`http://localhost:3001/section?researchId=${researchId}`, {
-        method: 'GET',
-        credentials: 'include'
-    });
-
+export const getSections = async (researchId: number) => {
+    const response = await fetch(`http://localhost:3001/section?researchId=${researchId}`, { method: 'GET', credentials: 'include' });
     if (!response.ok) throw new Error('Failed to get sections');
-
     return response.json();
 }
 
-export const createSection = async (title: string, order: number, researchId: number): Promise<BackendSection> => {
+export const createSection = async (title: string, order: number, researchId: number) => {
     const response = await fetch(`http://localhost:3001/section`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ title, order, researchId }),
     });
-
-    if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.message || 'Failed to create section');
-    }
-
-    return response.json()
-}
-
-interface BackendQuestion {
-    id: number;
-    statement: string;
-    type: BackendQuestionType;
-    helpText: string | null;
-    isRequired: boolean;
-    order: number;
-    sectionId: number;
-}
-
-export const getQuestions = async (sectionId: number): Promise<BackendQuestion[]> => {
-    const response = await fetch(`http://localhost:3001/question?sectionId=${sectionId}`, {
-        method: 'GET',
-        credentials: 'include',
-    });
-
-    if (!response.ok) throw new Error('Failed to get questions');
-
-    return response.json()
-}
-
-export const createQuestion = async (payload: {
-    statement: string;
-    type: BackendQuestionType;
-    helpText?: string;
-    isRequired: boolean;
-    order: number;
-    sectionId: number;
-}): Promise<BackendQuestion> => {
-    const response = await fetch(`http://localhost:3001/question`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.message || 'Failed to create question');
-    }
-
+    if (!response.ok) throw new Error('Failed to create section');
     return response.json();
 }
 
-export const loadQuestionnaire = async (researchId: number): Promise<Question[]> => {
-    const sections = await getSections(researchId);
+export const getQuestions = async (sectionId: number) => {
+    const response = await fetch(`http://localhost:3001/question?sectionId=${sectionId}`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw new Error('Failed to get questions');
+    return response.json();
+}
 
+export const createQuestion = async (payload: any) => {
+    const response = await fetch(`http://localhost:3001/question`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('Failed to create question');
+    return response.json();
+}
+
+export const loadQuestionnaire = async (researchId: number): Promise<FormSection[]> => {
+    const sections = await getSections(researchId);
     const sortedSections = [...sections].sort((a, b) => a.order - b.order);
 
-    const allQuestions: Question[] = [];
-    let globalOrder = 1;
+    const result: FormSection[] = [];
 
     for (const section of sortedSections) {
         const questions = await getQuestions(section.id);
         const sortedQuestions = [...questions].sort((a, b) => a.order - b.order);
 
-        for (const q of sortedQuestions) {
-            allQuestions.push({
+        result.push({
+            id: String(section.id),
+            title: section.title,
+            order: section.order,
+            questions: sortedQuestions.map(q => ({
                 id: String(q.id),
                 title: q.statement,
                 type: fromBackendType(q.type),
                 helpText: q.helpText ?? "",
                 required: q.isRequired,
-                order: globalOrder++,
-                section: section.title,
-                options: [{ id: crypto.randomUUID(), text: "Opção 1" }],
-            })
-        }
+                order: q.order,
+                options: [{ id: crypto.randomUUID(), text: "Opção 1" }]
+            }))
+        });
     }
-
-    return allQuestions;
+    return result;
 }
 
-export const saveQuestionnaire = async (researchId: number, questions: Question[]): Promise<void> => {
-    // agrupa mantendo a ordem de primeira aparição de cada seção
-    const sectionNames: string[] = [];
-    const questionsBySection = new Map<string, Question[]>();
+export const saveQuestionnaire = async (researchId: number, sections: FormSection[]): Promise<void> => {
+    for (let sIndex = 0; sIndex < sections.length; sIndex++) {
+        const sec = sections[sIndex];
+        const createdSection = await createSection(sec.title || `Seção ${sIndex + 1}`, sIndex + 1, researchId);
 
-    for (const q of questions) {
-        const sectionName = q.section || "Geral";
-        if (!questionsBySection.has(sectionName)) {
-            sectionNames.push(sectionName);
-            questionsBySection.set(sectionName, []);
-        }
-        questionsBySection.get(sectionName)!.push(q);
-    }
-
-    for (let sectionOrder = 0; sectionOrder < sectionNames.length; sectionOrder++) {
-        const sectionName = sectionNames[sectionOrder];
-        const section = await createSection(sectionName, sectionOrder + 1, researchId);
-
-        const sectionQuestions = questionsBySection.get(sectionName)!;
-
-        for (let questionOrder = 0; questionOrder < sectionQuestions.length; questionOrder++) {
-            const q = sectionQuestions[questionOrder];
-
+        for (let qIndex = 0; qIndex < sec.questions.length; qIndex++) {
+            const q = sec.questions[qIndex];
             await createQuestion({
-                statement: q.title,
+                statement: q.title || "Nova Pergunta",
                 type: toBackendType(q.type),
                 helpText: q.helpText || undefined,
                 isRequired: q.required,
-                order: questionOrder + 1,
-                sectionId: section.id,
+                order: qIndex + 1,
+                sectionId: createdSection.id,
             });
         }
     }
 };
-
-const sectionCache = new Map<string, BackendSection>();
-
-
-export const getOrCreateSections = async (title: string, order: number, researchId: number): Promise<BackendSection> => {
-    const cacheKey = `${researchId}-${title}`;
-
-    if (sectionCache.has(cacheKey)) {
-        return sectionCache.get(cacheKey)!;
-    }
-
-    const section = await createSection(title, order, researchId);
-    sectionCache.set(cacheKey, section);
-
-    return section
-}
-
-export const clearSectionCache = () => sectionCache.clear();

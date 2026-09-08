@@ -7,30 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
-import { Plus, Save, Trash2, X, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Save, Trash2, ArrowUp, ArrowDown, FolderPlus } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { saveQuestionnaire, toBackendType } from "@/lib/questionnaire";
-
-export type QuestionType =
-    | "text" | "number" | "date" | "time" | "boolean"
-    | "single-choice" | "multiple-choice" | "rating-1-5"
-    | "photo" | "multiple-photos" | "location" | "audio";
-
-export interface Option { id: string; text: string; }
-
-export interface Question {
-    id: string; title: string; type: QuestionType;
-    helpText: string; required: boolean; order: number;
-    section: string; options: Option[];
-}
+import { saveQuestionnaire, type FormSection, type FormQuestion, type FrontendQuestionType } from "@/lib/questionnaire";
 
 interface MontarPesquisaFormProps {
     researchId?: string | number;
-    onSuccess?: (questions: Question[]) => void;
+    onSuccess?: () => void;
 }
 
-const QUESTION_TYPES_LABEL: { type: QuestionType; label: string }[] = [
+const QUESTION_TYPES_LABEL: { type: FrontendQuestionType; label: string }[] = [
     { type: "text", label: "Texto Livre" }, { type: "number", label: "Numérica" },
     { type: "date", label: "Data" }, { type: "time", label: "Hora" },
     { type: "boolean", label: "Sim / Não" }, { type: "single-choice", label: "Escolha Única" },
@@ -40,86 +27,101 @@ const QUESTION_TYPES_LABEL: { type: QuestionType; label: string }[] = [
 ];
 
 export default function MontarPesquisaForm({ researchId, onSuccess }: MontarPesquisaFormProps) {
-    const createNewQuestion = (order: number): Question => ({
+    const createNewQuestion = (order: number): FormQuestion => ({
         id: crypto.randomUUID(), title: "", type: "text", helpText: "",
-        required: false, order, section: "Geral",
-        options: [{ id: crypto.randomUUID(), text: "Opção 1" }],
+        required: false, order, options: [{ id: crypto.randomUUID(), text: "Opção 1" }],
     });
 
-    const [questions, setQuestions] = useState<Question[]>([createNewQuestion(1)]);
+    const createNewSection = (order: number): FormSection => ({
+        id: crypto.randomUUID(), title: "", order, questions: [createNewQuestion(1)]
+    });
+
+    const [sections, setSections] = useState<FormSection[]>([createNewSection(1)]);
     const [isSaving, setIsSaving] = useState(false);
 
-    const addQuestion = () => {
-        const nextOrder = questions.length + 1;
-        // Pega a seção da última pergunta criada para facilitar a digitação contínua na mesma seção
-        const lastSection = questions[questions.length - 1]?.section || "Geral";
-        const newQ = createNewQuestion(nextOrder);
-        newQ.section = lastSection;
-        
-        setQuestions((prev) => [...prev, newQ]);
+    // ================= GERENCIAMENTO DE SEÇÕES =================
+    const addSection = () => setSections(prev => [...prev, createNewSection(prev.length + 1)]);
+
+    const removeSection = (sectionId: string) => {
+        if (sections.length === 1) return toast.error("A pesquisa deve ter pelo menos uma seção.");
+        setSections(prev => prev.filter(s => s.id !== sectionId).map((s, i) => ({ ...s, order: i + 1 })));
     };
 
-    const confirmRemoveQuestion = (id: string, order: number) => {
-        if (questions.length === 1) {
-            toast.error("A pesquisa deve conter pelo menos uma questão.");
-            return;
-        }
-        setQuestions((prev) =>
-            prev.filter((q) => q.id !== id).map((q, idx) => ({ ...q, order: idx + 1 }))
-        );
-        toast.success(`Pergunta #${order} removida!`);
+    const updateSectionTitle = (sectionId: string, title: string) => {
+        setSections(prev => prev.map(s => s.id === sectionId ? { ...s, title } : s));
     };
 
-    const updateQuestion = (id: string, field: keyof Omit<Question, "id" | "options">, value: any) => {
-        setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, [field]: value } : q)));
+    const moveSection = (index: number, direction: "up" | "down") => {
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= sections.length) return;
+        const updated = [...sections];
+        const [moved] = updated.splice(index, 1);
+        updated.splice(targetIndex, 0, moved);
+        setSections(updated.map((s, i) => ({ ...s, order: i + 1 })));
     };
 
-    const moveQuestion = (currentIndex: number, direction: "up" | "down") => {
-        const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-        if (targetIndex < 0 || targetIndex >= questions.length) return;
-        const updated = [...questions];
-        const [movedItem] = updated.splice(currentIndex, 1);
-        updated.splice(targetIndex, 0, movedItem);
-        setQuestions(updated.map((item, idx) => ({ ...item, order: idx + 1 })));
+    // ================= GERENCIAMENTO DE QUESTÕES =================
+    const addQuestion = (sectionId: string) => {
+        setSections(prev => prev.map(s => {
+            if (s.id === sectionId) return { ...s, questions: [...s.questions, createNewQuestion(s.questions.length + 1)] };
+            return s;
+        }));
     };
 
-    const addOption = (questionId: string) => {
-        setQuestions((prev) => prev.map((q) => {
-            if (q.id === questionId) {
-                return { ...q, options: [...q.options, { id: crypto.randomUUID(), text: `Opção ${q.options.length + 1}` }] };
+    const removeQuestion = (sectionId: string, questionId: string) => {
+        setSections(prev => prev.map(s => {
+            if (s.id !== sectionId) return s;
+            if (s.questions.length === 1) {
+                toast.error("Uma seção não pode ficar sem questões.");
+                return s;
             }
-            return q;
+            return {
+                ...s,
+                questions: s.questions.filter(q => q.id !== questionId).map((q, i) => ({ ...q, order: i + 1 }))
+            };
         }));
     };
 
-    const removeOption = (questionId: string, optionId: string) => {
-        setQuestions((prev) => prev.map((q) => {
-            if (q.id === questionId) return { ...q, options: q.options.filter((opt) => opt.id !== optionId) };
-            return q;
+    const updateQuestion = (sectionId: string, questionId: string, field: keyof Omit<FormQuestion, "id" | "options">, value: any) => {
+        setSections(prev => prev.map(s => {
+            if (s.id !== sectionId) return s;
+            return {
+                ...s,
+                questions: s.questions.map(q => q.id === questionId ? { ...q, [field]: value } : q)
+            };
         }));
     };
 
-    const updateOption = (questionId: string, optionId: string, text: string) => {
-        setQuestions((prev) => prev.map((q) => {
-            if (q.id === questionId) return { ...q, options: q.options.map((opt) => (opt.id === optionId ? { ...opt, text } : opt)) };
-            return q;
+    const moveQuestion = (sectionId: string, qIndex: number, direction: "up" | "down") => {
+        setSections(prev => prev.map(s => {
+            if (s.id !== sectionId) return s;
+            const targetIndex = direction === "up" ? qIndex - 1 : qIndex + 1;
+            if (targetIndex < 0 || targetIndex >= s.questions.length) return s;
+            
+            const updatedQuestions = [...s.questions];
+            const [moved] = updatedQuestions.splice(qIndex, 1);
+            updatedQuestions.splice(targetIndex, 0, moved);
+            
+            return {
+                ...s,
+                questions: updatedQuestions.map((q, i) => ({ ...q, order: i + 1 }))
+            };
         }));
     };
 
+    const hasOptions = (type: FrontendQuestionType) => type === "single-choice" || type === "multiple-choice";
+
+    // ================= SALVAMENTO =================
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!researchId) {
-            toast.error("ID da pesquisa não encontrado.");
-            return;
-        }
+        if (!researchId) return toast.error("ID da pesquisa não encontrado.");
 
         setIsSaving(true);
         try {
-            // O saveQuestionnaire agrupa por seção automaticamente e cria as Seções e Questões no banco
-            await saveQuestionnaire(Number(researchId), questions);
-            toast.success("Seções e questões criadas com sucesso!");
-            if (onSuccess) onSuccess(questions);
-            setQuestions([createNewQuestion(1)]);
+            await saveQuestionnaire(Number(researchId), sections);
+            toast.success("Questionário montado e ordenado com sucesso!");
+            setSections([createNewSection(1)]);
+            if (onSuccess) onSuccess();
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Erro ao salvar questionário.");
         } finally {
@@ -127,100 +129,107 @@ export default function MontarPesquisaForm({ researchId, onSuccess }: MontarPesq
         }
     };
 
-    const hasOptions = (type: QuestionType) => type === "single-choice" || type === "multiple-choice";
-
     return (
-        <form onSubmit={handleSubmit} className="mx-auto space-y-6 max-h-[70vh] overflow-y-auto px-1">
-            <div className="space-y-4 m-1">
-                {questions.map((q, index) => (
-                    <Card key={q.id}>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <span>Questão #{q.order}</span>
-                            </CardTitle>
-                            <div className="flex items-center gap-1">
-                                <Button type="button" variant="ghost" size="icon" onClick={() => moveQuestion(index, "up")} disabled={index === 0}>
-                                    <ArrowUp className="w-4 h-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => moveQuestion(index, "down")} disabled={index === questions.length - 1}>
-                                    <ArrowDown className="w-4 h-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => confirmRemoveQuestion(q.id, q.order)} disabled={questions.length === 1}>
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="sm:col-span-2 space-y-1">
-                                    <Label htmlFor={`section-${q.id}`}>Nome da Seção*</Label>
-                                    <Input 
-                                        id={`section-${q.id}`} 
-                                        placeholder="Ex: Dados Pessoais, Avaliação..." 
-                                        value={q.section} 
-                                        onChange={(e) => updateQuestion(q.id, "section", e.target.value)} 
-                                        required 
-                                    />
-                                    <p className="text-[11px] text-muted-foreground">Questões com o mesmo nome de seção serão agrupadas juntas.</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label htmlFor={`order-${q.id}`}>Ordem</Label>
-                                    <Input id={`order-${q.id}`} type="number" min={1} value={q.order} onChange={(e) => updateQuestion(q.id, "order", Number(e.target.value))} required />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor={`title-${q.id}`}>Enunciado da Pergunta*</Label>
-                                <Input id={`title-${q.id}`} placeholder="Ex: Qual é a sua idade?" value={q.title} onChange={(e) => updateQuestion(q.id, "title", e.target.value)} required />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor={`helpText-${q.id}`}>Texto de Ajuda / Instrução</Label>
-                                <Input id={`helpText-${q.id}`} placeholder="Opcional" value={q.helpText} onChange={(e) => updateQuestion(q.id, "helpText", e.target.value)} />
-                            </div>
-                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                                <div className="space-y-1 flex-1 w-full">
-                                    <Label>Tipo de Resposta* (12 tipos disponíveis)</Label>
-                                    <Select value={q.type} onValueChange={(val) => updateQuestion(q.id, "type", val as QuestionType)}>
-                                        <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
-                                        <SelectContent>
-                                            {QUESTION_TYPES_LABEL.map((item) => (
-                                                <SelectItem key={item.type} value={item.type}>{item.label}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex items-center space-x-2 sm:pt-6">
-                                    <Switch id={`required-${q.id}`} checked={q.required} onCheckedChange={(checked) => updateQuestion(q.id, "required", checked)} />
-                                    <Label htmlFor={`required-${q.id}`} className="cursor-pointer">Obrigatória</Label>
-                                </div>
-                            </div>
-                            {hasOptions(q.type) && (
-                                <div className="space-y-3 pt-3 border-t mt-3">
-                                    <Label>Alternativas</Label>
-                                    {q.options.map((opt, optIndex) => (
-                                        <div key={opt.id} className="flex items-center gap-2">
-                                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary text-xs">{optIndex + 1}</div>
-                                            <Input value={opt.text} onChange={(e) => updateOption(q.id, opt.id, e.target.value)} required className="flex-1" />
-                                            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground" onClick={() => removeOption(q.id, opt.id)} disabled={q.options.length === 1}>
-                                                <X className="w-4 h-4" />
-                                            </Button>
+        <form onSubmit={handleSubmit} className="mx-auto space-y-6 max-h-[75vh] overflow-y-auto px-2 pb-6">
+            
+            {sections.map((section, sIndex) => (
+                <div key={section.id} className="border-2 border-primary/20 bg-muted/30 p-4 rounded-xl space-y-4 shadow-sm">
+                    {/* Cabeçalho da Seção com controles de Reordenação */}
+                    <div className="flex items-center justify-between gap-2 border-b pb-3">
+                        <div className="flex items-center gap-2 flex-1">
+                            <span className="bg-primary text-primary-foreground font-bold px-2.5 py-1 rounded-md text-xs">
+                                Seção {sIndex + 1}
+                            </span>
+                            <Input 
+                                placeholder="Nome da Seção (Ex: Dados Pessoais)" 
+                                value={section.title} 
+                                onChange={(e) => updateSectionTitle(section.id, e.target.value)} 
+                                required 
+                                className="bg-background font-semibold"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => moveSection(sIndex, "up")} disabled={sIndex === 0} title="Mover Seção para Cima">
+                                <ArrowUp className="w-4 h-4" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => moveSection(sIndex, "down")} disabled={sIndex === sections.length - 1} title="Mover Seção para Baixo">
+                                <ArrowDown className="w-4 h-4" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeSection(section.id)} title="Excluir Seção">
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Questões dentro desta Seção */}
+                    <div className="space-y-4 pl-2 md:pl-6 border-l-2 border-primary/30">
+                        {section.questions.map((q, qIndex) => (
+                            <Card key={q.id} className="shadow-sm">
+                                <CardHeader className="flex flex-row items-center justify-between py-2.5 bg-muted/50 border-b">
+                                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                        <span>Questão #{q.order}</span>
+                                    </CardTitle>
+                                    <div className="flex items-center gap-1">
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveQuestion(section.id, qIndex, "up")} disabled={qIndex === 0} title="Mover Questão para Cima">
+                                            <ArrowUp className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveQuestion(section.id, qIndex, "down")} disabled={qIndex === section.questions.length - 1} title="Mover Questão para Baixo">
+                                            <ArrowDown className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => removeQuestion(section.id, q.id)} title="Remover Questão">
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-3 pt-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs">Enunciado da Pergunta *</Label>
+                                        <Input placeholder="Ex: Qual é a sua idade?" value={q.title} onChange={(e) => updateQuestion(section.id, q.id, "title", e.target.value)} required />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs">Texto de Ajuda / Instrução</Label>
+                                        <Input placeholder="Opcional" value={q.helpText} onChange={(e) => updateQuestion(section.id, q.id, "helpText", e.target.value)} />
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between pt-1">
+                                        <div className="space-y-1 flex-1 w-full">
+                                            <Label className="text-xs">Tipo de Resposta *</Label>
+                                            <Select value={q.type} onValueChange={(val) => updateQuestion(section.id, q.id, "type", val as FrontendQuestionType)}>
+                                                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                                                <SelectContent>
+                                                    {QUESTION_TYPES_LABEL.map((item) => (
+                                                        <SelectItem key={item.type} value={item.type}>{item.label}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    ))}
-                                    <Button type="button" variant="link" className="p-0 h-auto text-primary" onClick={() => addOption(q.id)}>
-                                        <Plus className="w-4 h-4 mr-1" /> Adicionar alternativa
-                                    </Button>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-            <div className="flex items-center justify-between p-3 sticky bottom-0 bg-background rounded-xl border shadow z-10">
-                <Button type="button" variant="outline" onClick={addQuestion} disabled={isSaving}>
-                    <Plus className="w-4 h-4 mr-2" /> Adicionar Questão
+                                        <div className="flex items-center space-x-2 sm:pt-5">
+                                            <Switch checked={q.required} onCheckedChange={(c) => updateQuestion(section.id, q.id, "required", c)} />
+                                            <Label className="cursor-pointer text-xs">Obrigatória</Label>
+                                        </div>
+                                    </div>
+
+                                    {hasOptions(q.type) && (
+                                        <div className="p-2.5 bg-orange-50 border border-orange-200 text-orange-800 rounded text-xs">
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        ))}
+
+                        <Button type="button" variant="outline" size="sm" onClick={() => addQuestion(section.id)} className="w-full border-dashed">
+                            <Plus className="w-4 h-4 mr-2" /> Adicionar Questão nesta Seção
+                        </Button>
+                    </div>
+                </div>
+            ))}
+
+            <div className="flex items-center justify-between p-4 sticky bottom-0 bg-background/95 backdrop-blur rounded-xl border shadow-lg z-10">
+                <Button type="button" variant="secondary" onClick={addSection} disabled={isSaving}>
+                    <FolderPlus className="w-4 h-4 mr-2" /> Nova Seção
                 </Button>
                 <Button className="bg-primary text-primary-foreground" type="submit" disabled={isSaving}>
                     {isSaving ? (
-                        <div className="flex items-center gap-2"><Spinner /><span>Salvando seções e questões...</span></div>
+                        <div className="flex items-center gap-2"><Spinner /><span>Salvando...</span></div>
                     ) : (
                         <><Save className="w-4 h-4 mr-2" /><span>Salvar Questionário</span></>
                     )}
