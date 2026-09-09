@@ -5,7 +5,9 @@ import { deactivate, getCompanies } from '@/lib/company';
 import Tabela from '../../(home)/components/tabela';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { deleteUser, getUsersAdmin } from '@/lib/user';
+import { Bolt } from 'lucide-react';
 
 interface Company {
     id: string;
@@ -59,8 +61,6 @@ interface RawCompany {
 }
 
 export default function ExibirEditar({ allowActions = true }: ExibirEditarProps) {
-    const [activeTab, setActiveTab] = useState<'companies' | 'admins'>('companies');
-
     const [rawCompanies, setRawCompanies] = useState<RawCompany[]>([]);
     const [loadingCompanies, setLoadingCompanies] = useState(true);
 
@@ -133,8 +133,8 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
             })
             .finally(() => {
                 setLoadingAdmins(false);
-            })
-    }, [])
+            });
+    }, []);
 
     useEffect(() => {
         getCompanies()
@@ -193,53 +193,39 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
                 </Button>
             ),
         }),
-    }))
+    }));
 
     return (
-        <div className="flex flex-col gap-4 ">
-            <div className="flex items-center gap-2 border-b pb-3">
-                <Button
-                    variant={activeTab === 'companies' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveTab('companies')}
-                >
-                    Empresas ({companies.length})
-                </Button>
-                <Button
-                    variant={activeTab === 'admins' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveTab('admins')}
-                >
-                    Administradores ({admins.length})
-                </Button>
-            </div>
+        <Tabs defaultValue="companies" className="w-full">
+            <TabsList className="grid grid-cols-2 gap-2 w-fit sticky top-0 z-10 px-5 verde-marrom shadow border-t">
+                <Bolt size={13} className="absolute left-1 top-1/2 -translate-y-1/2 opacity-15" />
+                <Bolt size={13} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-15" />
+                <TabsTrigger value="companies">Empresas <Badge variant={"outline"}>{companies.length}</Badge></TabsTrigger>
+                <TabsTrigger value="admins">Administradores <Badge variant={"outline"}>{admins.length}</Badge></TabsTrigger>
+            </TabsList>
 
             {error && <p className="text-sm text-red-500">Erro: {error}</p>}
             {actionError && <p className="text-sm text-red-500">{actionError}</p>}
 
-            {activeTab === 'companies' && (
-                <div>
-                    {loadingCompanies ? (
-                        <p className="text-sm text-muted-foreground">Carregando empresas...</p>
-                    ) : companies.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Nenhuma empresa encontrada.</p>
-                    ) : (
-                        <Tabela<Company> columns={companyColumns} data={companies} />
-                    )}
-                </div>
-            )}
+            <TabsContent value="companies" className="mt-0">
+                {loadingCompanies ? (
+                    <p className="text-sm text-muted-foreground">Carregando empresas...</p>
+                ) : companies.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhuma empresa encontrada.</p>
+                ) : (
+                    <Tabela<Company> columns={companyColumns} data={companies} />
+                )}
+            </TabsContent>
 
-            {activeTab === 'admins' && (
-                <div>
-                    {loadingAdmins ? (
-                        <p className="text-sm text-muted-foreground">Carregando administradores...</p>
-                    ) : admins.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Nenhum administrador encontrado.</p>
-                    ) : (
-                        <Tabela<Admin> columns={adminColumns} data={admins} />
-                    )}
-                </div>
-            )}
-        </div>
+            <TabsContent value="admins" className="mt-0">
+                {loadingAdmins ? (
+                    <p className="text-sm text-muted-foreground">Carregando administradores...</p>
+                ) : admins.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhum administrador encontrado.</p>
+                ) : (
+                    <Tabela<Admin> columns={adminColumns} data={admins} />
+                )}
+            </TabsContent>
+        </Tabs>
     );
 }

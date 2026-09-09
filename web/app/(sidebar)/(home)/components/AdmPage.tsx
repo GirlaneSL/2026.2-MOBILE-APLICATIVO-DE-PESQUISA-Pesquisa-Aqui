@@ -11,6 +11,7 @@ import Tabela from "../components/tabela";
 import UltimasAtualizacoesList from "../components/UltimasAtualizacoesList";
 import TabelaPesquisas from "../../pesquisas/components/TabelaPesquisas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Bolt } from "lucide-react";
 
 const statusLabels: Record<string, string> = {
     DRAFT: "Rascunho",
@@ -94,7 +95,9 @@ export default function AdmPage() {
                         CardContentClassName={"max-h-50 overflow-auto"}
                         cardContent={
                             <Tabs defaultValue="pesquisas" className="w-full">
-                                <TabsList className="grid grid-cols-2 gap-2 w-fit ">
+                                <TabsList className="grid grid-cols-2 gap-2 w-fit sticky top-0 z-10 px-5 verde-marrom shadow border-t">
+                                    <Bolt size={13} className="absolute left-1 top-1/2 -translate-y-1/2 opacity-15"/>
+                                    <Bolt size={13} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-15"/>
                                     <TabsTrigger value="pesquisas">Pesquisas</TabsTrigger>
                                     <TabsTrigger value="outraAba">Pesquisadores</TabsTrigger>
                                 </TabsList>

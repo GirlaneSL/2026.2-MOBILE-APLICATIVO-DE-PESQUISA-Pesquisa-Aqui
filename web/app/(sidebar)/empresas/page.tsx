@@ -137,7 +137,7 @@ export default function EmpresaPage() {
 
                 <section className="grid grid-cols-5 gap-5 row-span-2 md:grid-cols-2 lg:grid-cols-5">
                     <InfoCard
-                        cardTitle="Empresas / Administradires"
+                        cardTitle="Empresas / Administradores"
                         animationDelayN={5}
                         cardClassName="row-span-1 max-h-100 min-h-75 overflow-auto col-span-5 md:col-span-2 lg:col-span-3"
                         isCardFooter={false}

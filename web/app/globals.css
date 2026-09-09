@@ -159,5 +159,9 @@
 }
 
 
+.verde-marrom{
+  @apply bg-card bg-linear-to-br from-[#B66D56]/10 via-white/10 to-[#124B52]/10
+}
+
 /* MARROM="#AB6049"  */
 /* VERDE= #447762 */
