@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiFetcher";
+
 export interface Research {
     id: number;
     title: string;
@@ -18,8 +20,8 @@ const MONTH_NAMES = [
 ];
 
 export const createResearch = async (title: string, description: string, objective: string, startDate: string, endDate: string, targetAudience: string) => {
-    const response = await fetch(
-        `http://localhost:3001/research`,
+    const response = await apiFetch(
+        `/research`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -44,7 +46,7 @@ export const createResearch = async (title: string, description: string, objecti
 }
 
 export const getResearches = async (): Promise<Research[]> => {
-    const response = await fetch('http://localhost:3001/research', {
+    const response = await apiFetch('/research', {
         method: 'GET',
         credentials: 'include',
     });
@@ -87,7 +89,7 @@ export function getResearchesByMonth(
 }
 
 export const getResearchById = async (id: string): Promise<Research> => {
-    const response = await fetch(`http://localhost:3001/research/${id}`, {
+    const response = await apiFetch(`/research/${id}`, {
         method: 'GET',
         credentials: 'include',
     });
@@ -103,7 +105,7 @@ export const getResearchById = async (id: string): Promise<Research> => {
 };
 
 export const deleteResearch = async (id: number): Promise<void> => {
-    const response = await fetch(`http://localhost:3001/research/${id}`, {
+    const response = await apiFetch(`/research/${id}`, {
         method: 'DELETE',
         credentials: 'include',
     });

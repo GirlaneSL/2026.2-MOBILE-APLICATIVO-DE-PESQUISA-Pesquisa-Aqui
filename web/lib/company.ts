@@ -1,10 +1,12 @@
+import { apiFetch } from "./apiFetcher";
+
 export const createCompany = async (
     legalName: string,
     contactInformation: string,
     situation: 'ACTIVE' | 'INACTIVE'
 ) => {
-    const response = await fetch(
-        `http://localhost:3001/company`,
+    const response = await apiFetch(
+        `/company`,
         {
             method: 'POST',
             headers: {
@@ -28,7 +30,7 @@ export const createCompany = async (
 }
 
 export const getCompanies = async () => {
-    const response = await fetch('http://localhost:3001/company', {
+    const response = await apiFetch('/company', {
         method: 'GET',
         credentials: 'include',
     });
@@ -39,7 +41,7 @@ export const getCompanies = async () => {
 }
 
 export const deactivate = async (id: number) => {
-    const response = await fetch(`http://localhost:3001/company/${id}`, {
+    const response = await apiFetch(`/company/${id}`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',

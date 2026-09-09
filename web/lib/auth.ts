@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiFetcher";
+
 export interface AuthUser {
     sub: string;
     name: string;
@@ -6,7 +8,7 @@ export interface AuthUser {
 }
 
 export const login = async (username: string, password: string) => {
-    const response = await fetch(`http://localhost:3001/auth/login`, {
+    const response = await apiFetch(`/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -20,7 +22,7 @@ export const login = async (username: string, password: string) => {
 
 export const logout = async () => {
     try {
-        await fetch(`http://localhost:3001/auth/logout`, {
+        await apiFetch(`/auth/logout`, {
             method: 'POST',
             credentials: 'include',
         });
@@ -33,10 +35,15 @@ export const logout = async () => {
 
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
     try {
-        const response = await fetch(`http://localhost:3001/auth/me`, {
+        const response = await apiFetch(`/auth/me`, {
             method: 'GET',
             credentials: 'include',
         });
+
+        if (response.status === 401) {
+            await logout();
+            return null;
+        }
 
         if (!response.ok) {
             console.error('getCurrentUser failed:', response.status, await response.text());
@@ -45,7 +52,7 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
 
         return response.json();
     } catch (error) {
-        console.error('Failed to fetch current user:', error);
+        console.error('Failed to apiFetch current user:', error);
         return null;
     }
 };

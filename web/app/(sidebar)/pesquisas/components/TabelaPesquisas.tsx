@@ -9,6 +9,7 @@ import { deleteResearch, getResearches } from '@/lib/research';
 import DialogLayout from '@/components/ui/dialogLayout';
 import ModalEditarPesquisa from './ModalEditarPesquisa';
 import toast from 'react-hot-toast';
+import { isSessionExpiredError } from '@/lib/apiFetcher';
 
 export interface Research {
     id: number | string;
@@ -66,7 +67,10 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
         setLoading(true);
         getResearches()
             .then((data) => setRawResearches(data))
-            .catch((err) => setError(err instanceof Error ? err.message : 'Erro ao carregar pesquisas'))
+            .catch((err) => {
+                if (isSessionExpiredError(err)) return;
+                setError(err instanceof Error ? err.message : 'Erro ao carregar pesquisas');
+            })
             .finally(() => setLoading(false));
     }, [refreshTrigger]);
 
@@ -87,7 +91,7 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
             await deleteResearch(+id)
             setRawResearches((prev) => prev.filter((r) => String(r.id) !== id));
             toast.success('Pesquisa excluída com sucesso!');
-            
+
             if (onChange) {
                 onChange();
             }
@@ -194,10 +198,10 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
             ) : researches.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhuma pesquisa encontrada.</p>
             ) : (
-                <Tabela<FormattedResearch> 
-                    key={rawResearches.length} 
-                    columns={columns} 
-                    data={researches} 
+                <Tabela<FormattedResearch>
+                    key={rawResearches.length}
+                    columns={columns}
+                    data={researches}
                 />
             )}
         </div>
