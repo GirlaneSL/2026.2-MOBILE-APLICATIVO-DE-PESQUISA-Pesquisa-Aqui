@@ -1,12 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Research } from './TabelaPesquisas';
 import FormEditarDadosPesquisa from './FormEditarDadosPesquisa';
 import MontarPesquisaForm from './MontarPesquisaForm';
-
 
 interface ModalEditarPesquisaProps {
     research: Research;
@@ -14,37 +12,25 @@ interface ModalEditarPesquisaProps {
 }
 
 export default function ModalEditarPesquisa({ research, onSuccess }: ModalEditarPesquisaProps) {
-    const [editTab, setEditTab] = useState<'info' | 'questions'>('info');
-
     return (
-        <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 border-b pb-2">
-                <Button
-                    type="button"
-                    variant={editTab === 'info' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setEditTab('info')}
-                >
+        <Tabs defaultValue="info" className="w-full">
+            <TabsList className="grid w-fit gap-2 grid-cols-2">
+                <TabsTrigger value="info">
                     Dados da Pesquisa
-                </Button>
-                <Button
-                    type="button"
-                    variant={editTab === 'questions' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setEditTab('questions')}
-                >
+                </TabsTrigger>
+                <TabsTrigger value="questions">
                     Montagem da Pesquisa
-                </Button>
-            </div>
+                </TabsTrigger>
+            </TabsList>
 
-            {editTab === 'info' && (
+            <TabsContent value="info" className="mt-4">
                 <FormEditarDadosPesquisa
                     research={research}
                     onSuccess={onSuccess}
                 />
-            )}
+            </TabsContent>
 
-            {editTab === 'questions' && (
+            <TabsContent value="questions" className="mt-4">
                 <div className="w-full">
                     <MontarPesquisaForm
                         researchId={research.id}
@@ -52,7 +38,7 @@ export default function ModalEditarPesquisa({ research, onSuccess }: ModalEditar
                         onSuccess={() => toast.success('Perguntas salvas com sucesso!')}
                     />
                 </div>
-            )}
-        </div>
+            </TabsContent>
+        </Tabs>
     );
 }
