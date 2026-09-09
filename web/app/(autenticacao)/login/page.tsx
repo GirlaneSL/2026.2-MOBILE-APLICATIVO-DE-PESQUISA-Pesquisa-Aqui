@@ -2,11 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { login } from "@/lib/auth";
 import { LockKeyhole, MapPin, User } from "lucide-react";
 import Link from "next/link";
-import { SubmitEventHandler, useState } from "react";
 import { useRouter } from 'next/navigation';
+import { SubmitEventHandler, useState } from "react";
 
 export default function Login() {
     const [username, setUsername] = useState('')
@@ -14,14 +15,21 @@ export default function Login() {
     const [error, setError] = useState<string | null>(null)
     const router = useRouter();
 
+
+    const [isLoadingLogin, setIsLoadingLogin] = useState(false)
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
+
+        setError(null);
+        setIsLoadingLogin(true);
 
         try {
             await login(username, password);
             router.push('/');
         } catch (error) {
             setError('Nome de usuário ou senha incorretos/Empresa inativa');
+        } finally {
+            setIsLoadingLogin(false)
         }
     }
 
@@ -122,8 +130,10 @@ export default function Login() {
                             type="submit"
                             variant="default"
                             className="w-full h-11 text-base font-semibold mt-2 bg-[#133135] hover:bg-[#124b52f5]"
+                            disabled={isLoadingLogin}
                         >
-                            Entrar
+                            {!isLoadingLogin ? (<div>Entrar</div>) : (<div className="flex gap-2 items-center"><Spinner></Spinner>Entrando...</div>)}
+
                         </Button>
 
                         <hr className="w-full border-gray-200 my-2" />
