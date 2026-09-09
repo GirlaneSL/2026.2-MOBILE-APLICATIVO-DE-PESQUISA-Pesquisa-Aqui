@@ -232,8 +232,8 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
     }
 
     return (
-        <div className="space-y-6 max-h-[70vh] pr-2 pb-16">
-            <div className="flex justify-between items-center bg-card sticky top-0 z-10 pb-3 border-b gap-4 border p-2 rounded-xl shadow">
+        <div className="space-y-6">
+            <div className="flex justify-between items-center bg-card sticky top-0 z-10 pb-3 border-b gap-4 border p-2 rounded-t-none rounded-xl shadow">
                 <p className="text-xs text-muted-foreground">As alterações de texto salvam ao sair do campo (blur). Ordenação e exclusão são instantâneas.</p>
                 <Button size="sm" onClick={handleAddSection}>
                     <FolderPlus className="w-4 h-4 mr-1.5" /> Adicionar Seção
@@ -345,6 +345,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                     </div>
                 </div>
             ))}
+            <div className="h-20 w-full flex-shrink-0" aria-hidden="true" />
         </div>
     );
 }
