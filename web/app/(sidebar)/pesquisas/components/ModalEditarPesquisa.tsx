@@ -1,12 +1,11 @@
 'use client';
 
-import toast from 'react-hot-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Research } from './TabelaPesquisas';
-import FormEditarDadosPesquisa from './FormEditarDadosPesquisa';
-import MontarPesquisaForm from './MontarPesquisaForm';
-import ListarQuestoesSalvas from './ListarQuestoesSalvas';
 import { cn } from '@/lib/utils';
+import FormEditarDadosPesquisa from './FormEditarDadosPesquisa';
+import ListarQuestoesSalvas from './ListarQuestoesSalvas';
+import { Research } from './TabelaPesquisas';
+import { Bolt } from 'lucide-react';
 
 interface ModalEditarPesquisaProps {
     research: Research;
@@ -22,10 +21,12 @@ export default function ModalEditarPesquisa({ research, onSuccess, isMontagem = 
         <Tabs defaultValue="info" className="w-full ">
             <TabsList
                 className={cn(
-                    "grid w-fit gap-2 grid-cols-2",
+                    "relative grid w-fit gap-2 grid-cols-2 verde-marrom px-5 shadow border-t",
                     (isPesquisa !== isMontagem) && "grid-cols-1"
                 )}
             >
+                <Bolt size={13} className="absolute left-1 top-1/2 -translate-y-1/2 opacity-15" />
+                <Bolt size={13} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-15" />
                 {isPesquisa && (
                     <TabsTrigger value="info">
                         Dados da Pesquisa
