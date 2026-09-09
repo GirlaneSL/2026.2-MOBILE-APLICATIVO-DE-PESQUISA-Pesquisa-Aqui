@@ -47,7 +47,7 @@ export default function ModalEditarPesquisa({ research, onSuccess, isMontagem = 
             )}
             {isMontagem && (
                 <TabsContent value="questions" className="mt-4">
-                    <div className="w-full ">
+                    <div className="w-full">
                         <ListarQuestoesSalvas researchId={research.id} />
                     </div>
                 </TabsContent>

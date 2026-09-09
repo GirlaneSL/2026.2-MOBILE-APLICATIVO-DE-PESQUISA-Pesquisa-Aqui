@@ -232,7 +232,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
     }
 
     return (
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 pb-16">
+        <div className="space-y-6 max-h-[70vh] pr-2 pb-16">
             <div className="flex justify-between items-center bg-card sticky top-0 z-10 pb-3 border-b gap-4 border p-2 rounded-xl shadow">
                 <p className="text-xs text-muted-foreground">As alterações de texto salvam ao sair do campo (blur). Ordenação e exclusão são instantâneas.</p>
                 <Button size="sm" onClick={handleAddSection}>
