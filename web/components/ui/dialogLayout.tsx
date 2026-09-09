@@ -17,9 +17,10 @@ type DialogLayoutProps = {
     dialogContent?: React.ReactNode;
     dialogTitle?: React.ReactNode;
     dialogDescription?: React.ReactNode;
+    dialogContentClassName?: React.ReactNode;
 };
 
-export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dialogTitle, dialogDescription, dialogContent }: DialogLayoutProps) {
+export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dialogTitle, dialogDescription, dialogContent, dialogContentClassName }: DialogLayoutProps) {
     return (
         <Dialog>
             <DialogTrigger >
@@ -37,7 +38,7 @@ export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dial
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                <div className={`${dialogContentClassName} max-h-200 flex-1 overflow-y-auto pr-2 custom-scrollbar`}>
                     {dialogContent}
                 </div>
 

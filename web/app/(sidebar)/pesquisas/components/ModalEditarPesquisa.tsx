@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Research } from './TabelaPesquisas';
 import FormEditarDadosPesquisa from './FormEditarDadosPesquisa';
 import MontarPesquisaForm from './MontarPesquisaForm';
+import ListarQuestoesSalvas from './ListarQuestoesSalvas';
+import { cn } from '@/lib/utils';
 
 interface ModalEditarPesquisaProps {
     research: Research;
@@ -18,7 +20,12 @@ interface ModalEditarPesquisaProps {
 export default function ModalEditarPesquisa({ research, onSuccess, isMontagem = true, isPesquisa = true }: ModalEditarPesquisaProps) {
     return (
         <Tabs defaultValue="info" className="w-full ">
-            <TabsList className="grid w-fit gap-2 grid-cols-2 ">
+            <TabsList
+                className={cn(
+                    "grid w-fit gap-2 grid-cols-2",
+                    (isPesquisa !== isMontagem) && "grid-cols-1"
+                )}
+            >
                 {isPesquisa && (
                     <TabsTrigger value="info">
                         Dados da Pesquisa
@@ -41,11 +48,7 @@ export default function ModalEditarPesquisa({ research, onSuccess, isMontagem = 
             {isMontagem && (
                 <TabsContent value="questions" className="mt-4">
                     <div className="w-full ">
-                        <MontarPesquisaForm
-                            researchId={research.id}
-                            initialQuestions={research.questions}
-                            onSuccess={() => toast.success('Perguntas salvas com sucesso!')}
-                        />
+                        <ListarQuestoesSalvas researchId={research.id} />
                     </div>
                 </TabsContent>
             )}

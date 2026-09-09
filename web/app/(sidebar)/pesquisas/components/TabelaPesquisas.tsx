@@ -158,6 +158,7 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
                     dialogTitle={`Editar: ${item.title}`}
                     dialogTrigger="Editar"
                     dialogDescription="Atualize as informações da pesquisa abaixo."
+                    dialogContentClassName={"min-h-200"}
                     dialogContent={
                         <ModalEditarPesquisa
                             research={item}

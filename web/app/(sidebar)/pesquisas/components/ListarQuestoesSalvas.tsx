@@ -233,9 +233,9 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
 
     return (
         <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 pb-16">
-            <div className="flex justify-between items-center bg-card sticky top-0 z-10 pb-3 border-b gap-4">
+            <div className="flex justify-between items-center bg-card sticky top-0 z-10 pb-3 border-b gap-4 border p-2 rounded-xl shadow">
                 <p className="text-xs text-muted-foreground">As alterações de texto salvam ao sair do campo (blur). Ordenação e exclusão são instantâneas.</p>
-                <Button variant="outline" size="sm" onClick={handleAddSection}>
+                <Button size="sm" onClick={handleAddSection}>
                     <FolderPlus className="w-4 h-4 mr-1.5" /> Adicionar Seção
                 </Button>
             </div>
@@ -253,7 +253,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                                 className="bg-background font-bold text-base uppercase tracking-wide"
                             />
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 ">
                             <Button type="button" variant="ghost" size="icon" onClick={() => moveSection(sIndex, "up")} disabled={sIndex === 0} title="Mover Seção para Cima">
                                 <ArrowUp className="w-4 h-4" />
                             </Button>
@@ -269,7 +269,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                     <div className="space-y-3 pl-2 md:pl-6 border-l-2 border-primary/20">
                         {section.questions.map((q, qIndex) => (
                             <Card key={q.id} className="shadow-sm">
-                                <CardHeader className="flex flex-row items-center justify-between py-2.5 bg-muted/40 border-b">
+                                <CardHeader className="flex flex-row items-center justify-between py-2.5 border-b">
                                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
                                         <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">
                                             Q{q.order}
