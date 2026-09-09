@@ -66,7 +66,7 @@ export default function SuperAdmPage() {
 
                     <InfoCard
                         cardClassName="shadow-md"
-                        animationDelayN={4}
+                        animationDelayN={3}
                         isCardFooter={false}
                         cardTitle="Administradores Ativas"
                         cardContent={<EstatisticasChart valor="288" variant="bar" />}
@@ -74,7 +74,7 @@ export default function SuperAdmPage() {
 
                     <InfoCard
                         cardClassName=" shadow-md introduction-card"
-                        animationDelayN={3}
+                        animationDelayN={4}
                         isCardFooter={false}
                         cardTitle="Ultimas Atualizações"
                         cardContent={<UltimasAtualizacoesList />}

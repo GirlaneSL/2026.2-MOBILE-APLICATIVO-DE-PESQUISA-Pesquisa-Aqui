@@ -53,7 +53,7 @@ export default function Pesquisas() {
                         cardDescription="Consulte e Gerencie As Pesquisas"
                         isCardFooter={false}
                         cardClassName="relative"
-                        animationDelayN={4}
+                        animationDelayN={3}
                         cardContent={
                             <>
                                 <br />
@@ -84,7 +84,7 @@ export default function Pesquisas() {
                         cardTitle="Pesquisas"
                         isCardFooter={false}
                         cardClassName="col-span-1"
-                        animationDelayN={5}
+                        animationDelayN={4}
                         cardContent={
                             <>
                                 <div className="max-h-50 overflow-auto">
