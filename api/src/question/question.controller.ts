@@ -31,4 +31,9 @@ export class QuestionController {
     return this.questionService.update(id, updateQuestionDto, currentUser);
   }
 
+  @Delete(':id')
+  delete(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+    return this.questionService.delete(id, currentUser);
+  }
+
 }

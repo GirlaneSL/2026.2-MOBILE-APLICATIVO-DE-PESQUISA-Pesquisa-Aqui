@@ -108,20 +108,44 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
     };
 
     const handleDeleteSection = async (sectionId: string) => {
-        if (sections.length === 1) return toast.error("A pesquisa deve conter pelo menos uma seção.");
+        const message = sections.length === 1
+            ? "Atenção: Esta é a única seção da pesquisa. Se você excluí-la, o questionário ficará vazio. Deseja continuar?"
+            : "Tem certeza que deseja excluir esta seção e todas as suas questões?";
 
-        if (confirm("Tem certeza que deseja excluir esta seção e todas as suas questões?")) {
-            try {
-                await deleteSectionApi(Number(sectionId));
-                setSections(prev => prev.filter(s => s.id !== sectionId).map((s, i) => ({ ...s, order: i + 1 })));
-                toast.success("Seção excluída com sucesso!");
-            } catch (e) {
-                toast.error("Erro ao excluir seção.");
-            }
+        if (!confirm(message)) return;
+
+        try {
+            await deleteSectionApi(Number(sectionId));
+            setSections(prev => prev.filter(s => s.id !== sectionId).map((s, i) => ({ ...s, order: i + 1 })));
+            toast.success("Seção excluída com sucesso!");
+        } catch (e: any) {
+            const backendMsg = e?.message || "";
+            // Verifica se o erro do back-end tem a ver com respostas enviadas
+            const isAnsweredError = backendMsg.includes("answers");
+
+            const errorMessage = isAnsweredError
+                ? "Não é possível excluir esta seção, pois ela contém questões que já foram respondidas."
+                : (backendMsg || "Erro ao excluir seção.");
+
+            toast.error(errorMessage, { duration: 6000 });
         }
     };
 
     // ================= QUESTÕES (Salva no Banco Imediatamente) =================
+
+    const handleTypeChange = async (sectionId: string, questionId: string, newType: FrontendQuestionType) => {
+        const section = sections.find(s => s.id === sectionId);
+        const question = section?.questions.find(q => q.id === questionId);
+
+        // Aviso explicativo quando o tipo de uma questão existente é alterado
+        if (question && question.type !== newType) {
+            const confirmed = confirm("Aviso: Mudar o tipo desta questão pode fazer com que configurações ou respostas anteriores sejam perdidas. Deseja continuar?");
+            if (!confirmed) return;
+        }
+
+        updateLocalQuestionState(sectionId, questionId, "type", newType);
+        await handleBlurQuestionField(sectionId, questionId, "type", newType);
+    };
 
     const handleBlurQuestionField = async (sectionId: string, questionId: string, field: string, value: any) => {
         if (questionId.length > 10 && questionId.includes("-")) return;
@@ -194,10 +218,8 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
     };
 
     const handleDeleteQuestion = async (sectionId: string, questionId: string) => {
-        const section = sections.find(s => s.id === sectionId);
-        if (section && section.questions.length === 1) {
-            return toast.error("A seção precisa ter pelo menos uma questão.");
-        }
+        // Removida a trava de bloqueio de última questão. 
+        // O usuário agora tem liberdade para gerenciar as questões como preferir.
 
         if (confirm("Deseja excluir esta questão?")) {
             try {
@@ -210,8 +232,16 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                     };
                 }));
                 toast.success("Questão excluída com sucesso!");
-            } catch (e) {
-                toast.error("Erro ao excluir questão.");
+            } catch (e: any) {
+                const backendMsg = e?.message || "";
+                // Verifica se o erro do back-end é o de questão já respondida
+                const isAnsweredError = backendMsg.includes("already has answers");
+
+                const errorMsg = isAnsweredError
+                    ? "Não é possível excluir esta questão, pois ela já foi respondida por participantes."
+                    : (backendMsg || "Erro ao excluir questão.");
+
+                toast.error(errorMsg, { duration: 6000 });
             }
         }
     };
@@ -311,10 +341,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                                             <Label className="text-xs">Tipo de Resposta</Label>
                                             <Select
                                                 value={q.type}
-                                                onValueChange={(val) => {
-                                                    updateLocalQuestionState(section.id, q.id, "type", val);
-                                                    handleBlurQuestionField(section.id, q.id, "type", val);
-                                                }}
+                                                onValueChange={(val) => handleTypeChange(section.id, q.id, val as FrontendQuestionType)}
                                             >
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>

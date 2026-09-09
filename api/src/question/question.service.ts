@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
 import { UpdateQuestionDto } from './dto/update-question.dto.js';
 import { PrismaService } from '../prisma.service.js';
@@ -45,5 +45,25 @@ export class QuestionService {
     await this.findOne(id, currentUser);
 
     return await this.prisma.client.orm.public.Question.where({ id }).update(updateQuestionDto);
+  }
+
+  async delete(id: number, currentUser: UserPayLoad) {
+    await this.findOne(id, currentUser);
+
+    try {
+      return await this.prisma.client.orm.public.Question.where({ id }).delete();
+    } catch (error: any) {
+      if (
+        error?.sqlState === '23503' ||
+        error?.code === '23503' ||
+        error?.message?.includes('answer_questionId_fkey')
+      ) {
+        throw new BadRequestException(
+          'This question cannot be deleted because it already has answers submitted by respondents.'
+        );
+      }
+
+      throw error;
+    }
   }
 }

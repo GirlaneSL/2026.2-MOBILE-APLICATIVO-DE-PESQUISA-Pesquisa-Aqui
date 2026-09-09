@@ -32,7 +32,7 @@ export class SectionController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.sectionService.remove(+id);
+  delete(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+    return this.sectionService.delete(id, currentUser);
   }
 }

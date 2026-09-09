@@ -71,10 +71,11 @@ export const updateSectionApi = async (id: number, payload: { title?: string; or
 }
 
 export const deleteSectionApi = async (id: number) => {
-    const response = await apiFetch(`/section/${id}`, {
-        method: 'DELETE', credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to delete section');
+    const response = await apiFetch(`/section/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || 'Failed to delete section');
+    }
     return response.json();
 }
 
@@ -103,10 +104,11 @@ export const updateQuestionApi = async (id: number, payload: any) => {
 }
 
 export const deleteQuestionApi = async (id: number) => {
-    const response = await apiFetch(`/question/${id}`, {
-        method: 'DELETE', credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to delete question');
+    const response = await apiFetch(`/question/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || 'Failed to delete question');
+    }
     return response.json();
 }
 

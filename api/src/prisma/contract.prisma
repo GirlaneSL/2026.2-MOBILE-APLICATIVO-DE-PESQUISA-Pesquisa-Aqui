@@ -91,6 +91,15 @@ model Question {
   order       Int
   sectionId   Int
   section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  answers Answer[]
   createdAt   TimestamptzString @default(now())
   updatedAt   temporal.updatedAtString()
+}
+
+model Answer {
+  id          Int      @id @default(autoincrement())
+  questionId  Int
+  question    Question @relation(fields: [questionId], references: [id])
+  value       String
+  createdAt   TimestamptzString @default(now())
 }

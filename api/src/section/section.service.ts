@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateSectionDto } from './dto/create-section.dto.js';
 import { UpdateSectionDto } from './dto/update-section.dto.js';
 import { PrismaService } from '../prisma.service.js';
@@ -43,7 +43,28 @@ export class SectionService {
     return await this.prisma.client.orm.public.Section.where({ id }).update(updateSectionDto);
   }
 
-  async remove(id: number) {
-    return `This action removes a #${id} section`;
+  async delete(id: number, currentUser: UserPayLoad) {
+    await this.findOne(id, currentUser);
+
+    const questions = await this.prisma.client.orm.public.Question.where({ sectionId: id }).all();
+    const questionIds = questions.map((q) => q.id);
+
+    if (questionIds.length > 0) {
+      for (const qId of questionIds) {
+        const answers = await this.prisma.client.orm.public.Answer.where({
+          questionId: qId,
+        }).all();
+
+        if (answers && answers.length > 0) {
+          throw new BadRequestException(
+            'This section cannot be deleted because it contains questions that already have answers submitted by respondents.'
+          );
+        }
+      }
+    }
+
+    await this.prisma.client.orm.public.Question.where({ sectionId: id }).delete();
+
+    return await this.prisma.client.orm.public.Section.where({ id }).delete();
   }
 }
