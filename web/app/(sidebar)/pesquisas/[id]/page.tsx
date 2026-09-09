@@ -99,7 +99,7 @@ export default function PesquisaDetalhePage() {
                 <div className="flex items-center gap-3">
                     <DialogLayout
                         dialogTrigger="Editar" dialogTitle="Editar Dados da Pesquisa" dialogDescription="Atualize os dados principais."
-                        dialogContent={<ModalEditarPesquisa research={research} onSuccess={() => toast.success('Pesquisa atualizada!')} />}
+                        dialogContent={<ModalEditarPesquisa isMontagem={false} research={research} onSuccess={() => toast.success('Pesquisa atualizada!')} />}
                     />
                     <div className="flex items-center gap-2 border-l pl-3">
                         <span className="text-xs text-muted-foreground">Situação:</span>

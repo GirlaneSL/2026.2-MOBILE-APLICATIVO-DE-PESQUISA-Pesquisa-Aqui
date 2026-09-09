@@ -130,7 +130,7 @@ export default function MontarPesquisaForm({ researchId, onSuccess }: MontarPesq
     };
 
     return (
-        <form onSubmit={handleSubmit} className="mx-auto space-y-6 max-h-[75vh] overflow-y-auto px-2 pb-6">
+        <form onSubmit={handleSubmit} className="mx-auto space-y-6 max-h-[75vh]  px-2 pb-6">
             
             {sections.map((section, sIndex) => (
                 <div key={section.id} className="border-2 border-primary/20 bg-muted/30 p-4 rounded-xl space-y-4 shadow-sm">

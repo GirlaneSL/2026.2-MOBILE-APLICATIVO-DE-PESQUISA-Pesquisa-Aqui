@@ -9,36 +9,46 @@ import MontarPesquisaForm from './MontarPesquisaForm';
 interface ModalEditarPesquisaProps {
     research: Research;
     onSuccess: (updated: Research) => void;
+    isMontagem?: boolean;
+    isPesquisa?: boolean;
+
 }
 
-export default function ModalEditarPesquisa({ research, onSuccess }: ModalEditarPesquisaProps) {
+
+export default function ModalEditarPesquisa({ research, onSuccess, isMontagem = true, isPesquisa = true }: ModalEditarPesquisaProps) {
     return (
-        <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-fit gap-2 grid-cols-2">
-                <TabsTrigger value="info">
-                    Dados da Pesquisa
-                </TabsTrigger>
-                <TabsTrigger value="questions">
-                    Montagem da Pesquisa
-                </TabsTrigger>
+        <Tabs defaultValue="info" className="w-full ">
+            <TabsList className="grid w-fit gap-2 grid-cols-2 ">
+                {isPesquisa && (
+                    <TabsTrigger value="info">
+                        Dados da Pesquisa
+                    </TabsTrigger>
+                )}
+                {isMontagem && (
+                    <TabsTrigger value="questions">
+                        Montagem da Pesquisa
+                    </TabsTrigger>
+                )}
             </TabsList>
-
-            <TabsContent value="info" className="mt-4">
-                <FormEditarDadosPesquisa
-                    research={research}
-                    onSuccess={onSuccess}
-                />
-            </TabsContent>
-
-            <TabsContent value="questions" className="mt-4">
-                <div className="w-full">
-                    <MontarPesquisaForm
-                        researchId={research.id}
-                        initialQuestions={research.questions}
-                        onSuccess={() => toast.success('Perguntas salvas com sucesso!')}
+            {isPesquisa && (
+                <TabsContent value="info" className="mt-4">
+                    <FormEditarDadosPesquisa
+                        research={research}
+                        onSuccess={onSuccess}
                     />
-                </div>
-            </TabsContent>
+                </TabsContent>
+            )}
+            {isMontagem && (
+                <TabsContent value="questions" className="mt-4">
+                    <div className="w-full ">
+                        <MontarPesquisaForm
+                            researchId={research.id}
+                            initialQuestions={research.questions}
+                            onSuccess={() => toast.success('Perguntas salvas com sucesso!')}
+                        />
+                    </div>
+                </TabsContent>
+            )}
         </Tabs>
     );
 }
