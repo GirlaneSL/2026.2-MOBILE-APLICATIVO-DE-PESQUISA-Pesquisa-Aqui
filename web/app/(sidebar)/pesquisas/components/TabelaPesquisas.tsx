@@ -148,8 +148,14 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
         ),
         createdAt: item.createdAt ? new Date(item.createdAt).toLocaleDateString('pt-BR') : '-',
         status: (
-            <Badge variant={item.status === 'ACTIVE' || !item.status ? 'default' : 'outline'}>
-                {item.status === 'ACTIVE' ? 'Ativa' : item.status || 'Ativa'}
+            <Badge variant={item.status === 'IN_FIELD' || !item.status ? 'default' : 'outline'}>
+                {item.status === 'IN_FIELD' ? 'EM CAMPO'
+                    :
+                    item.status === 'DRAFT' ? 'RASCUNHO'
+                        :
+                        item.status === 'PUBLISHED' ? 'PUBLICADA'
+                            :
+                            item.status || 'ENCERRADA'}
             </Badge>
         ),
         ...(allowActions && {

@@ -80,7 +80,9 @@ export default function EmpresaPage() {
                                     }`}
                             />
                             <span className="font-semibold text-sm">
-                                {company.situation ?? 'NÃO DEFINIDO'}
+                                {company.situation === 'ACTIVE' ?
+                                    'ATIVA' : 'INATIVA'
+                                }
                             </span>
                         </div>
                     }
