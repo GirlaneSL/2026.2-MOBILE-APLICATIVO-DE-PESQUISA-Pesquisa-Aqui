@@ -345,7 +345,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                     </div>
                 </div>
             ))}
-            <div className="h-20 w-full flex-shrink-0" aria-hidden="true" />
+            <div className="h-100 w-full flex-shrink-0" aria-hidden="true" />
         </div>
     );
 }
