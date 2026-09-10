@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export enum ResearchStatus {
     DRAFT = 'DRAFT',
@@ -31,6 +31,10 @@ export class CreateResearchDto {
     @IsNotEmpty()
     @IsString()
     targetAudience: string;
+
+    @IsOptional()
+    @IsEnum(ResearchStatus)
+    status?: ResearchStatus
 
     @IsOptional()
     @IsInt()

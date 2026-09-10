@@ -115,3 +115,17 @@ export const deleteResearch = async (id: number): Promise<void> => {
         throw new Error(errorBody?.message || 'Failed to delete research');
     }
 }
+
+export const publishResearch = async (id: number): Promise<Research> => {
+    const response = await apiFetch(`/research/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'PUBLISHED' }),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || 'Failed to publish research');
+    }
+
+    return response.json();
+};

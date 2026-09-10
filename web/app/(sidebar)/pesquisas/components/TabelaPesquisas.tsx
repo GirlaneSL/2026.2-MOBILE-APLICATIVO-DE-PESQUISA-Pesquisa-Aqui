@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Tabela from '../../(home)/components/tabela';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { deleteResearch, getResearches } from '@/lib/research';
+import { deleteResearch, getResearches, publishResearch } from '@/lib/research';
 import DialogLayout from '@/components/ui/dialogLayout';
 import ModalEditarPesquisa from './ModalEditarPesquisa';
 import toast from 'react-hot-toast';
@@ -30,6 +30,7 @@ interface FormattedResearch {
     status: ReactNode;
     createdAt?: string;
     edit?: ReactNode;
+    publish?: ReactNode;
     delete?: ReactNode;
 }
 
@@ -44,6 +45,7 @@ const allResearchColumns: readonly Column<FormattedResearch>[] = [
     { key: 'createdAt', label: 'Criada em' },
     { key: 'status', label: 'Situação' },
     { key: 'edit', label: 'Editar' },
+    { key: 'publish', label: 'Publicar' },
     { key: 'delete', label: 'Excluir' },
 ];
 
@@ -61,7 +63,7 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
 
     const columns = allowActions
         ? allResearchColumns
-        : allResearchColumns.filter((col) => col.key !== 'edit' && col.key !== 'delete');
+        : allResearchColumns.filter((col) => col.key !== 'edit' && col.key !== 'delete' && col.key !== 'publish');
 
     useEffect(() => {
         setLoading(true);
@@ -136,6 +138,61 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
         );
     };
 
+    const executePublish = async (id: string, toastId: string) => {
+        toast.dismiss(toastId);
+        setActionError(null);
+
+        try {
+            const updated = await publishResearch(+id);
+            setRawResearches((prev) =>
+                prev.map((r) => (String(r.id) === id ? { ...r, status: updated.status } : r))
+            );
+            toast.success('Pesquisa publicada com sucesso!');
+
+            if (onChange) {
+                onChange();
+            }
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : 'Erro ao publicar pesquisa';
+            setActionError(errorMsg);
+            toast.error(errorMsg);
+        }
+    };
+
+    const handlePublish = (id: string) => {
+        const item = rawResearches.find((r) => String(r.id) === id);
+
+        toast(
+            (t) => (
+                <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium">
+                        Publicar &quot;{item?.title ?? id}&quot;? Depois de publicada, a pesquisa não pode mais ser excluída.
+                    </span>
+                    <div className="flex justify-end gap-2 pt-1">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toast.dismiss(t.id)}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => executePublish(id, t.id)}
+                        >
+                            Publicar
+                        </Button>
+                    </div>
+                </div>
+            ),
+            {
+                duration: 6000,
+                id: `publish-${id}`,
+            }
+        );
+    };
+
     const researches: FormattedResearch[] = rawResearches.map((item) => ({
         id: String(item.id),
         title: (
@@ -157,6 +214,7 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
                             :
                             item.status || 'ENCERRADA'}
             </Badge>
+
         ),
         ...(allowActions && {
             edit: (
@@ -172,6 +230,19 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
                         />
                     }
                 />
+            ),
+            publish: (
+                <div>
+                    <Button
+                        variant="default"
+                        size="sm"
+                        disabled={item.status !== 'DRAFT'}
+                        className="disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => handlePublish(String(item.id))}
+                    >
+                        Publicar
+                    </Button>
+                </div>
             ),
             delete: (
                 <div>

@@ -1,8 +1,27 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service.js';
-import { CreateResearchDto } from './dto/create-research.dto.js';
+import { CreateResearchDto, ResearchStatus } from './dto/create-research.dto.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { UpdateResearchDto } from './dto/update-research.dto.js';
+
+const ALLOWED_TRANSITIONS: Record<ResearchStatus, ResearchStatus[]> = {
+    [ResearchStatus.DRAFT]: [ResearchStatus.PUBLISHED],
+    [ResearchStatus.PUBLISHED]: [ResearchStatus.IN_FIELD],
+    [ResearchStatus.IN_FIELD]: [ResearchStatus.CLOSED],
+    [ResearchStatus.CLOSED]: [], // estado final, sem saída
+};
+
+function assertValidTransition(current: ResearchStatus, next: ResearchStatus) {
+    if (current === next) return;
+
+    const allowed = ALLOWED_TRANSITIONS[current];
+
+    if (!allowed.includes(next)) {
+        throw new BadRequestException(
+            `Invalid status transition: cannot move from ${current} to ${next}`
+        );
+    }
+}
 
 @Injectable()
 export class ResearchService {
@@ -57,10 +76,14 @@ export class ResearchService {
     async update(id: number, updateResearchDto: UpdateResearchDto, currentUser: UserPayLoad) {
         const research = await this.findOne(id, currentUser)
 
-        if (research.status === 'CLOSED') throw new BadRequestException('Closed research cannot be modified');
+        if (research.status === ResearchStatus.CLOSED) throw new BadRequestException('Closed research cannot be modified');
 
         if (updateResearchDto.startDate && updateResearchDto.endDate) {
             if (new Date(updateResearchDto.endDate) < new Date(updateResearchDto.startDate)) throw new BadRequestException('The end date cannot be earlier than the start date');
+        }
+
+        if (updateResearchDto.status) {
+            assertValidTransition(research.status as ResearchStatus, updateResearchDto.status);
         }
 
         return await this.prisma.client.orm.public.Research.where({ id }).update(updateResearchDto);
@@ -69,7 +92,7 @@ export class ResearchService {
     async delete(id: number, currentUser: UserPayLoad) {
         const research = await this.findOne(id, currentUser)
 
-        if (research.status !== 'DRAFT') throw new BadRequestException('Only draft research can be deleted.');
+        if (research.status !== ResearchStatus.DRAFT) throw new BadRequestException('Only draft research can be deleted.');
 
         return this.prisma.client.orm.public.Research.where({ id }).delete()
     }
