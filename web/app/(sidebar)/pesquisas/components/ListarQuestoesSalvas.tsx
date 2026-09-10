@@ -246,7 +246,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         }
     };
 
-    if (isLoading) return <div className="p-8 text-center flex justify-center"><Spinner /></div>;
+    if (isLoading) return <div className="p-8 text-center flex gap-2 justify-center text-muted-foreground"><Spinner /> Carregando Questões...</div>;
 
     if (sections.length === 0) {
         return (

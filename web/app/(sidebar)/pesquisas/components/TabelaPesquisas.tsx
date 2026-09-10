@@ -10,6 +10,7 @@ import DialogLayout from '@/components/ui/dialogLayout';
 import ModalEditarPesquisa from './ModalEditarPesquisa';
 import toast from 'react-hot-toast';
 import { isSessionExpiredError } from '@/lib/apiFetcher';
+import { Spinner } from '@/components/ui/spinner';
 
 export interface Research {
     id: number | string;
@@ -272,7 +273,7 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
             {actionError && <p className="text-sm text-red-500">{actionError}</p>}
 
             {loading ? (
-                <p className="text-sm text-muted-foreground">Carregando pesquisas...</p>
+                <p className="text-sm text-muted-foreground flex gap-2"><Spinner></Spinner>Carregando pesquisas...</p>
             ) : researches.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhuma pesquisa encontrada.</p>
             ) : (
