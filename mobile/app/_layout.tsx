@@ -5,7 +5,7 @@ export default function TabLayout() {
     return (
         <SafeAreaProvider>
             {/* posso mudar a cor da barra que fica na camera do celular */}
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#447762' }}>
                 <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
 
                     <Tabs.Screen
