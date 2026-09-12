@@ -7,6 +7,11 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
     return (
         <View style={styles.container}>
             {state.routes.map((route, index) => {
+                // 1. Ignora a renderização se a rota for de componentes ou interna
+                if (route.name.includes('_components')) {
+                    return null;
+                }
+
                 const { options } = descriptors[route.key];
                 const label = options.title !== undefined ? options.title : route.name;
                 const isFocused = state.index === index;
@@ -18,7 +23,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                     }
                 };
 
-                const color = isFocused ? '#007AFF' : '#8E8E93';
+                const color = isFocused ? '#447762' : '#8E8E93';
 
                 // 2. Define qual componente de ícone será renderizado
                 let IconComponent = Home; // Padrão
@@ -37,7 +42,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
                 return (
                     <TouchableOpacity key={index} onPress={onPress} style={styles.tabButton}>
-                        {/* 3. Renderiza o ícone passando o tamanho e a cor (que muda se estiver focado) */}
+                        {/* 3. Renderiza o ícone passando o tamanho e a cor */}
                         <IconComponent color={color} size={24} />
 
                         <Text style={[styles.label, { color }]}>{label as string}</Text>
@@ -50,10 +55,25 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
 const styles = StyleSheet.create({
     container: {
-        flexDirection: 'row', backgroundColor: '#FFFFFF', height: 65,
-        borderTopWidth: 1, borderColor: '#E5E5E5', elevation: 8,
-        shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: -3 },
+        flexDirection: 'row',
+        backgroundColor: '#FFFFFF',
+        height: 65,
+        borderTopWidth: 1,
+        borderColor: '#E5E5E5',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: -3 },
     },
-    tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    label: { fontSize: 12, marginTop: 4, fontWeight: '500' },
+    tabButton: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    label: {
+        fontSize: 12,
+        marginTop: 4,
+        fontWeight: '500'
+    },
 });
