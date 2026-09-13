@@ -42,4 +42,15 @@ export class AuthService {
             access_token: await this.jwtService.signAsync(payload),
         }
     }
+
+    async getMe(payload: any) {
+        if (!payload.companyId) return payload;
+
+        const company = await this.prisma.client.orm.public.Company.where({ id: payload.companyId }).first();
+
+        return {
+            ...payload,
+            companyName: company?.legalName ?? null,
+        };
+    }
 }

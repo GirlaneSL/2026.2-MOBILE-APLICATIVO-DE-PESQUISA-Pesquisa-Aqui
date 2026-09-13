@@ -24,7 +24,7 @@ export class AuthController {
             path: '/',
         })
 
-        return { message: 'Logged in successfully' };
+        return { access_token, message: 'Logged in successfully' };
     }
 
     @Post('logout')
@@ -37,7 +37,7 @@ export class AuthController {
     @UseGuards(AuthGuard)
     @Get('me')
     async me(@Req() req: Request) {
-        return req['user'];
+        return this.authService.getMe(req['user']);
     }
 
 }
