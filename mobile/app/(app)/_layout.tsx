@@ -2,6 +2,7 @@ import { CustomTabBar } from '@/components/CustomTabBar';
 import { Tabs } from 'expo-router';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/context/AuthContext';
+import { OfflineBanner } from '@/components/OfflineBanner';
 
 export default function TabLayout() {
     return (
@@ -9,6 +10,7 @@ export default function TabLayout() {
             <SafeAreaProvider>
                 {/* posso mudar a cor da barra que fica na camera do celular */}
                 <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+                    <OfflineBanner />
                     <Tabs tabBar={(props: any) => <CustomTabBar {...props} />}>
                         <Tabs.Screen
                             name="(home)/index"
@@ -29,7 +31,6 @@ export default function TabLayout() {
                             name="usuario/index"
                             options={{ title: 'Perfil', headerShown: false }}
                         />
-
                     </Tabs>
                 </SafeAreaView>
             </SafeAreaProvider>
