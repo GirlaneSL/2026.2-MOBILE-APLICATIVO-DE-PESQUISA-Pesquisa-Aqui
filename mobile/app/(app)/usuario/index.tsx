@@ -1,24 +1,34 @@
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Bolt, Building2, LogOut, Smartphone, Target, UserCircle2 } from 'lucide-react-native';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MenuCard from './_components/MenuCard';
+import { useAuth } from '@/context/AuthContext';
 
-const USUARIO = {
-    nome: 'Kaiky Lindo',
-    email: 'kaiky.lindo@empresa-alpha.com.br',
-    empresa: 'Empresa Alpha',
-    metaMensal: '150',
-    coletasRealizadas: '124',
+const PROFILE_LABELS: Record<string, string> = {
+    SUPERADMINISTRATOR: 'Superadministrador',
+    ADMINISTRATOR: 'Administrador',
+    RESEARCHER: 'Pesquisador',
 };
 
 export default function Usuario() {
+    const router = useRouter();
+    const { user, logout } = useAuth();
+
     const handleLogout = () => {
         Alert.alert(
             "Sair da conta",
-            "Tem certeza que deseja sair? Certifique-se de sincronizar todas as suas coletas antes de deslogar para não perder dados.",
+            "Ao sair, os dados salvos neste aparelho serão apagados. Deseja continuar?",
             [
                 { text: "Cancelar", style: "cancel" },
-                { text: "Sair", style: "destructive", onPress: () => console.log("Deslogando...") }
+                {
+                    text: "Sair",
+                    style: "destructive",
+                    onPress: async () => {
+                        await logout();
+                        router.replace('/login');
+                    },
+                },
             ]
         );
     };
@@ -30,16 +40,18 @@ export default function Usuario() {
                 <View style={styles.avatarContainer}>
                     <UserCircle2 size={80} color="#124B52" strokeWidth={1.5} />
                 </View>
-                <Text style={styles.name}>{USUARIO.nome}</Text>
-                <Text style={styles.email}>{USUARIO.email}</Text>
+                <Text style={styles.name}>{user?.name ?? 'Usuário'}</Text>
+                <Text style={styles.email}>{user?.sub ?? ''}</Text>
 
-                <View style={styles.companyBadge}>
-                    <Building2 size={16} color="#447762" />
-                    <Text style={styles.companyText}>{USUARIO.empresa}</Text>
-                </View>
+                {user?.companyName && (
+                    <View style={styles.companyBadge}>
+                        <Building2 size={16} color="#447762" />
+                        <Text style={styles.companyText}>{user.companyName}</Text>
+                    </View>
+                )}
             </View>
 
-            {/* Resumo de Metas */}
+            {/* Perfil de acesso */}
             <LinearGradient
                 colors={['#B66D561A', '#FFFFFF1A', '#124B521A']}
                 locations={[0, 0.5, 1]}
@@ -48,15 +60,10 @@ export default function Usuario() {
                 style={styles.statsContainer}
             >
                 <View style={styles.statBox}>
-                    <Text style={styles.statNumber}>{USUARIO.coletasRealizadas}</Text>
-                    <Text style={styles.statLabel}>Coletas no Mês</Text>
-                </View>
-
-                <View style={styles.statDivider} />
-
-                <View style={styles.statBox}>
-                    <Text style={styles.statNumber}>{USUARIO.metaMensal}</Text>
-                    <Text style={styles.statLabel}>Meta Mensal</Text>
+                    <Text style={styles.statNumber}>
+                        {user?.profile ? PROFILE_LABELS[user.profile] ?? user.profile : '-'}
+                    </Text>
+                    <Text style={styles.statLabel}>Perfil de Acesso</Text>
                 </View>
 
                 <Bolt size={10} style={styles.bolt1} />
@@ -65,19 +72,15 @@ export default function Usuario() {
                 <Bolt size={10} style={styles.bolt4} />
             </LinearGradient>
 
-            {/* Menu de Opções usando o novo componente */}
+            {/* Menu de Opções */}
             <View style={styles.menuContainer}>
-                <MenuCard
-                    label="Histórico de Metas"
-                    icon={<Target size={22} color="#447762" />}
-                />
                 <MenuCard
                     label="Sobre o Aplicativo (v1.0.2)"
                     icon={<Smartphone size={22} color="#447762" />}
                 />
             </View>
 
-            {/* Botão de Sair (Mantido fora do padrão para alertar perigo) */}
+            {/* Botão de Sair */}
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                 <LogOut size={22} color="#dc2626" />
                 <Text style={styles.logoutText}>Sair da Conta</Text>
@@ -106,7 +109,6 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: '#00000015', position: 'relative',
     },
     statBox: { flex: 1, alignItems: 'center', zIndex: 1 },
-    statDivider: { width: 1, backgroundColor: '#e4e4e7', zIndex: 1 },
     statNumber: { fontSize: 22, fontWeight: 'bold', color: '#447762', marginBottom: 4 },
     statLabel: { fontSize: 13, color: '#71717a', fontWeight: '500' },
     menuContainer: { marginTop: 24, paddingHorizontal: 20 },

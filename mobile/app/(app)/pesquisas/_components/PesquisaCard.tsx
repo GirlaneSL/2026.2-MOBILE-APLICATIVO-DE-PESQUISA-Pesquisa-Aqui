@@ -1,18 +1,16 @@
+// mobile/app/(app)/pesquisas/_components/PesquisaCard.tsx
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { Download, PlayCircle, FileText, Bolt } from 'lucide-react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { FileText, Bolt } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface PesquisaCardProps {
     titulo: string;
-    empresa: string;
-    questoes: number;
     status: string;
+    targetAudience: string;
 }
 
-export default function PesquisaCard({ titulo, empresa, questoes, status }: PesquisaCardProps) {
-    const isBaixada = status === 'baixada';
-
+export default function PesquisaCard({ titulo, status, targetAudience }: PesquisaCardProps) {
     return (
         <LinearGradient
             colors={['#B66D561A', '#FFFFFF1A', '#124B521A']}
@@ -26,21 +24,9 @@ export default function PesquisaCard({ titulo, empresa, questoes, status }: Pesq
                     <FileText size={20} color="#447762" />
                     <Text style={styles.title}>{titulo}</Text>
                 </View>
-                <Text style={styles.company}>{empresa}</Text>
-                <Text style={styles.infoText}>{questoes} questões configuradas</Text>
+                <Text style={styles.company}>{status}</Text>
+                <Text style={styles.infoText}>Público-alvo: {targetAudience}</Text>
             </View>
-
-            {isBaixada ? (
-                <TouchableOpacity style={[styles.button, styles.buttonStart]}>
-                    <PlayCircle size={20} color="#fff" />
-                    <Text style={styles.buttonTextStart}>Iniciar Coleta</Text>
-                </TouchableOpacity>
-            ) : (
-                <TouchableOpacity style={[styles.button, styles.buttonDownload]}>
-                    <Download size={20} color="#B66D56" />
-                    <Text style={styles.buttonTextDownload}>Baixar Pesquisa</Text>
-                </TouchableOpacity>
-            )}
 
             <Bolt size={10} style={styles.bolt1} />
             <Bolt size={10} style={styles.bolt2} />
@@ -60,8 +46,7 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     cardHeader: {
-        marginBottom: 16,
-        zIndex: 1, // Garante que o texto fique acima dos ícones de fundo
+        zIndex: 1,
     },
     titleContainer: {
         flexDirection: 'row',
@@ -84,33 +69,6 @@ const styles = StyleSheet.create({
     infoText: {
         fontSize: 14,
         color: '#71717a',
-    },
-    button: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 14,
-        borderRadius: 8,
-        gap: 8,
-        zIndex: 1, // Garante que o clique funcione sobre o fundo
-    },
-    buttonStart: {
-        backgroundColor: '#447762',
-    },
-    buttonDownload: {
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: '#B66D56',
-    },
-    buttonTextStart: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    buttonTextDownload: {
-        color: '#B66D56',
-        fontWeight: 'bold',
-        fontSize: 16,
     },
     bolt1: {
         position: 'absolute',
