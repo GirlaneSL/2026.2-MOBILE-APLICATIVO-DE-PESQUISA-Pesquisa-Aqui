@@ -1,4 +1,3 @@
-// mobile/app/(app)/pesquisas/index.tsx
 import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, RefreshControl } from 'react-native';
 import { useFocusEffect } from 'expo-router';
@@ -28,8 +27,13 @@ export default function Pesquisas() {
         useCallback(() => {
             const run = async () => {
                 if (isOnline) {
-                    await syncResearches();
+                    try {
+                        await syncResearches();
+                    } catch (error) {
+                        console.log('Falha ao sincronizar pesquisas na entrada da tela:', error);
+                    }
                 }
+
                 await loadFromCache();
             };
             run();
@@ -39,7 +43,11 @@ export default function Pesquisas() {
     const handleRefresh = async () => {
         setRefreshing(true);
         if (isOnline) {
-            await syncResearches();
+            try {
+                await syncResearches();
+            } catch (error) {
+                console.log('Falha ao sincronizar pesquisas no refresh:', error);
+            }
         }
         await loadFromCache();
         setRefreshing(false);
