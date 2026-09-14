@@ -49,6 +49,13 @@ const allAdminColumns: readonly Column<Admin>[] = [
     { key: 'delete', label: 'Excluir' },
 ];
 
+// Dicionário para traduzir os perfis no front-end
+const PROFILE_TRANSLATION: Record<string, string> = {
+    SUPERADMINISTRATOR: 'Super Administrador',
+    ADMINISTRATOR: 'Administrador',
+    RESEARCHER: 'Pesquisador'
+};
+
 interface ExibirEditarProps {
     allowActions?: boolean;
 }
@@ -180,7 +187,8 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
         id: String(item.id),
         name: item.name,
         username: item.username,
-        profile: item.profile,
+        // Traduzindo o perfil usando o dicionário
+        profile: PROFILE_TRANSLATION[item.profile] ?? item.profile,
         ...(allowActions && {
             edit: (
                 <Button variant="outline" size="sm" onClick={() => handleEdit(String(item.id), 'admin')}>
