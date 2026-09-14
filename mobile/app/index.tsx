@@ -18,7 +18,11 @@ export default function Splash() {
             if (isAuthenticated) {
                 if (isOnline) {
                     setStatusText('Atualizando dados...');
-                    await syncResearches(); // se falhar, segue com o que já tem salvo
+                    try {
+                        await syncResearches();
+                    } catch (error) {
+                        console.log('Falha na sincronização inicial, seguindo offline.', error);
+                    }
                 } else {
                     setStatusText('Sem conexão — usando dados salvos');
                 }

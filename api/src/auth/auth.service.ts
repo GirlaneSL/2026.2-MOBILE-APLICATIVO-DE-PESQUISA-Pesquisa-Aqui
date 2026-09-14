@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
 import { UserService } from '../user/user.service.js';
@@ -21,6 +21,10 @@ export class AuthService {
 
         if (!user || (!await bcrypt.compare(loginDto.password, user.passwordHash))) {
             throw new UnauthorizedException('Invalid user or password');
+        }
+
+        if (loginDto.platform === 'mobile' && user.profile !== 'RESEARCHER') {
+            throw new ForbiddenException('Acesso negado: Aplicativo exclusivo para pesquisadores.');
         }
 
         if (user.companyId) {

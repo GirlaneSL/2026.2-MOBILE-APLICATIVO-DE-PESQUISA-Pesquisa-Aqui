@@ -14,11 +14,17 @@ export async function login(username: string, password: string): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+            username,
+            password,
+            platform: 'mobile'
+        }),
     });
 
     if (!response.ok) {
-        throw new Error('Usuário ou senha inválidos.');
+        const errorData = await response.json().catch(() => ({}));
+
+        throw new Error(errorData.message || 'Usuário ou senha inválidos.');
     }
 
     const data = await response.json();
