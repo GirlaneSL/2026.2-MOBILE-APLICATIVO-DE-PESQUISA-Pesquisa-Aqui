@@ -1,7 +1,10 @@
 import { router } from "expo-router";
 import { clearToken, getToken } from "./secureStorage";
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
+const rawBaseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Remove espaços, aspas acidentais e barras no final
+export const API_BASE_URL = rawBaseUrl.trim().replace(/^["']|["']$/g, '').replace(/\/+$/, '');
 
 export class ApiError extends Error {
     status: number;
@@ -14,7 +17,11 @@ export class ApiError extends Error {
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
     const token = await getToken();
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    // Garante que o path comece com uma barra única e sem espaços
+    const cleanPath = path.trim().startsWith('/') ? path.trim() : `/${path.trim()}`;
+    const url = `${API_BASE_URL}${cleanPath}`;
+
+    const response = await fetch(url, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
