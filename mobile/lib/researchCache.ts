@@ -31,8 +31,12 @@ export async function syncResearches(): Promise<void> {
 }
 
 export async function getCachedResearches(): Promise<Research[]> {
-    const raw = await AsyncStorage.getItem(RESEARCHES_CACHE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const json = await AsyncStorage.getItem(RESEARCHES_CACHE_KEY);
+    if (!json) return [];
+
+    const list: Research[] = JSON.parse(json);
+
+    return list.filter((item) => item.status !== 'DRAFT');
 }
 
 export async function clearResearchesCache(): Promise<void> {

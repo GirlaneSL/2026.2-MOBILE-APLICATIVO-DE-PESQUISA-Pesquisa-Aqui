@@ -11,9 +11,6 @@ const STATUS_LABELS: Record<string, string> = {
     CLOSED: 'Encerrada',
 };
 
-// Status autorizados para exibição ao pesquisador
-const ALLOWED_STATUSES = ['PUBLISHED', 'IN_FIELD', 'CLOSED'];
-
 export default function Pesquisas() {
     const [pesquisas, setPesquisas] = useState<Research[]>([]);
     const [refreshing, setRefreshing] = useState(false);
@@ -21,13 +18,11 @@ export default function Pesquisas() {
 
     const loadFromCache = useCallback(async () => {
         const cached = await getCachedResearches();
-
-        const filtered = cached.filter((item) => ALLOWED_STATUSES.includes(item.status));
-
-        setPesquisas(filtered);
+        // Garante que nenhum rascunho seja renderizado
+        const visibleResearches = cached.filter((item) => item.status !== 'DRAFT');
+        setPesquisas(visibleResearches);
     }, []);
 
-    // Toda vez que a aba ganha foco: sincroniza se online, depois recarrega do cache
     useFocusEffect(
         useCallback(() => {
             const run = async () => {
@@ -35,10 +30,9 @@ export default function Pesquisas() {
                     try {
                         await syncResearches();
                     } catch (error) {
-                        console.log('Falha ao sincronizar pesquisas na entrada da tela:', error);
+                        console.log('Falha ao sincronizar pesquisas:', error);
                     }
                 }
-
                 await loadFromCache();
             };
             run();
@@ -72,7 +66,7 @@ export default function Pesquisas() {
                     <Text style={styles.emptyText}>
                         {isOnline
                             ? 'Nenhuma pesquisa disponível no momento.'
-                            : 'Nenhuma pesquisa salva neste aparelho ainda. Conecte-se à internet ao menos uma vez para baixar as pesquisas.'}
+                            : 'Nenhuma pesquisa salva neste aparelho ainda.'}
                     </Text>
                 </View>
             ) : (
