@@ -6,11 +6,13 @@ import { getCachedResearches, syncResearches, type Research } from '@/lib/resear
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 const STATUS_LABELS: Record<string, string> = {
-    DRAFT: 'Rascunho',
     PUBLISHED: 'Publicada',
     IN_FIELD: 'Em Campo',
     CLOSED: 'Encerrada',
 };
+
+// Status autorizados para exibição ao pesquisador
+const ALLOWED_STATUSES = ['PUBLISHED', 'IN_FIELD', 'CLOSED'];
 
 export default function Pesquisas() {
     const [pesquisas, setPesquisas] = useState<Research[]>([]);
@@ -19,7 +21,10 @@ export default function Pesquisas() {
 
     const loadFromCache = useCallback(async () => {
         const cached = await getCachedResearches();
-        setPesquisas(cached);
+
+        const filtered = cached.filter((item) => ALLOWED_STATUSES.includes(item.status));
+
+        setPesquisas(filtered);
     }, []);
 
     // Toda vez que a aba ganha foco: sincroniza se online, depois recarrega do cache
