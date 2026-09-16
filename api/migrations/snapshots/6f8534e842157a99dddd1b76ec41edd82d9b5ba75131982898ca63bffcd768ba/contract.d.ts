@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'8d756b762586b1d4ad84375ecd99e47cfbbe758fde791b4d24712dcf3fbd9bc1'>;
+  StorageHashBase<'6f8534e842157a99dddd1b76ec41edd82d9b5ba75131982898ca63bffcd768ba'>;
 export type ExecutionHash =
   ExecutionHashBase<'89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09'>;
 export type ProfileHash =
@@ -277,15 +277,6 @@ export type FieldOutputTypes = {
       readonly sectionId: CodecTypes['pg/int4@1']['output'];
       readonly minSelections: CodecTypes['pg/int4@1']['output'] | null;
       readonly maxSelections: CodecTypes['pg/int4@1']['output'] | null;
-      readonly minValue: CodecTypes['pg/int4@1']['output'] | null;
-      readonly maxValue: CodecTypes['pg/int4@1']['output'] | null;
-      readonly minDate: CodecTypes['pg/text@1']['output'] | null;
-      readonly maxDate: CodecTypes['pg/text@1']['output'] | null;
-      readonly maxLength: CodecTypes['pg/int4@1']['output'] | null;
-      readonly scaleLeftLabel: CodecTypes['pg/text@1']['output'] | null;
-      readonly scaleRightLabel: CodecTypes['pg/text@1']['output'] | null;
-      readonly maxFiles: CodecTypes['pg/int4@1']['output'] | null;
-      readonly maxDuration: CodecTypes['pg/int4@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -366,15 +357,6 @@ export type FieldInputTypes = {
       readonly sectionId: CodecTypes['pg/int4@1']['input'];
       readonly minSelections: CodecTypes['pg/int4@1']['input'] | null;
       readonly maxSelections: CodecTypes['pg/int4@1']['input'] | null;
-      readonly minValue: CodecTypes['pg/int4@1']['input'] | null;
-      readonly maxValue: CodecTypes['pg/int4@1']['input'] | null;
-      readonly minDate: CodecTypes['pg/text@1']['input'] | null;
-      readonly maxDate: CodecTypes['pg/text@1']['input'] | null;
-      readonly maxLength: CodecTypes['pg/int4@1']['input'] | null;
-      readonly scaleLeftLabel: CodecTypes['pg/text@1']['input'] | null;
-      readonly scaleRightLabel: CodecTypes['pg/text@1']['input'] | null;
-      readonly maxFiles: CodecTypes['pg/int4@1']['input'] | null;
-      readonly maxDuration: CodecTypes['pg/int4@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -438,18 +420,9 @@ export type StorageColumnTypes = {
       readonly helpText: CodecTypes['pg/text@1']['output'] | null;
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly isRequired: CodecTypes['pg/bool@1']['output'];
-      readonly maxDate: CodecTypes['pg/text@1']['output'] | null;
-      readonly maxDuration: CodecTypes['pg/int4@1']['output'] | null;
-      readonly maxFiles: CodecTypes['pg/int4@1']['output'] | null;
-      readonly maxLength: CodecTypes['pg/int4@1']['output'] | null;
       readonly maxSelections: CodecTypes['pg/int4@1']['output'] | null;
-      readonly maxValue: CodecTypes['pg/int4@1']['output'] | null;
-      readonly minDate: CodecTypes['pg/text@1']['output'] | null;
       readonly minSelections: CodecTypes['pg/int4@1']['output'] | null;
-      readonly minValue: CodecTypes['pg/int4@1']['output'] | null;
       readonly order: CodecTypes['pg/int4@1']['output'];
-      readonly scaleLeftLabel: CodecTypes['pg/text@1']['output'] | null;
-      readonly scaleRightLabel: CodecTypes['pg/text@1']['output'] | null;
       readonly sectionId: CodecTypes['pg/int4@1']['output'];
       readonly statement: CodecTypes['pg/text@1']['output'];
       readonly type:
@@ -527,18 +500,9 @@ export type StorageColumnInputTypes = {
       readonly helpText: CodecTypes['pg/text@1']['input'] | null;
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly isRequired: CodecTypes['pg/bool@1']['input'];
-      readonly maxDate: CodecTypes['pg/text@1']['input'] | null;
-      readonly maxDuration: CodecTypes['pg/int4@1']['input'] | null;
-      readonly maxFiles: CodecTypes['pg/int4@1']['input'] | null;
-      readonly maxLength: CodecTypes['pg/int4@1']['input'] | null;
       readonly maxSelections: CodecTypes['pg/int4@1']['input'] | null;
-      readonly maxValue: CodecTypes['pg/int4@1']['input'] | null;
-      readonly minDate: CodecTypes['pg/text@1']['input'] | null;
       readonly minSelections: CodecTypes['pg/int4@1']['input'] | null;
-      readonly minValue: CodecTypes['pg/int4@1']['input'] | null;
       readonly order: CodecTypes['pg/int4@1']['input'];
-      readonly scaleLeftLabel: CodecTypes['pg/text@1']['input'] | null;
-      readonly scaleRightLabel: CodecTypes['pg/text@1']['input'] | null;
       readonly sectionId: CodecTypes['pg/int4@1']['input'];
       readonly statement: CodecTypes['pg/text@1']['input'];
       readonly type:
@@ -764,51 +728,6 @@ type ContractBase = Omit<
                   readonly nullable: true;
                 };
                 readonly maxSelections: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: true;
-                };
-                readonly minValue: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: true;
-                };
-                readonly maxValue: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: true;
-                };
-                readonly minDate: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
-                };
-                readonly maxDate: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
-                };
-                readonly maxLength: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: true;
-                };
-                readonly scaleLeftLabel: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
-                };
-                readonly scaleRightLabel: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
-                };
-                readonly maxFiles: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: true;
-                };
-                readonly maxDuration: {
                   readonly nativeType: 'int4';
                   readonly codecId: 'pg/int4@1';
                   readonly nullable: true;
@@ -1329,42 +1248,6 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
-              readonly minValue: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly maxValue: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly minDate: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly maxDate: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly maxLength: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly scaleLeftLabel: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly scaleRightLabel: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly maxFiles: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly maxDuration: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -1428,15 +1311,6 @@ type ContractBase = Omit<
                 readonly sectionId: { readonly column: 'sectionId' };
                 readonly minSelections: { readonly column: 'minSelections' };
                 readonly maxSelections: { readonly column: 'maxSelections' };
-                readonly minValue: { readonly column: 'minValue' };
-                readonly maxValue: { readonly column: 'maxValue' };
-                readonly minDate: { readonly column: 'minDate' };
-                readonly maxDate: { readonly column: 'maxDate' };
-                readonly maxLength: { readonly column: 'maxLength' };
-                readonly scaleLeftLabel: { readonly column: 'scaleLeftLabel' };
-                readonly scaleRightLabel: { readonly column: 'scaleRightLabel' };
-                readonly maxFiles: { readonly column: 'maxFiles' };
-                readonly maxDuration: { readonly column: 'maxDuration' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };

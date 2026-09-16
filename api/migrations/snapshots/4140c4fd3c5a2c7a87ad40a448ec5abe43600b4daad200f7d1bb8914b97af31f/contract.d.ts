@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'8d756b762586b1d4ad84375ecd99e47cfbbe758fde791b4d24712dcf3fbd9bc1'>;
+  StorageHashBase<'4140c4fd3c5a2c7a87ad40a448ec5abe43600b4daad200f7d1bb8914b97af31f'>;
 export type ExecutionHash =
   ExecutionHashBase<'89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09'>;
 export type ProfileHash =
@@ -284,8 +284,6 @@ export type FieldOutputTypes = {
       readonly maxLength: CodecTypes['pg/int4@1']['output'] | null;
       readonly scaleLeftLabel: CodecTypes['pg/text@1']['output'] | null;
       readonly scaleRightLabel: CodecTypes['pg/text@1']['output'] | null;
-      readonly maxFiles: CodecTypes['pg/int4@1']['output'] | null;
-      readonly maxDuration: CodecTypes['pg/int4@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -373,8 +371,6 @@ export type FieldInputTypes = {
       readonly maxLength: CodecTypes['pg/int4@1']['input'] | null;
       readonly scaleLeftLabel: CodecTypes['pg/text@1']['input'] | null;
       readonly scaleRightLabel: CodecTypes['pg/text@1']['input'] | null;
-      readonly maxFiles: CodecTypes['pg/int4@1']['input'] | null;
-      readonly maxDuration: CodecTypes['pg/int4@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -439,8 +435,6 @@ export type StorageColumnTypes = {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly isRequired: CodecTypes['pg/bool@1']['output'];
       readonly maxDate: CodecTypes['pg/text@1']['output'] | null;
-      readonly maxDuration: CodecTypes['pg/int4@1']['output'] | null;
-      readonly maxFiles: CodecTypes['pg/int4@1']['output'] | null;
       readonly maxLength: CodecTypes['pg/int4@1']['output'] | null;
       readonly maxSelections: CodecTypes['pg/int4@1']['output'] | null;
       readonly maxValue: CodecTypes['pg/int4@1']['output'] | null;
@@ -528,8 +522,6 @@ export type StorageColumnInputTypes = {
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly isRequired: CodecTypes['pg/bool@1']['input'];
       readonly maxDate: CodecTypes['pg/text@1']['input'] | null;
-      readonly maxDuration: CodecTypes['pg/int4@1']['input'] | null;
-      readonly maxFiles: CodecTypes['pg/int4@1']['input'] | null;
       readonly maxLength: CodecTypes['pg/int4@1']['input'] | null;
       readonly maxSelections: CodecTypes['pg/int4@1']['input'] | null;
       readonly maxValue: CodecTypes['pg/int4@1']['input'] | null;
@@ -801,16 +793,6 @@ type ContractBase = Omit<
                 readonly scaleRightLabel: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
-                };
-                readonly maxFiles: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: true;
-                };
-                readonly maxDuration: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
                   readonly nullable: true;
                 };
                 readonly createdAt: {
@@ -1357,14 +1339,6 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
-              readonly maxFiles: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly maxDuration: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -1435,8 +1409,6 @@ type ContractBase = Omit<
                 readonly maxLength: { readonly column: 'maxLength' };
                 readonly scaleLeftLabel: { readonly column: 'scaleLeftLabel' };
                 readonly scaleRightLabel: { readonly column: 'scaleRightLabel' };
-                readonly maxFiles: { readonly column: 'maxFiles' };
-                readonly maxDuration: { readonly column: 'maxDuration' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };

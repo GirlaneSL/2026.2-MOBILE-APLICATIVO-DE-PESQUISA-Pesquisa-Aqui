@@ -16,6 +16,10 @@
       "model": "Question",
       "namespace": "public"
     },
+    "questionOption": {
+      "model": "QuestionOption",
+      "namespace": "public"
+    },
     "research": {
       "model": "Research",
       "namespace": "public"
@@ -329,10 +333,87 @@
                   "kind": "scalar"
                 }
               },
+              "maxDate": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "maxDuration": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "maxFiles": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "maxLength": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "maxSelections": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "maxValue": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "minDate": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "minSelections": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "minValue": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "order": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "scaleLeftLabel": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "scaleRightLabel": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
@@ -387,6 +468,21 @@
                   "namespace": "public"
                 }
               },
+              "options": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "questionId"
+                  ]
+                },
+                "to": {
+                  "model": "QuestionOption",
+                  "namespace": "public"
+                }
+              },
               "section": {
                 "cardinality": "N:1",
                 "on": {
@@ -417,8 +513,41 @@
                 "isRequired": {
                   "column": "isRequired"
                 },
+                "maxDate": {
+                  "column": "maxDate"
+                },
+                "maxDuration": {
+                  "column": "maxDuration"
+                },
+                "maxFiles": {
+                  "column": "maxFiles"
+                },
+                "maxLength": {
+                  "column": "maxLength"
+                },
+                "maxSelections": {
+                  "column": "maxSelections"
+                },
+                "maxValue": {
+                  "column": "maxValue"
+                },
+                "minDate": {
+                  "column": "minDate"
+                },
+                "minSelections": {
+                  "column": "minSelections"
+                },
+                "minValue": {
+                  "column": "minValue"
+                },
                 "order": {
                   "column": "order"
+                },
+                "scaleLeftLabel": {
+                  "column": "scaleLeftLabel"
+                },
+                "scaleRightLabel": {
+                  "column": "scaleRightLabel"
                 },
                 "sectionId": {
                   "column": "sectionId"
@@ -435,6 +564,73 @@
               },
               "namespaceId": "public",
               "table": "question"
+            }
+          },
+          "QuestionOption": {
+            "fields": {
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "order": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "questionId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "text": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "question": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "questionId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Question",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "id": {
+                  "column": "id"
+                },
+                "order": {
+                  "column": "order"
+                },
+                "questionId": {
+                  "column": "questionId"
+                },
+                "text": {
+                  "column": "text"
+                }
+              },
+              "namespaceId": "public",
+              "table": "questionOption"
             }
           },
           "Research": {
@@ -993,10 +1189,65 @@
                   "nativeType": "bool",
                   "nullable": false
                 },
+                "maxDate": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "maxDuration": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "maxFiles": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "maxLength": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "maxSelections": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "maxValue": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "minDate": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "minSelections": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "minValue": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
                 "order": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
                   "nullable": false
+                },
+                "scaleLeftLabel": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "scaleRightLabel": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "sectionId": {
                   "codecId": "pg/int4@1",
@@ -1051,6 +1302,69 @@
                   ],
                   "name": "question_sectionId_idx_5d1ea56b",
                   "prefix": "question_sectionId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "questionOption": {
+              "columns": {
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "order": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "questionId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "text": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "questionId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "questionOption"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "question"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "questionId"
+                  ],
+                  "name": "questionOption_questionId_idx_fdb42076",
+                  "prefix": "questionOption_questionId_idx",
                   "unique": false
                 }
               ],
@@ -1418,7 +1732,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "dd9e874663a000d92c8c315b857a72f4a2070fef1ce8879547761d041a0ef05e"
+    "storageHash": "8d756b762586b1d4ad84375ecd99e47cfbbe758fde791b4d24712dcf3fbd9bc1"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",

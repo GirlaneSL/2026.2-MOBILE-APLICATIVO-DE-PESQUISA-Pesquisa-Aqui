@@ -3,7 +3,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import FormEditarDadosPesquisa from './FormEditarDadosPesquisa';
-import ListarQuestoesSalvas from './ListarQuestoesSalvas';
+import ListarQuestoesSalvas from './ListarQuestoesSalvas/ListarQuestoesSalvas';
 import { Research } from './TabelaPesquisas';
 import { Bolt } from 'lucide-react';
 
