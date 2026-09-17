@@ -97,4 +97,50 @@ export class ResearchService {
         return this.prisma.client.orm.public.Research.where({ id }).delete()
     }
 
+    // Retorna o pacote completo da pesquisa para o app móvel
+    async downloadPackage(researchId: number, deviceId: string) {
+        const research = await this.prisma.client.orm.public.Research
+            .where({ id: researchId })
+            .first();
+
+        if (!research) {
+            throw new NotFoundException('Pesquisa não encontrada.');
+        }
+
+        // Busca seções relacionadas
+        const sections = await this.prisma.client.orm.public.Section
+            .where({ researchId: research.id })
+            .all();
+
+        const sectionsWithDetails = await Promise.all(
+            sections.map(async (section) => {
+                const questions = await this.prisma.client.orm.public.Question
+                    .where({ sectionId: section.id })
+                    .all();
+
+                const questionsWithDetails = await Promise.all(
+                    questions.map(async (question) => {
+                        const options = await this.prisma.client.orm.public.QuestionOption
+                            .where({ questionId: question.id })
+                            .all();
+                        return { ...question, options };
+                    })
+                );
+
+                return { ...section, questions: questionsWithDetails };
+            })
+        );
+
+        // Registra ou contabiliza a cópia para o dispositivo
+        await this.prisma.client.orm.public.ResearchDownload.create({
+            researchId: research.id,
+            deviceId: deviceId,
+        });
+
+        // Retorna o pacote completo estruturado
+        return {
+            ...research,
+            sections: sectionsWithDetails,
+        };
+    }
 }

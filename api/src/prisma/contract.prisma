@@ -123,3 +123,11 @@ model Answer {
   value       String
   createdAt   TimestamptzString @default(now())
 }
+
+model ResearchDownload {
+  id         Int      @id @default(autoincrement())
+  researchId Int
+  research   Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  deviceId   String
+  createdAt  TimestamptzString @default(now())
+}
