@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
 import { UserService } from '../user/user.service.js';
@@ -23,6 +23,10 @@ export class AuthService {
             throw new UnauthorizedException('Invalid user or password');
         }
 
+        if (loginDto.platform === 'mobile' && user.profile !== 'RESEARCHER') {
+            throw new ForbiddenException('Acesso negado: Aplicativo exclusivo para pesquisadores.');
+        }
+
         if (user.companyId) {
             const company = await this.prisma.client.orm.public.Company.where({ id: user.companyId }).first();
 
@@ -41,5 +45,16 @@ export class AuthService {
         return {
             access_token: await this.jwtService.signAsync(payload),
         }
+    }
+
+    async getMe(payload: any) {
+        if (!payload.companyId) return payload;
+
+        const company = await this.prisma.client.orm.public.Company.where({ id: payload.companyId }).first();
+
+        return {
+            ...payload,
+            companyName: company?.legalName ?? null,
+        };
     }
 }
