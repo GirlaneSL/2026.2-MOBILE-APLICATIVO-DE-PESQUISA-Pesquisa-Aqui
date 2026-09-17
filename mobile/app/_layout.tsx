@@ -1,38 +1,43 @@
-import { CustomTabBar } from '@/components/CustomTabBar';
-import { Tabs } from 'expo-router';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { AuthProvider } from '@/context/AuthContext';
-import { OfflineBanner } from '@/components/OfflineBanner';
+import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { Stack } from 'expo-router';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-export default function TabLayout() {
+function RootLayoutNav() {
+    const { isAuthenticated, isLoading } = useAuth();
+
+    if (isLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+                <ActivityIndicator size="large" color="#447762" />
+            </View>
+        );
+    }
+
+    // Se NÃO estiver logado, retorna apenas as telas públicas
+    if (!isAuthenticated) {
+        return (
+            <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="login" />
+            </Stack>
+        );
+    }
+
+    // Se ESTIVER logado, retorna apenas o grupo protegido com as abas
+    return (
+        <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(app)" options={{ gestureEnabled: false }} />
+        </Stack>
+    );
+}
+
+export default function RootLayout() {
     return (
         <AuthProvider>
             <SafeAreaProvider>
-                {/* posso mudar a cor da barra que fica na camera do celular */}
-                <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
-                    <OfflineBanner />
-                    <Tabs tabBar={(props: any) => <CustomTabBar {...props} />}>
-                        <Tabs.Screen
-                            name="(home)/index"
-                            options={{ title: 'Home', headerShown: false }}
-                        />
-
-                        <Tabs.Screen
-                            name="pesquisas/index"
-                            options={{ title: 'Pesquisas', headerShown: false }}
-                        />
-
-                        <Tabs.Screen
-                            name="sincronizacao/index"
-                            options={{ title: 'Sinc', headerShown: false }}
-                        />
-
-                        <Tabs.Screen
-                            name="usuario/index"
-                            options={{ title: 'Perfil', headerShown: false }}
-                        />
-                    </Tabs>
-                </SafeAreaView>
+                <RootLayoutNav />
             </SafeAreaProvider>
         </AuthProvider>
     );
