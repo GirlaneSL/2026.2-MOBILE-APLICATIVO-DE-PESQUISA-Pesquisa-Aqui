@@ -38,4 +38,48 @@ export class CreateQuestionDto {
     @IsNumber()
     @IsNotEmpty()
     sectionId: number;
+
+    @IsOptional()
+    @IsNumber()
+    minSelections?: number;
+
+    @IsOptional()
+    @IsNumber()
+    maxSelections?: number;
+
+    @IsOptional()
+    @IsNumber()
+    minValue?: number;
+
+    @IsOptional()
+    @IsNumber()
+    maxValue?: number;
+
+    @IsOptional()
+    @IsString()
+    minDate?: string;
+
+    @IsOptional()
+    @IsString()
+    maxDate?: string;
+
+    @IsOptional()
+    @IsNumber()
+    maxLength?: number;
+
+    @IsOptional()
+    @IsString()
+    scaleLeftLabel?: string;
+
+    @IsOptional()
+    @IsString()
+    scaleRightLabel?: string;
+
+    @IsOptional()
+    @IsNumber()
+    maxFiles?: number;
+
+    @IsOptional()
+    @IsNumber()
+    maxDuration?: number;
 }

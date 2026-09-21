@@ -83,17 +83,37 @@ model Section {
 }
 
 model Question {
-  id          Int          @id @default(autoincrement())
-  statement   String
-  type        QuestionType
-  helpText    String?
-  isRequired  Boolean      @default(false)
+  id              Int              @id @default(autoincrement())
+  statement       String
+  type            QuestionType
+  helpText        String?
+  isRequired      Boolean          @default(false)
+  order           Int
+  sectionId       Int
+  minSelections   Int?
+  maxSelections   Int?
+  minValue        Int?
+  maxValue        Int?
+  minDate         String?
+  maxDate         String?
+  maxLength       Int?
+  scaleLeftLabel  String?
+  scaleRightLabel String?
+  maxFiles        Int?
+  maxDuration     Int?
+  section         Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  options         QuestionOption[]
+  answers         Answer[]
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+}
+
+model QuestionOption {
+  id          Int      @id @default(autoincrement())
+  text        String
   order       Int
-  sectionId   Int
-  section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  answers Answer[]
-  createdAt   TimestamptzString @default(now())
-  updatedAt   temporal.updatedAtString()
+  questionId  Int
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
 model Answer {

@@ -36,4 +36,24 @@ export class QuestionController {
     return this.questionService.delete(id, currentUser);
   }
 
+  @Post(':id/option')
+  createOption(@Param('id') id: string, @Body() body: { text: string; order: number }) {
+    return this.questionService.createOption(+id, body.text, body.order);
+  }
+
+  @Get(':id/options')
+  getOptions(@Param('id') id: string) {
+    return this.questionService.getOptions(+id);
+  }
+
+  @Patch('option/:id')
+  updateOption(@Param('id') id: string, @Body() body: { text?: string; order?: number }) {
+    return this.questionService.updateOption(+id, body.text, body.order);
+  }
+
+  @Delete('option/:id')
+  deleteOption(@Param('id') id: string) {
+    return this.questionService.deleteOption(+id);
+  }
+
 }

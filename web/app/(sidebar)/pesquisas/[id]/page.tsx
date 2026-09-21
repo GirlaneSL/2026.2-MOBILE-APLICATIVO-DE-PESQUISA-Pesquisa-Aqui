@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import InfoCard from "../../(home)/components/infoCards";
 import ModalEditarPesquisa from "../components/ModalEditarPesquisa";
-import ListarQuestoesSalvas from "../components/ListarQuestoesSalvas";
+import ListarQuestoesSalvas from "../components/ListarQuestoesSalvas/ListarQuestoesSalvas";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
     DRAFT: { label: "Rascunho", variant: "outline" },

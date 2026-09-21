@@ -40,7 +40,7 @@ export default function MenuCard({ label, icon, onPress }: MenuCardProps) {
 const styles = StyleSheet.create({
     card: {
         borderRadius: 12,
-        padding: 16,
+        padding: 13,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: '#00000015',
