@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Trash2, ArrowUp, ArrowDown, Plus } from "lucide-react";
 import { FormSection } from "@/lib/questionnaire";
 import { QuestionCard, QuestionActions, OptionActions } from "./QuestionCard";
+import type { RulesContext } from "./RegrasExibicao";
 
 interface SectionCardProps {
     section: FormSection;
@@ -14,9 +15,10 @@ interface SectionCardProps {
     onAddQuestion: (sectionId: string) => void;
     qActions: QuestionActions;
     optActions: OptionActions;
+    rulesCtx: RulesContext;
 }
 
-export function SectionCard({ section, sIndex, totalSections, onBlurTitle, onMove, onDelete, onAddQuestion, qActions, optActions }: SectionCardProps) {
+export function SectionCard({ section, sIndex, totalSections, onBlurTitle, onMove, onDelete, onAddQuestion, qActions, optActions, rulesCtx }: SectionCardProps) {
     return (
         <div className="border-2 border-primary/20 bg-muted/20 p-4 rounded-xl space-y-4">
             <div className="flex items-center justify-between gap-2 border-b pb-3">
@@ -45,6 +47,7 @@ export function SectionCard({ section, sIndex, totalSections, onBlurTitle, onMov
                         totalQuestions={section.questions.length}
                         qActions={qActions}
                         optActions={optActions}
+                        rulesCtx={rulesCtx}
                     />
                 ))}
 

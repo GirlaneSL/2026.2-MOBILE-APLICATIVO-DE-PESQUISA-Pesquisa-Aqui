@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { apiFetch } from "./api";
+import type { ResearchPackage } from "./displayRules";
 
 const RESEARCHES_CACHE_KEY = 'cached_researches';
 const DEVICE_ID_KEY = 'device_id';
@@ -78,6 +79,17 @@ export async function downloadResearchPackage(id: number): Promise<void> {
     const list = await getCachedResearches();
     const updatedList = list.map(r => r.id === id ? { ...r, isDownloaded: true } : r);
     await AsyncStorage.setItem(RESEARCHES_CACHE_KEY, JSON.stringify(updatedList));
+}
+
+// Pacote baixado no aparelho (seções, questões, opções e regras de exibição).
+// Pacotes baixados antes das regras existirem não têm `displayRules`: viram lista vazia
+// até a pesquisa ser baixada de novo.
+export async function getCachedResearchPackage(id: number): Promise<ResearchPackage | null> {
+    const json = await AsyncStorage.getItem(`research_pkg_${id}`);
+    if (!json) return null;
+
+    const pkg = JSON.parse(json);
+    return { ...pkg, displayRules: pkg.displayRules ?? [] };
 }
 
 export async function clearResearchesCache(): Promise<void> {

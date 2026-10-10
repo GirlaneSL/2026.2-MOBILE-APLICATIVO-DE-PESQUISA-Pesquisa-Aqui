@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Pa
 import { QuestionService } from './question.service.js';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
 import { UpdateQuestionDto } from './dto/update-question.dto.js';
+import { ReorderQuestionsDto } from './dto/reorder-questions.dto.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { AuthGuard } from '../auth/auth.guard.js';
@@ -16,6 +17,12 @@ export class QuestionController {
     return this.questionService.create(createQuestionDto, currentUser);
   }
 
+  // Declarada antes das rotas com :id para nunca ser confundida com um id.
+  @Post('reorder')
+  reorder(@Body() reorderDto: ReorderQuestionsDto, @CurrentUser() currentUser: UserPayLoad) {
+    return this.questionService.reorder(reorderDto, currentUser);
+  }
+
   @Get()
   findAll(@Query('sectionId', ParseIntPipe) sectionId: number, @CurrentUser() currentUser: UserPayLoad) {
     return this.questionService.findAll(sectionId, currentUser);
@@ -27,13 +34,13 @@ export class QuestionController {
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateQuestionDto: UpdateQuestionDto, @CurrentUser() currentUser: UserPayLoad) {
-    return this.questionService.update(id, updateQuestionDto, currentUser);
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateQuestionDto: UpdateQuestionDto, @CurrentUser() currentUser: UserPayLoad, @Query('force') force?: string) {
+    return this.questionService.update(id, updateQuestionDto, currentUser, force === 'true');
   }
 
   @Delete(':id')
-  delete(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
-    return this.questionService.delete(id, currentUser);
+  delete(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad, @Query('force') force?: string) {
+    return this.questionService.delete(id, currentUser, force === 'true');
   }
 
   @Post(':id/option')
@@ -52,8 +59,8 @@ export class QuestionController {
   }
 
   @Delete('option/:id')
-  deleteOption(@Param('id') id: string) {
-    return this.questionService.deleteOption(+id);
+  deleteOption(@Param('id') id: string, @Query('force') force?: string) {
+    return this.questionService.deleteOption(+id, force === 'true');
   }
 
 }

@@ -3,9 +3,10 @@ import { SectionService } from './section.service.js';
 import { SectionController } from './section.controller.js';
 import { PrismaModule } from '../prisma.module.js';
 import { ResearchService } from '../research/research.service.js';
+import { QuestionRuleModule } from '../question-rule/question-rule.module.js';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, QuestionRuleModule],
   controllers: [SectionController],
   providers: [SectionService, ResearchService],
   exports: [SectionService],

@@ -67,6 +67,7 @@ model Research {
   companyId      Int
   company        Company  @relation(fields: [companyId], references: [id])
   sections       Section[]
+  questionRules  QuestionRule[]
   createdAt      TimestamptzString @default(now())
   updatedAt      temporal.updatedAtString()
 }
@@ -104,6 +105,8 @@ model Question {
   section         Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   options         QuestionOption[]
   answers         Answer[]
+  sourceRules     QuestionRule[]   @relation("RuleSource")
+  targetRules     QuestionRule[]   @relation("RuleTarget")
   createdAt       TimestamptzString @default(now())
   updatedAt       temporal.updatedAtString()
 }
@@ -130,4 +133,16 @@ model ResearchDownload {
   research   Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
   deviceId   String
   createdAt  TimestamptzString @default(now())
+}
+
+model QuestionRule {
+  id               Int      @id @default(autoincrement())
+  researchId       Int
+  research         Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  sourceQuestionId Int
+  sourceQuestion   Question @relation("RuleSource", fields: [sourceQuestionId], references: [id], onDelete: Cascade)
+  triggerValue     String
+  targetQuestionId Int
+  targetQuestion   Question @relation("RuleTarget", fields: [targetQuestionId], references: [id], onDelete: Cascade)
+  createdAt        TimestamptzString @default(now())
 }

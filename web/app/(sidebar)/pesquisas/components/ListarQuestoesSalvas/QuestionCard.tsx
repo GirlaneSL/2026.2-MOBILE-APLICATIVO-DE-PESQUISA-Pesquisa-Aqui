@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, ArrowUp, ArrowDown, Plus } from "lucide-react";
+import { Trash2, ArrowUp, ArrowDown, Plus, GitBranch } from "lucide-react";
 import { FormQuestion, FrontendQuestionType } from "@/lib/questionnaire";
+import { RegrasExibicao, type RulesContext } from "./RegrasExibicao";
 
 export const QUESTION_TYPES_LABEL: { type: FrontendQuestionType; label: string }[] = [
     { type: "text", label: "Texto Livre" }, { type: "number", label: "Numérica" },
@@ -41,14 +42,22 @@ interface QuestionCardProps {
     totalQuestions: number;
     qActions: QuestionActions;
     optActions: OptionActions;
+    rulesCtx: RulesContext;
 }
 
-export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, optActions }: QuestionCardProps) {
+export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, optActions, rulesCtx }: QuestionCardProps) {
+    const affectedByRules = rulesCtx.rules.filter((r) => r.targetQuestionId === Number(q.id)).length;
+
     return (
         <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between py-2.5 border-b">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">Q{q.order}</span>
+                    {affectedByRules > 0 && (
+                        <span className="flex items-center gap-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded text-xs font-medium" title="Esta questão só aparece quando uma regra de exibição é atendida">
+                            <GitBranch className="w-3 h-3" /> Condicional ({affectedByRules})
+                        </span>
+                    )}
                 </CardTitle>
                 <div className="flex items-center gap-1">
                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => qActions.moveQuestion(sectionId, qIndex, "up")} disabled={qIndex === 0}><ArrowUp className="w-3.5 h-3.5" /></Button>
@@ -239,6 +248,9 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
                         </Button>
                     </div>
                 )}
+
+                {/* Regras de exibição: quando esta questão aparece para o entrevistado */}
+                <RegrasExibicao question={q} ctx={rulesCtx} />
             </CardContent>
         </Card>
     );

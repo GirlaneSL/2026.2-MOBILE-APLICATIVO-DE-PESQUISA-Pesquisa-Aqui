@@ -107,22 +107,22 @@ export class ResearchService {
             throw new NotFoundException('Pesquisa não encontrada.');
         }
 
-        // Busca seções relacionadas
-        const sections = await this.prisma.client.orm.public.Section
+        // Busca seções relacionadas (já na ordem do questionário)
+        const sections = (await this.prisma.client.orm.public.Section
             .where({ researchId: research.id })
-            .all();
+            .all()).sort((a, b) => a.order - b.order);
 
         const sectionsWithDetails = await Promise.all(
             sections.map(async (section) => {
-                const questions = await this.prisma.client.orm.public.Question
+                const questions = (await this.prisma.client.orm.public.Question
                     .where({ sectionId: section.id })
-                    .all();
+                    .all()).sort((a, b) => a.order - b.order);
 
                 const questionsWithDetails = await Promise.all(
                     questions.map(async (question) => {
-                        const options = await this.prisma.client.orm.public.QuestionOption
+                        const options = (await this.prisma.client.orm.public.QuestionOption
                             .where({ questionId: question.id })
-                            .all();
+                            .all()).sort((a, b) => a.order - b.order);
                         return { ...question, options };
                     })
                 );
@@ -130,6 +130,18 @@ export class ResearchService {
                 return { ...section, questions: questionsWithDetails };
             })
         );
+
+        // Regras de exibição: a questão afetada só aparece quando a questão de origem
+        // recebe a resposta triggerValue (ver QuestionRule no contrato).
+        const rules = await this.prisma.client.orm.public.QuestionRule
+            .where({ researchId: research.id })
+            .all();
+        const displayRules = rules.map((rule) => ({
+            id: rule.id,
+            sourceQuestionId: rule.sourceQuestionId,
+            triggerValue: rule.triggerValue,
+            targetQuestionId: rule.targetQuestionId,
+        }));
 
         // Registra ou contabiliza a cópia para o dispositivo
         await this.prisma.client.orm.public.ResearchDownload.create({
@@ -141,6 +153,7 @@ export class ResearchService {
         return {
             ...research,
             sections: sectionsWithDetails,
+            displayRules,
         };
     }
 }

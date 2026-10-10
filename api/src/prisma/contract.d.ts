@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'a7d28695f19fb0e88f7146b5beb72a02821c3f35357e567d1fb6f2caaafdd312'>;
+  StorageHashBase<'ebf51a6c34bc5e2c150cc0999f5f725b9541e88f09a9d87f9ff1530ec3bbe554'>;
 export type ExecutionHash =
   ExecutionHashBase<'89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09'>;
 export type ProfileHash =
@@ -295,6 +295,14 @@ export type FieldOutputTypes = {
       readonly order: CodecTypes['pg/int4@1']['output'];
       readonly questionId: CodecTypes['pg/int4@1']['output'];
     };
+    readonly QuestionRule: {
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly researchId: CodecTypes['pg/int4@1']['output'];
+      readonly sourceQuestionId: CodecTypes['pg/int4@1']['output'];
+      readonly triggerValue: CodecTypes['pg/text@1']['output'];
+      readonly targetQuestionId: CodecTypes['pg/int4@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
     readonly Research: {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly title: CodecTypes['pg/text@1']['output'];
@@ -389,6 +397,14 @@ export type FieldInputTypes = {
       readonly text: CodecTypes['pg/text@1']['input'];
       readonly order: CodecTypes['pg/int4@1']['input'];
       readonly questionId: CodecTypes['pg/int4@1']['input'];
+    };
+    readonly QuestionRule: {
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly researchId: CodecTypes['pg/int4@1']['input'];
+      readonly sourceQuestionId: CodecTypes['pg/int4@1']['input'];
+      readonly triggerValue: CodecTypes['pg/text@1']['input'];
+      readonly targetQuestionId: CodecTypes['pg/int4@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly Research: {
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -485,6 +501,14 @@ export type StorageColumnTypes = {
       readonly questionId: CodecTypes['pg/int4@1']['output'];
       readonly text: CodecTypes['pg/text@1']['output'];
     };
+    readonly questionRule: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly researchId: CodecTypes['pg/int4@1']['output'];
+      readonly sourceQuestionId: CodecTypes['pg/int4@1']['output'];
+      readonly targetQuestionId: CodecTypes['pg/int4@1']['output'];
+      readonly triggerValue: CodecTypes['pg/text@1']['output'];
+    };
     readonly research: {
       readonly companyId: CodecTypes['pg/int4@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -579,6 +603,14 @@ export type StorageColumnInputTypes = {
       readonly order: CodecTypes['pg/int4@1']['input'];
       readonly questionId: CodecTypes['pg/int4@1']['input'];
       readonly text: CodecTypes['pg/text@1']['input'];
+    };
+    readonly questionRule: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly researchId: CodecTypes['pg/int4@1']['input'];
+      readonly sourceQuestionId: CodecTypes['pg/int4@1']['input'];
+      readonly targetQuestionId: CodecTypes['pg/int4@1']['input'];
+      readonly triggerValue: CodecTypes['pg/text@1']['input'];
     };
     readonly research: {
       readonly companyId: CodecTypes['pg/int4@1']['input'];
@@ -917,6 +949,105 @@ type ContractBase = Omit<
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'questionOption';
                     readonly columns: readonly ['questionId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'question';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly questionRule: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'autoincrement()';
+                  };
+                };
+                readonly researchId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly sourceQuestionId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly triggerValue: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly targetQuestionId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'questionRule_researchId_idx_36f1b4c8';
+                  readonly prefix: 'questionRule_researchId_idx';
+                  readonly columns: readonly ['researchId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'questionRule_sourceQuestionId_idx_cdb26c3f';
+                  readonly prefix: 'questionRule_sourceQuestionId_idx';
+                  readonly columns: readonly ['sourceQuestionId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'questionRule_targetQuestionId_idx_99c9d653';
+                  readonly prefix: 'questionRule_targetQuestionId_idx';
+                  readonly columns: readonly ['targetQuestionId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'questionRule';
+                    readonly columns: readonly ['researchId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'research';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'questionRule';
+                    readonly columns: readonly ['sourceQuestionId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'question';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'questionRule';
+                    readonly columns: readonly ['targetQuestionId'];
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
@@ -1265,6 +1396,10 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ResearchDownload';
     };
+    readonly questionRule: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'QuestionRule';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -1495,6 +1630,28 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
+              readonly sourceRules: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuestionRule';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['sourceQuestionId'];
+                };
+              };
+              readonly targetRules: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuestionRule';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['targetQuestionId'];
+                };
+              };
             };
             readonly storage: {
               readonly table: 'question';
@@ -1563,6 +1720,84 @@ type ContractBase = Omit<
                 readonly text: { readonly column: 'text' };
                 readonly order: { readonly column: 'order' };
                 readonly questionId: { readonly column: 'questionId' };
+              };
+            };
+          };
+          readonly QuestionRule: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly researchId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly sourceQuestionId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly triggerValue: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly targetQuestionId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly research: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Research';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['researchId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly sourceQuestion: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Question';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['sourceQuestionId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly targetQuestion: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Question';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['targetQuestionId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'questionRule';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly researchId: { readonly column: 'researchId' };
+                readonly sourceQuestionId: { readonly column: 'sourceQuestionId' };
+                readonly triggerValue: { readonly column: 'triggerValue' };
+                readonly targetQuestionId: { readonly column: 'targetQuestionId' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -1635,6 +1870,17 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['companyId'];
                   readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly questionRules: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuestionRule';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['researchId'];
                 };
               };
               readonly sections: {

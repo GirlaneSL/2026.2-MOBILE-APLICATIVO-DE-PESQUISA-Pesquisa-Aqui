@@ -13,6 +13,13 @@ import {
     createOptionApi,
     updateOptionApi,
     deleteOptionApi,
+    getRulesApi,
+    createRuleApi,
+    deleteRuleApi,
+    reorderSectionsApi,
+    reorderQuestionsApi,
+    withRulesConfirm,
+    type DisplayRule,
     type FormSection,
     type FormQuestion,
     type FrontendQuestionType
@@ -24,9 +31,11 @@ import toast from "react-hot-toast";
 
 import { SectionCard } from "./SectionCard";
 import { QuestionActions, OptionActions, hasOptions } from "./QuestionCard";
+import type { RulesContext } from "./RegrasExibicao";
 
 export default function ListarQuestoesSalvas({ researchId }: { researchId: string | number }) {
     const [sections, setSections] = useState<FormSection[]>([]);
+    const [rules, setRules] = useState<DisplayRule[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -34,11 +43,21 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
             .then(setSections)
             .catch(() => toast.error("Erro ao carregar questionário salvo."))
             .finally(() => setIsLoading(false));
+        getRulesApi(Number(researchId)).then(setRules).catch(() => setRules([]));
     }, [researchId]);
 
     const reload = async () => {
         const reloaded = await loadQuestionnaire(Number(researchId));
         setSections(reloaded);
+    };
+
+    // Recarrega as regras depois de qualquer mudança que possa apagá-las (exclusão, reordenação, troca de tipo).
+    const reloadRules = async () => {
+        try {
+            setRules(await getRulesApi(Number(researchId)));
+        } catch {
+            /* mantém as regras atuais na tela */
+        }
     };
 
     // ================= SEÇÕES =================
@@ -82,13 +101,13 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         updated.splice(targetIndex, 0, moved);
 
         try {
-            for (let i = 0; i < updated.length; i++) {
-                const sec = updated[i];
-                if (!(sec.id.length > 10 && sec.id.includes("-"))) {
-                    await updateSectionApi(Number(sec.id), { order: i + 1 });
-                }
-            }
+            // Uma chamada só: a API valida as regras de exibição no resultado final.
+            const orderedIds = updated.map((sec) => Number(sec.id));
+            const result = await withRulesConfirm((force) => reorderSectionsApi(Number(researchId), orderedIds, force));
+            if (result.cancelled) return;
+
             setSections(updated.map((s, i) => ({ ...s, order: i + 1 })));
+            await reloadRules();
             toast.success("Ordem da seção atualizada!", { id: "sec-order", duration: 1500 });
         } catch (e) {
             toast.error("Erro ao reordenar seções.");
@@ -103,8 +122,11 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         if (!confirm(message)) return;
 
         try {
-            await deleteSectionApi(Number(sectionId));
+            const result = await withRulesConfirm((force) => deleteSectionApi(Number(sectionId), force));
+            if (result.cancelled) return;
+
             setSections(prev => prev.filter(s => s.id !== sectionId).map((s, i) => ({ ...s, order: i + 1 })));
+            await reloadRules();
             toast.success("Seção excluída com sucesso!");
         } catch (e: any) {
             const backendMsg = e?.message || "";
@@ -137,7 +159,12 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         if (questionId.length > 10 && questionId.includes("-")) return;
 
         try {
-            await updateQuestionApi(Number(questionId), extraPayload);
+            const result = await withRulesConfirm((force) => updateQuestionApi(Number(questionId), extraPayload, force));
+            if (result.cancelled) {
+                await reload(); // desfaz a troca de tipo feita na tela
+                return;
+            }
+            await reloadRules();
             toast.success("Tipo de questão atualizado!", { id: "q-save", duration: 1000 });
 
             if (hasOptions(newType) && (!question?.options || question.options.length === 0)) {
@@ -214,13 +241,13 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         updatedQuestions.splice(targetIndex, 0, moved);
 
         try {
-            for (let i = 0; i < updatedQuestions.length; i++) {
-                const q = updatedQuestions[i];
-                if (!(q.id.length > 10 && q.id.includes("-"))) {
-                    await updateQuestionApi(Number(q.id), { order: i + 1 });
-                }
-            }
+            // Uma chamada só: a API valida as regras de exibição no resultado final.
+            const orderedIds = updatedQuestions.map((q) => Number(q.id));
+            const result = await withRulesConfirm((force) => reorderQuestionsApi(Number(sectionId), orderedIds, force));
+            if (result.cancelled) return;
+
             setSections(prev => prev.map(s => s.id === sectionId ? { ...s, questions: updatedQuestions.map((q, i) => ({ ...q, order: i + 1 })) } : s));
+            await reloadRules();
             toast.success("Ordem da questão atualizada!", { id: "q-order", duration: 1000 });
         } catch (e) {
             toast.error("Erro ao reordenar questões.");
@@ -251,10 +278,13 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
     const handleDeleteQuestion = async (sectionId: string, questionId: string) => {
         if (confirm("Deseja excluir esta questão?")) {
             try {
-                await deleteQuestionApi(Number(questionId));
+                const result = await withRulesConfirm((force) => deleteQuestionApi(Number(questionId), force));
+                if (result.cancelled) return;
+
                 setSections(prev => prev.map(s => s.id === sectionId ? {
                     ...s, questions: s.questions.filter(q => q.id !== questionId).map((q, i) => ({ ...q, order: i + 1 }))
                 } : s));
+                await reloadRules();
                 toast.success("Questão excluída com sucesso!");
             } catch (e: any) {
                 const backendMsg = e?.message || "";
@@ -310,12 +340,15 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         }
 
         try {
-            await deleteOptionApi(Number(optionId));
+            const result = await withRulesConfirm((force) => deleteOptionApi(Number(optionId), force));
+            if (result.cancelled) return;
+
             setSections(prev => prev.map(s => s.id === sectionId ? {
                 ...s, questions: s.questions.map(q => q.id === questionId ? {
                     ...q, options: q.options?.filter(o => o.id !== optionId)
                 } : q)
             } : s));
+            await reloadRules();
             toast.success("Opção excluída!");
         } catch (e) {
             toast.error("Erro ao excluir opção.");
@@ -349,6 +382,41 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
             toast.error("Erro ao reordenar opções.");
         }
     }
+
+    // ================= REGRAS DE EXIBIÇÃO =================
+    const handleAddRule = async (targetQuestionId: string, sourceQuestionId: string, triggerValue: string): Promise<boolean> => {
+        try {
+            await createRuleApi({
+                sourceQuestionId: Number(sourceQuestionId),
+                triggerValue,
+                targetQuestionId: Number(targetQuestionId),
+            });
+            await reloadRules();
+            toast.success("Regra de exibição salva!", { id: "rule-save", duration: 1500 });
+            return true;
+        } catch (e: any) {
+            // A API explica o motivo da recusa (ciclo, ordem, resposta inválida...).
+            toast.error(e?.message || "Erro ao salvar a regra.", { duration: 7000 });
+            return false;
+        }
+    };
+
+    const handleDeleteRule = async (ruleId: number) => {
+        try {
+            await deleteRuleApi(ruleId);
+            setRules(prev => prev.filter(r => r.id !== ruleId));
+            toast.success("Regra removida.", { id: "rule-del", duration: 1500 });
+        } catch {
+            toast.error("Erro ao remover a regra.");
+        }
+    };
+
+    const rulesCtx: RulesContext = {
+        sections,
+        rules,
+        onAddRule: handleAddRule,
+        onDeleteRule: handleDeleteRule,
+    };
 
     // ==== PACOTE DE AÇÕES ====
     const qActions: QuestionActions = {
@@ -401,6 +469,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                     onAddQuestion={handleAddQuestionToSection}
                     qActions={qActions}
                     optActions={optActions}
+                    rulesCtx={rulesCtx}
                 />
             ))}
             <div className="h-100 w-full flex-shrink-0" aria-hidden="true" />
