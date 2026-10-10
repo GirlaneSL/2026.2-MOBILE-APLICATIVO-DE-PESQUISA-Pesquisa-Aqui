@@ -54,3 +54,28 @@ export const deleteUser = async (username: string) => {
 
     return response.json();
 }
+
+export interface UserItem {
+    id: number;
+    name: string;
+    username: string;
+    profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER';
+    companyId: number | null;
+    createdAt?: string;
+}
+
+export const getUsers = async (): Promise<UserItem[]> => {
+    const response = await apiFetch('/user', {
+        method: 'GET',
+        credentials: 'include',
+    });
+
+    if (!response.ok) throw new Error('Falha ao carregar usuários');
+
+    return response.json();
+}
+
+export const getResearchers = async (): Promise<UserItem[]> => {
+    const users = await getUsers();
+    return users.filter((u) => u.profile === 'RESEARCHER');
+}

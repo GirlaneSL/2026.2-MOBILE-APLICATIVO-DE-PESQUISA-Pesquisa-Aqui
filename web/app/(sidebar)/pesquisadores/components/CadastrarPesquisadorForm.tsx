@@ -1,35 +1,93 @@
 'use client'
 
 import { Button } from "@/components/ui/button";
+import { ComboBoxLayout } from "@/components/ui/comboboxLayout";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { getCompanies } from "@/lib/company";
 import { createUser } from "@/lib/user";
-import { SubmitEventHandler, useState } from "react";
+import { SubmitEventHandler, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
-export default function CadastrarPesquisadorForm() {
+interface Company {
+    id: number;
+    legalName: string;
+}
+
+interface CadastrarPesquisadorFormProps {
+    /** Perfil de quem está cadastrando. SUPERADMINISTRATOR precisa escolher a empresa. */
+    isSuperAdmin?: boolean;
+    onSuccess?: () => void;
+}
+
+export default function CadastrarPesquisadorForm({ isSuperAdmin = false, onSuccess }: CadastrarPesquisadorFormProps) {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [companyId, setCompanyId] = useState('');
+    const [companies, setCompanies] = useState<Company[]>([]);
+    const [isSubmitLoading, setIsSubmitLoading] = useState(false);
+
+    useEffect(() => {
+        if (!isSuperAdmin) return;
+
+        getCompanies()
+            .then(setCompanies)
+            .catch((error) => {
+                console.error(error);
+                toast.error("Erro ao carregar empresas");
+            });
+    }, [isSuperAdmin]);
+
+    const sortedCompanies = [...companies].sort((a, b) =>
+        a.legalName.localeCompare(b.legalName, 'pt-BR', { sensitivity: 'base' })
+    );
+    const companyIds = sortedCompanies.map((c) => String(c.id));
+    const companyLabels: Record<string, string> = Object.fromEntries(
+        sortedCompanies.map((c) => [String(c.id), c.legalName])
+    );
 
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
 
-        if (password !== confirmPassword) {
-            alert("As senhas não coincidem");
+        if (isSuperAdmin && !companyId) {
+            toast.error("Selecione uma empresa");
             return;
         }
 
+        if (password.length < 6) {
+            toast.error("A senha deve ter no mínimo 6 caracteres");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            toast.error("As senhas não coincidem");
+            return;
+        }
+
+        setIsSubmitLoading(true);
         try {
-            await createUser(name, username, password, 'RESEARCHER');
-            alert("Pesquisador cadastrado com sucesso!");
+            await createUser(
+                name.trim(),
+                username.trim(),
+                password,
+                'RESEARCHER',
+                isSuperAdmin ? Number(companyId) : undefined
+            );
+            toast.success("Pesquisador cadastrado com sucesso!");
 
             setName('');
             setUsername('');
             setPassword('');
             setConfirmPassword('');
+            setCompanyId('');
+            onSuccess?.();
         } catch (error) {
             console.error(error);
-            alert(error instanceof Error ? error.message : "Erro ao cadastrar pesquisador");
+            toast.error(error instanceof Error ? error.message : "Erro ao cadastrar pesquisador");
+        } finally {
+            setIsSubmitLoading(false);
         }
     };
 
@@ -37,10 +95,10 @@ export default function CadastrarPesquisadorForm() {
         <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-5">
                 <div>
-                    <label htmlFor="name">Nome*</label>
+                    <label htmlFor="researcher-name">Nome*</label>
                     <Input
                         required
-                        id="name"
+                        id="researcher-name"
                         placeholder="João"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -48,43 +106,64 @@ export default function CadastrarPesquisadorForm() {
                 </div>
 
                 <div>
-                    <label htmlFor="user">Usuario*</label>
+                    <label htmlFor="researcher-username">Usuário*</label>
                     <Input
                         required
-                        id="user"
-                        placeholder="Joãozinho"
+                        id="researcher-username"
+                        placeholder="joaozinho"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="password">Senha*</label>
+                    <label htmlFor="researcher-password">Senha* (mín. 6 caracteres)</label>
                     <Input
                         type="password"
                         required
-                        id="password"
-                        placeholder="123456"
+                        minLength={6}
+                        id="researcher-password"
+                        placeholder="••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="confirmPassword">Confirmar Senha*</label>
+                    <label htmlFor="researcher-cpassword">Confirmar Senha*</label>
                     <Input
                         type="password"
                         required
-                        id="confirmPassword"
-                        placeholder="123456"
+                        id="researcher-cpassword"
+                        placeholder="••••••"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                 </div>
 
+                {isSuperAdmin && (
+                    <div>
+                        <label>Empresa*</label>
+                        <ComboBoxLayout
+                            items={companyIds}
+                            labels={companyLabels}
+                            value={companyId}
+                            onValueChange={setCompanyId}
+                            placeholder="Selecione a empresa"
+                        />
+                    </div>
+                )}
+
                 <div className="flex justify-end">
-                    <Button type="submit" className="w-fit verde">
-                        Cadastrar Pesquisador
+                    <Button disabled={isSubmitLoading} type="submit" className="w-fit verde">
+                        {isSubmitLoading ? (
+                            <div className="flex gap-2">
+                                <Spinner />
+                                Cadastrando...
+                            </div>
+                        ) : (
+                            <span>Cadastrar Pesquisador</span>
+                        )}
                     </Button>
                 </div>
             </div>
