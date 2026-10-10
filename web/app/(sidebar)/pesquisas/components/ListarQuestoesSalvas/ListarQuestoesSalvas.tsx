@@ -26,7 +26,7 @@ import {
 } from "@/lib/questionnaire";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
-import { FolderPlus } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, FolderPlus } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { SectionCard } from "./SectionCard";
@@ -36,6 +36,8 @@ import type { RulesContext } from "./RegrasExibicao";
 export default function ListarQuestoesSalvas({ researchId }: { researchId: string | number }) {
     const [sections, setSections] = useState<FormSection[]>([]);
     const [rules, setRules] = useState<DisplayRule[]>([]);
+    // Questões abertas para edição (as demais aparecem só como linha-resumo).
+    const [openQuestionIds, setOpenQuestionIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -50,6 +52,22 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         const reloaded = await loadQuestionnaire(Number(researchId));
         setSections(reloaded);
     };
+
+    const toggleQuestion = (questionId: string) => {
+        setOpenQuestionIds(prev => {
+            const next = new Set(prev);
+            if (next.has(questionId)) next.delete(questionId);
+            else next.add(questionId);
+            return next;
+        });
+    };
+
+    const openQuestion = (questionId: string | number) => {
+        setOpenQuestionIds(prev => new Set(prev).add(String(questionId)));
+    };
+
+    const expandAll = () => setOpenQuestionIds(new Set(sections.flatMap(s => s.questions.map(q => q.id))));
+    const collapseAll = () => setOpenQuestionIds(new Set());
 
     // Recarrega as regras depois de qualquer mudança que possa apagá-las (exclusão, reordenação, troca de tipo).
     const reloadRules = async () => {
@@ -67,7 +85,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
             const nextOrder = maxOrder + 1;
             const newSec = await createSection(`Nova Seção ${nextOrder}`, nextOrder, Number(researchId));
 
-            await createQuestion({
+            const firstQuestion = await createQuestion({
                 statement: "Nova Pergunta",
                 type: "FREE_TEXT",
                 isRequired: false,
@@ -77,6 +95,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
 
             toast.success("Seção criada e salva com sucesso!");
             await reload();
+            openQuestion(firstQuestion.id);
         } catch (e) {
             toast.error("Erro ao criar nova seção.");
         }
@@ -260,7 +279,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
             const maxOrder = section?.questions.reduce((max, q) => Math.max(max, q.order), 0) ?? 0;
             const nextOrder = maxOrder + 1;
 
-            await createQuestion({
+            const created = await createQuestion({
                 statement: "Nova Pergunta",
                 type: "FREE_TEXT",
                 isRequired: false,
@@ -270,6 +289,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
 
             toast.success("Nova questão adicionada!");
             await reload();
+            openQuestion(created.id); // já abre para o admin escrever o enunciado
         } catch (e) {
             toast.error("Erro ao adicionar questão.");
         }
@@ -448,13 +468,29 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         );
     }
 
+    const totalQuestions = sections.reduce((sum, sec) => sum + sec.questions.length, 0);
+    const allOpen = totalQuestions > 0 && openQuestionIds.size >= totalQuestions;
+
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center bg-card sticky top-0 z-10 pb-3 border-b gap-4 border p-2 rounded-t-none rounded-xl shadow">
-                <p className="text-xs text-muted-foreground">As alterações salvam ao sair do campo (blur). Ordenação e exclusão são instantâneas.</p>
-                <Button size="sm" onClick={handleAddSection}>
-                    <FolderPlus className="w-4 h-4 mr-1.5" /> Adicionar Seção
-                </Button>
+        <div className="space-y-5 normal-case">
+            <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card/95 px-4 py-3 shadow-sm backdrop-blur">
+                <div>
+                    <p className="text-sm font-semibold">
+                        {sections.length} {sections.length === 1 ? "seção" : "seções"} · {totalQuestions} {totalQuestions === 1 ? "questão" : "questões"}
+                        {rules.length > 0 && <> · {rules.length} {rules.length === 1 ? "regra" : "regras"} de exibição</>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Os campos são salvos ao sair deles. Reordenar e excluir são imediatos.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={allOpen ? collapseAll : expandAll}>
+                        {allOpen
+                            ? <><ChevronsDownUp className="mr-1.5 size-4" /> Recolher tudo</>
+                            : <><ChevronsUpDown className="mr-1.5 size-4" /> Expandir tudo</>}
+                    </Button>
+                    <Button size="sm" onClick={handleAddSection}>
+                        <FolderPlus className="mr-1.5 size-4" /> Adicionar seção
+                    </Button>
+                </div>
             </div>
 
             {sections.map((section, sIndex) => (
@@ -470,6 +506,8 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                     qActions={qActions}
                     optActions={optActions}
                     rulesCtx={rulesCtx}
+                    openQuestionIds={openQuestionIds}
+                    onToggleQuestion={toggleQuestion}
                 />
             ))}
             <div className="h-100 w-full flex-shrink-0" aria-hidden="true" />

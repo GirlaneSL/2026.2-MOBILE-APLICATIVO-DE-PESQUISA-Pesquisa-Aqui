@@ -84,14 +84,14 @@ export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx:
     };
 
     return (
-        <div className="mt-3 p-3 border rounded-lg space-y-3 bg-muted/20">
+        <div className="rounded-lg border bg-background p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                    <GitBranch className="w-3.5 h-3.5" /> Regras de exibição
-                </Label>
+                <h4 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <GitBranch className="size-3.5" /> Regras de exibição
+                </h4>
                 {!adding && (
-                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAdding(true)}>
-                        <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar regra
+                    <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
+                        <Plus className="mr-1 size-4" /> Adicionar regra
                     </Button>
                 )}
             </div>
@@ -106,7 +106,7 @@ export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx:
                     {affectingRules.map((rule) => {
                         const src = findQuestion(ctx.sections, rule.sourceQuestionId)?.question;
                         return (
-                            <div key={rule.id} className="flex items-center justify-between gap-2 text-xs bg-background border rounded-md px-2 py-1.5">
+                            <div key={rule.id} className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
                                 <span>
                                     <strong>{labelOf(ctx.sections, rule.sourceQuestionId, rule.sourceLabel)}</strong>
                                     {" "}«{shorten(src?.title ?? rule.sourceStatement, 40)}» {" "}= <strong>{triggerText(ctx.sections, rule)}</strong>
@@ -127,8 +127,8 @@ export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx:
                 <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Esta questão controla:</p>
                     {triggeredRules.map((rule) => (
-                        <p key={rule.id} className="text-xs flex items-center gap-1">
-                            <CornerDownRight className="w-3 h-3 text-muted-foreground" />
+                        <p key={rule.id} className="text-xs">
+                            <CornerDownRight className="mr-1.5 inline size-3 align-[-2px] text-muted-foreground" />
                             Se responder <strong>{triggerText(ctx.sections, rule)}</strong>, mostra <strong>{labelOf(ctx.sections, rule.targetQuestionId, rule.targetLabel)}</strong>
                         </p>
                     ))}
