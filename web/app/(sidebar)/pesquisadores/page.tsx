@@ -102,18 +102,20 @@ export default function PesquisadoresPage() {
                     }
                 />
 
-                {canRegister && (
-                    <InfoCard
-                        isCardFooter={false}
-                        animationDelayN={4}
-                        cardTitle="Cadastrar Pesquisador"
-                        cardDescription="Cadastre um novo pesquisador"
-                        cardClassName="relative col-span-1 md:col-span-2 lg:col-span-1"
-                        cardContent={
-                            <>
-                                <br />
-                                <br />
-                                <div className="absolute bottom-5 right-5 flex justify-end">
+
+                <InfoCard
+                    isCardFooter={false}
+                    animationDelayN={4}
+                    cardTitle="Cadastrar Pesquisador"
+                    cardDescription="Cadastre um novo pesquisador"
+                    cardClassName="relative col-span-1 md:col-span-2 lg:col-span-1"
+                    cardContent={
+                        <>
+                            <br />
+                            <br />
+                            <div className="absolute bottom-5 right-5 flex justify-end">
+                                
+                                {canRegister ? (
                                     <DialogLayout
                                         triggerButtonVariant="outline"
                                         dialogTrigger="Cadastrar"
@@ -126,11 +128,14 @@ export default function PesquisadoresPage() {
                                             />
                                         }
                                     />
-                                </div>
-                            </>
-                        }
-                    />
-                )}
+                                ): (
+                                    <Spinner className="size-6"/>
+                                )}
+                            </div>
+                        </>
+                    }
+                />
+
             </section>
 
             <InfoCard
