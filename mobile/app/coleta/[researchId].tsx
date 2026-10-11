@@ -1,0 +1,573 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { CheckCircle2, ChevronLeft, ChevronRight, MapPin, Save } from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    AppState,
+    BackHandler,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import ConsentModal from '@/components/ConsentModal';
+import QuestionInput, { getFormatError } from '@/components/QuestionInput';
+import { useInterviewRecording } from '@/hooks/useInterviewRecording';
+import {
+    CollectionClosedError,
+    finishCollection,
+    getBlockingMissing,
+    getCollection,
+    getDurationSeconds,
+    saveCollection,
+    startCollection,
+    SUPPORTED_QUESTION_TYPES,
+    type LocalCollection,
+} from '@/lib/collectionStore';
+import type { InterviewConsent } from '@/lib/collectionUpload';
+import {
+    getVisibleQuestionIds,
+    isAnswerEmpty,
+    orderedQuestions,
+    pruneHiddenAnswers,
+    type AnswerValue,
+    type ResearchPackage,
+} from '@/lib/displayRules';
+import { getCachedResearchPackage } from '@/lib/researchCache';
+
+type Phase = 'loading' | 'consent' | 'starting' | 'running' | 'finished' | 'error';
+
+const SAVE_DELAY_MS = 400;
+
+function formatDuration(totalSeconds: number): string {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const mm = String(m).padStart(2, '0');
+    const ss = String(s).padStart(2, '0');
+    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function leaveScreen() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/pesquisas');
+}
+
+export default function ColetaScreen() {
+    const params = useLocalSearchParams<{ researchId: string; clientId?: string }>();
+    const researchId = Number(params.researchId);
+    const resumeClientId = params.clientId;
+
+    const [phase, setPhase] = useState<Phase>('loading');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [pkg, setPkg] = useState<ResearchPackage | null>(null);
+    const [collection, setCollection] = useState<LocalCollection | null>(null);
+    const [validationMessage, setValidationMessage] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    const recording = useInterviewRecording(pkg);
+
+    // Sempre a versão mais nova da coleta: é ela que vai para o disco, mesmo com o app indo para segundo plano.
+    const collectionRef = useRef<LocalCollection | null>(null);
+    const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const writeChain = useRef<Promise<void>>(Promise.resolve());
+    const initialized = useRef(false);
+    const resumedDraft = useRef<LocalCollection | null>(null);
+    const consentRef = useRef<InterviewConsent | null>(null);
+
+    // ---------- Gravação no aparelho ----------
+
+    const flush = useCallback((): Promise<void> => {
+        if (saveTimer.current) {
+            clearTimeout(saveTimer.current);
+            saveTimer.current = null;
+        }
+        const snapshot = collectionRef.current;
+        if (!snapshot || snapshot.status === 'FINISHED') return writeChain.current;
+
+        // Gravações em fila, uma de cada vez, para a mais nova nunca ser sobrescrita por uma antiga.
+        writeChain.current = writeChain.current
+            .then(() => saveCollection(snapshot))
+            .catch((error) => {
+                if (!(error instanceof CollectionClosedError)) console.log('Falha ao salvar rascunho:', error);
+            });
+        return writeChain.current;
+    }, []);
+
+    const updateCollection = useCallback(
+        (patch: Partial<LocalCollection>) => {
+            if (!collectionRef.current || collectionRef.current.status === 'FINISHED') return;
+            const next = { ...collectionRef.current, ...patch };
+            collectionRef.current = next;
+            setCollection(next);
+
+            if (saveTimer.current) clearTimeout(saveTimer.current);
+            saveTimer.current = setTimeout(() => void flush(), SAVE_DELAY_MS);
+        },
+        [flush],
+    );
+
+    // Fechar o app, trocar de app ou sair da tela: nada digitado fica para trás.
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state !== 'active') void flush();
+        });
+        return () => {
+            subscription.remove();
+            void flush();
+        };
+    }, [flush]);
+
+    // ---------- Início / retomada ----------
+
+    const begin = useCallback(async () => {
+        if (!pkg) return;
+        setPhase('starting');
+        try {
+            // Pesquisa com gravação: libera o microfone antes de a coleta nascer
+            const recordingStart = await recording.start();
+            if (!recordingStart.ok) {
+                const reason =
+                    recordingStart.reason === 'permission-denied'
+                        ? 'Sem permissão do microfone não é possível coletar nesta pesquisa.'
+                        : 'É preciso o consentimento do entrevistado para iniciar.';
+                Alert.alert('Coleta não iniciada', reason);
+                leaveScreen();
+                return;
+            }
+
+            let current: LocalCollection;
+            if (resumedDraft.current) {
+                current = resumedDraft.current;
+                if (consentRef.current) current = { ...current, consent: consentRef.current };
+            } else {
+                // Gera o UUID, grava o início e a localização — sem o pesquisador fazer nada
+                current = await startCollection(researchId, consentRef.current ?? undefined);
+            }
+
+            const visibleIds = getVisibleQuestionIds(pkg, current.answers);
+            const firstVisible = orderedQuestions(pkg).find((q) => visibleIds.has(q.id));
+            const stillValid =
+                current.currentQuestionId !== null && visibleIds.has(current.currentQuestionId);
+            current = {
+                ...current,
+                currentQuestionId: stillValid ? current.currentQuestionId : (firstVisible?.id ?? null),
+            };
+
+            collectionRef.current = current;
+            setCollection(current);
+            await saveCollection(current);
+            setPhase('running');
+        } catch (error) {
+            setErrorMessage(error instanceof Error ? error.message : 'Não foi possível iniciar a coleta.');
+            setPhase('error');
+        }
+    }, [pkg, recording, researchId]);
+
+    // Carrega o pacote e decide: coleta nova, rascunho a retomar ou coleta já finalizada
+    useEffect(() => {
+        if (initialized.current) return;
+        initialized.current = true;
+
+        (async () => {
+            try {
+                const cached = await getCachedResearchPackage(researchId);
+                if (!cached) {
+                    setErrorMessage('Esta pesquisa ainda não foi baixada neste aparelho.');
+                    setPhase('error');
+                    return;
+                }
+                setPkg(cached);
+
+                if (resumeClientId) {
+                    const existing = await getCollection(resumeClientId);
+                    if (!existing) {
+                        setErrorMessage('Rascunho não encontrado no aparelho.');
+                        setPhase('error');
+                        return;
+                    }
+                    if (existing.status === 'FINISHED') {
+                        collectionRef.current = existing;
+                        setCollection(existing);
+                        setPhase('finished');
+                        return;
+                    }
+                    resumedDraft.current = existing;
+                }
+                setPhase(cached.recordInterview ? 'consent' : 'starting');
+            } catch {
+                setErrorMessage('Não foi possível carregar a pesquisa.');
+                setPhase('error');
+            }
+        })();
+    }, [researchId, resumeClientId]);
+
+    // Sem consentimento: começa direto assim que o pacote carrega
+    const autoStarted = useRef(false);
+    useEffect(() => {
+        if (phase === 'starting' && pkg && !pkg.recordInterview && !autoStarted.current) {
+            autoStarted.current = true;
+            void begin();
+        }
+    }, [phase, pkg, begin]);
+
+    // Com consentimento: o aceite atualiza o estado do hook, e só então a coleta começa
+    const [consentGiven, setConsentGiven] = useState(false);
+    const consentStarted = useRef(false);
+    useEffect(() => {
+        if (consentGiven && recording.consent && !consentStarted.current) {
+            consentStarted.current = true;
+            void begin();
+        }
+    }, [consentGiven, recording.consent, begin]);
+
+    // ---------- Questões ----------
+
+    const { visibleQuestions, sectionByQuestion } = useMemo(() => {
+        if (!pkg || !collection) return { visibleQuestions: [], sectionByQuestion: new Map<number, string>() };
+        const visibleIds = getVisibleQuestionIds(pkg, collection.answers);
+        const sections = new Map<number, string>();
+        for (const section of pkg.sections) {
+            for (const question of section.questions) sections.set(question.id, section.title);
+        }
+        return {
+            visibleQuestions: orderedQuestions(pkg).filter((q) => visibleIds.has(q.id)),
+            sectionByQuestion: sections,
+        };
+    }, [pkg, collection]);
+
+    const rawIndex = visibleQuestions.findIndex((q) => q.id === collection?.currentQuestionId);
+    const currentIndex = rawIndex >= 0 ? rawIndex : 0;
+    const currentQuestion = visibleQuestions[currentIndex];
+    const isLast = currentIndex === visibleQuestions.length - 1;
+
+    const goToQuestion = (questionId: number) => {
+        setValidationMessage(null);
+        updateCollection({ currentQuestionId: questionId });
+        void flush();
+    };
+
+    const handleChange = (value: AnswerValue) => {
+        if (!pkg || !collection || !currentQuestion) return;
+        setValidationMessage(null);
+        // Se a mudança esconde questões que dependiam desta, as respostas delas saem também
+        const answers = pruneHiddenAnswers(pkg, { ...collection.answers, [currentQuestion.id]: value });
+        updateCollection({ answers });
+    };
+
+    const handleBack = () => {
+        if (currentIndex > 0) goToQuestion(visibleQuestions[currentIndex - 1].id);
+    };
+
+    const handleNext = () => {
+        if (!collection || !currentQuestion) return;
+        const answer = collection.answers[currentQuestion.id];
+
+        if (
+            currentQuestion.isRequired &&
+            SUPPORTED_QUESTION_TYPES.has(currentQuestion.type) &&
+            isAnswerEmpty(answer)
+        ) {
+            setValidationMessage(
+                `Questão ${currentIndex + 1} é obrigatória: "${currentQuestion.statement}". Responda para continuar.`,
+            );
+            return;
+        }
+
+        const formatError = getFormatError(currentQuestion, answer);
+        if (formatError) {
+            setValidationMessage(`Questão ${currentIndex + 1}: ${formatError}`);
+            return;
+        }
+
+        if (isLast) {
+            confirmFinish();
+        } else {
+            goToQuestion(visibleQuestions[currentIndex + 1].id);
+        }
+    };
+
+    // ---------- Finalizar / sair ----------
+
+    const confirmFinish = () => {
+        if (!collection) return;
+
+        // Revisão final: nenhuma obrigatória visível pode ter ficado em branco
+        const missing = getBlockingMissing(visibleQuestions, collection.answers, isAnswerEmpty);
+        if (missing.length > 0) {
+            const first = missing[0];
+            const position = visibleQuestions.findIndex((q) => q.id === first.id) + 1;
+            goToQuestion(first.id);
+            setValidationMessage(`Questão ${position} é obrigatória: "${first.statement}". Responda para finalizar.`);
+            return;
+        }
+
+        Alert.alert(
+            'Finalizar coleta',
+            'Depois de finalizada, a coleta não poderá mais ser editada. Deseja finalizar?',
+            [
+                { text: 'Revisar', style: 'cancel' },
+                { text: 'Finalizar', onPress: () => void finish() },
+            ],
+        );
+    };
+
+    const finish = async () => {
+        if (!collectionRef.current) return;
+        setBusy(true);
+        try {
+            await flush();
+            const extra = await recording.finish(); // para a gravação e devolve aceite + áudio
+            const finished = await finishCollection(collectionRef.current, extra); // grava o término e fecha
+            collectionRef.current = finished;
+            setCollection(finished);
+            setPhase('finished');
+        } catch (error) {
+            Alert.alert('Erro ao finalizar', error instanceof Error ? error.message : 'Tente novamente.');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const saveDraftAndLeave = useCallback(async () => {
+        setBusy(true);
+        await flush();
+        await recording.reset();
+        setBusy(false);
+        leaveScreen();
+    }, [flush, recording]);
+
+    const askLeave = useCallback(() => {
+        Alert.alert('Sair da coleta', 'As respostas já dadas ficam salvas como rascunho para você retomar depois.', [
+            { text: 'Continuar coletando', style: 'cancel' },
+            { text: 'Salvar rascunho e sair', onPress: () => void saveDraftAndLeave() },
+        ]);
+    }, [saveDraftAndLeave]);
+
+    // Botão voltar do Android também protege a entrevista em andamento
+    useEffect(() => {
+        if (phase !== 'running') return;
+        const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+            askLeave();
+            return true;
+        });
+        return () => subscription.remove();
+    }, [phase, askLeave]);
+
+    // ---------- Telas ----------
+
+    if (phase === 'loading' || phase === 'starting') {
+        return (
+            <SafeAreaView style={styles.center}>
+                <ActivityIndicator size="large" color="#447762" />
+                <Text style={styles.centerText}>
+                    {phase === 'starting' ? 'Registrando início e localização da coleta…' : 'Carregando pesquisa…'}
+                </Text>
+            </SafeAreaView>
+        );
+    }
+
+    if (phase === 'consent') {
+        return (
+            <SafeAreaView style={styles.center}>
+                <ConsentModal
+                    visible
+                    researchTitle={pkg?.title}
+                    onConfirm={() => {
+                        consentRef.current = recording.confirmConsent();
+                        setPhase('starting');
+                        setConsentGiven(true);
+                    }}
+                    onCancel={leaveScreen}
+                />
+            </SafeAreaView>
+        );
+    }
+
+    if (phase === 'error') {
+        return (
+            <SafeAreaView style={styles.center}>
+                <Text style={styles.errorTitle}>Não foi possível abrir a coleta</Text>
+                <Text style={styles.centerText}>{errorMessage}</Text>
+                <TouchableOpacity style={[styles.primaryButton, styles.fixedWidth]} onPress={leaveScreen}>
+                    <Text style={styles.primaryButtonText}>Voltar</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
+    if (phase === 'finished' && collection) {
+        const duration = getDurationSeconds(collection);
+        return (
+            <SafeAreaView style={styles.center}>
+                <CheckCircle2 size={64} color="#447762" />
+                <Text style={styles.finishedTitle}>Coleta finalizada</Text>
+                <View style={styles.summary}>
+                    <Text style={styles.summaryLine}>
+                        Início: {new Date(collection.startedAt).toLocaleString('pt-BR')}
+                    </Text>
+                    <Text style={styles.summaryLine}>
+                        Término: {collection.finishedAt ? new Date(collection.finishedAt).toLocaleString('pt-BR') : '—'}
+                    </Text>
+                    {duration !== null && <Text style={styles.summaryLine}>Duração: {formatDuration(duration)}</Text>}
+                    <Text style={styles.summaryLine}>
+                        Localização de início: {collection.locationStatus === 'OK' ? 'registrada' : 'não registrada'}
+                    </Text>
+                </View>
+                <Text style={styles.centerText}>
+                    A coleta está salva no aparelho, fechada para edição, e será enviada na sincronização.
+                </Text>
+                <TouchableOpacity style={[styles.primaryButton, styles.fixedWidth]} onPress={leaveScreen}>
+                    <Text style={styles.primaryButtonText}>Voltar às pesquisas</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
+    if (!pkg || !collection) return null;
+
+    if (!currentQuestion) {
+        return (
+            <SafeAreaView style={styles.center}>
+                <Text style={styles.errorTitle}>Pesquisa sem questões</Text>
+                <Text style={styles.centerText}>O servidor não enviou questões para esta pesquisa.</Text>
+                <TouchableOpacity style={[styles.primaryButton, styles.fixedWidth]} onPress={leaveScreen}>
+                    <Text style={styles.primaryButtonText}>Voltar</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
+    const total = visibleQuestions.length;
+    const progress = (currentIndex + 1) / total;
+    const answer = collection.answers[currentQuestion.id];
+    const sectionTitle = sectionByQuestion.get(currentQuestion.id);
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <View style={styles.header}>
+                    <View style={styles.headerTop}>
+                        <Text style={styles.headerTitle} numberOfLines={1}>
+                            {pkg.title}
+                        </Text>
+                        <TouchableOpacity style={styles.draftButton} onPress={askLeave} disabled={busy}>
+                            <Save size={16} color="#447762" />
+                            <Text style={styles.draftButtonText}>Salvar e sair</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.progressRow}>
+                        <Text style={styles.progressText}>
+                            Questão {currentIndex + 1} de {total}
+                        </Text>
+                        <Text style={styles.progressText}>{Math.round(progress * 100)}%</Text>
+                    </View>
+                    <View style={styles.progressTrack}>
+                        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+                    </View>
+
+                    <View style={styles.locationRow}>
+                        <MapPin size={12} color={collection.locationStatus === 'OK' ? '#447762' : '#92400e'} />
+                        <Text
+                            style={[styles.locationText, collection.locationStatus !== 'OK' && styles.locationWarning]}
+                        >
+                            {collection.locationStatus === 'OK'
+                                ? 'Localização de início registrada'
+                                : collection.locationStatus === 'DENIED'
+                                  ? 'Localização não registrada: permissão negada'
+                                  : 'Localização não registrada: GPS indisponível'}
+                        </Text>
+                    </View>
+                </View>
+
+                <ScrollView
+                    style={styles.flex}
+                    contentContainerStyle={styles.body}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    {sectionTitle ? <Text style={styles.sectionTitle}>{sectionTitle}</Text> : null}
+                    <Text style={styles.statement}>
+                        {currentQuestion.statement}
+                        {currentQuestion.isRequired ? <Text style={styles.required}> *</Text> : null}
+                    </Text>
+
+                    <QuestionInput question={currentQuestion} value={answer} onChange={handleChange} />
+
+                    {validationMessage ? (
+                        <View style={styles.validationBox}>
+                            <Text style={styles.validationText}>{validationMessage}</Text>
+                        </View>
+                    ) : null}
+                </ScrollView>
+
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        style={[styles.secondaryButton, currentIndex === 0 && styles.buttonDisabled]}
+                        onPress={handleBack}
+                        disabled={currentIndex === 0 || busy}
+                    >
+                        <ChevronLeft size={20} color={currentIndex === 0 ? '#a1a1aa' : '#447762'} />
+                        <Text style={[styles.secondaryButtonText, currentIndex === 0 && styles.textDisabled]}>Voltar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.primaryButton, styles.flex]} onPress={handleNext} disabled={busy}>
+                        {busy ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <>
+                                <Text style={styles.primaryButtonText}>{isLast ? 'Finalizar' : 'Avançar'}</Text>
+                                {!isLast && <ChevronRight size={20} color="#fff" />}
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    flex: { flex: 1 },
+    container: { flex: 1, backgroundColor: '#fafafa' },
+    center: { flex: 1, backgroundColor: '#fafafa', alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 },
+    centerText: { fontSize: 14, color: '#71717a', textAlign: 'center' },
+    errorTitle: { fontSize: 18, fontWeight: 'bold', color: '#18181b', textAlign: 'center' },
+    finishedTitle: { fontSize: 22, fontWeight: 'bold', color: '#18181b' },
+    summary: { gap: 4, alignSelf: 'stretch', backgroundColor: '#fff', borderRadius: 8, padding: 16, borderWidth: 1, borderColor: '#00000015' },
+    summaryLine: { fontSize: 14, color: '#3f3f46' },
+    fixedWidth: { alignSelf: 'stretch', flex: 0 },
+
+    header: { padding: 16, paddingBottom: 12, gap: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#00000010' },
+    headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+    headerTitle: { flex: 1, fontSize: 16, fontWeight: 'bold', color: '#18181b' },
+    draftButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: '#447762' },
+    draftButtonText: { fontSize: 13, color: '#447762', fontWeight: '600' },
+    progressRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    progressText: { fontSize: 13, color: '#52525b', fontWeight: '600' },
+    progressTrack: { height: 6, backgroundColor: '#e4e4e7', borderRadius: 3, overflow: 'hidden' },
+    progressFill: { height: 6, backgroundColor: '#447762', borderRadius: 3 },
+    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    locationText: { fontSize: 12, color: '#447762' },
+    locationWarning: { color: '#92400e' },
+
+    body: { padding: 20, gap: 16 },
+    sectionTitle: { fontSize: 13, color: '#B66D56', fontWeight: '600', textTransform: 'uppercase' },
+    statement: { fontSize: 20, fontWeight: 'bold', color: '#18181b', lineHeight: 28 },
+    required: { color: '#b91c1c' },
+    validationBox: { backgroundColor: '#fee2e2', borderRadius: 8, padding: 12 },
+    validationText: { color: '#b91c1c', fontSize: 14, fontWeight: '600' },
+
+    footer: { flexDirection: 'row', gap: 12, padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#00000010' },
+    primaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#447762', padding: 14, borderRadius: 8 },
+    primaryButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    secondaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: '#447762' },
+    secondaryButtonText: { color: '#447762', fontWeight: 'bold', fontSize: 16 },
+    buttonDisabled: { borderColor: '#d4d4d8' },
+    textDisabled: { color: '#a1a1aa' },
+});

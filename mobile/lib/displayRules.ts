@@ -40,6 +40,8 @@ export interface DisplayRule {
 export interface ResearchPackage {
     id: number;
     title: string;
+    // Pesquisa com gravação: o app exige o consentimento e grava a entrevista inteira
+    recordInterview?: boolean;
     sections: PackageSection[];
     displayRules: DisplayRule[];
 }

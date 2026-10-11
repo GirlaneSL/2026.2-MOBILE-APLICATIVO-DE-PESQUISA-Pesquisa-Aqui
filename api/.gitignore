@@ -61,3 +61,6 @@ dist/
 .claude/
 .cursor/
 .devin/
+
+# Áudio das entrevistas (dado pessoal): nunca versionar
+/storage/

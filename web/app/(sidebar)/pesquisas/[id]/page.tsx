@@ -6,14 +6,17 @@ import { Button } from "@/components/ui/button";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getResearchById, type Research } from "@/lib/research";
-import { ArrowLeft, Bolt, Calendar, FileText, ShieldAlert, Target } from "lucide-react";
+import { getResearchById, publishResearch, type Research } from "@/lib/research";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { ArrowLeft, Bolt, Calendar, FileText, Mic, ShieldAlert, Target } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import InfoCard from "../../(home)/components/infoCards";
 import ModalEditarPesquisa from "../components/ModalEditarPesquisa";
+import PesquisadoresVinculados from "../components/PesquisadoresVinculados";
 import ListarQuestoesSalvas from "../components/ListarQuestoesSalvas/ListarQuestoesSalvas";
+import ColetasPesquisa from "../components/ColetasPesquisa";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
     DRAFT: { label: "Rascunho", variant: "outline" },
@@ -33,6 +36,7 @@ export default function PesquisaDetalhePage() {
     const params = useParams<{ id: string }>();
     const router = useRouter();
     const [state, setState] = useState<PageState>({ status: 'loading' });
+    const { user } = useCurrentUser();
 
     useEffect(() => {
         setState({ status: 'loading' });
@@ -80,7 +84,19 @@ export default function PesquisaDetalhePage() {
     }
 
     const { research } = state;
+
+    const handlePublish = async () => {
+        try {
+            const updated = await publishResearch(research.id);
+            setState({ status: 'success', research: { ...research, status: updated.status } });
+            toast.success('Pesquisa publicada! Ela já está visível para o aplicativo.');
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Erro ao publicar pesquisa');
+        }
+    };
     const currentStatus = statusConfig[research.status] ?? { label: research.status || "Ativa", variant: "outline" };
+    // As coletas e o áudio são dados pessoais: só o administrador da empresa da pesquisa vê (a API confere de novo).
+    const canSeeCollections = user?.profile === 'ADMINISTRATOR';
 
     return (
         <section className="flex flex-col gap-6">
@@ -93,6 +109,8 @@ export default function PesquisaDetalhePage() {
                         <Bolt size={13} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-15" />
                         <TabsTrigger value="details">Visão Geral</TabsTrigger>
                         <TabsTrigger value="questions">Questões e Formulário</TabsTrigger>
+                        <TabsTrigger value="researchers">Pesquisadores</TabsTrigger>
+                        {canSeeCollections && <TabsTrigger value="collections">Coletas</TabsTrigger>}
                     </TabsList>
 
                     <div className="flex items-center gap-3">
@@ -100,6 +118,9 @@ export default function PesquisaDetalhePage() {
                             dialogTrigger="Editar" dialogTitle="Editar Dados da Pesquisa" dialogDescription="Atualize os dados principais."
                             dialogContent={<ModalEditarPesquisa isMontagem={false} research={research} onSuccess={() => toast.success('Pesquisa atualizada!')} />}
                         />
+                        {research.status === 'DRAFT' && (
+                            <Button size="sm" onClick={handlePublish}>Publicar</Button>
+                        )}
                         <div className="flex items-center gap-2 border-l pl-3">
                             <span className="text-xs text-muted-foreground">Situação:</span>
                             <Badge variant={currentStatus.variant}>{currentStatus.label}</Badge>
@@ -124,6 +145,15 @@ export default function PesquisaDetalhePage() {
                                         <div className="pt-4">
                                             <h4 className="text-xs font-semibold uppercase mb-1">Objetivo</h4>
                                             <p className="text-sm leading-relaxed text-foreground">{research.objective || "Nenhum objetivo especificado."}</p>
+                                        </div>
+                                        <hr />
+                                        <div className="pt-4">
+                                            <h4 className="text-xs font-semibold uppercase mb-1 flex items-center gap-1"><Mic className="w-3 h-3" />Gravação da entrevista</h4>
+                                            <p className="text-sm leading-relaxed text-foreground">
+                                                {research.recordInterview
+                                                    ? "Ligada: o aplicativo grava o áudio da coleta e exige o consentimento do entrevistado antes de começar."
+                                                    : "Desligada."}
+                                            </p>
                                         </div>
                                     </div>
                                 }
@@ -156,6 +186,18 @@ export default function PesquisaDetalhePage() {
                         <ListarQuestoesSalvas researchId={params.id} />
                     </div>
                 </TabsContent>
+
+                <TabsContent value="researchers" className="mt-0">
+                    <PesquisadoresVinculados researchId={research.id} companyId={research.companyId} />
+                </TabsContent>
+
+                {canSeeCollections && (
+                    <TabsContent value="collections" className="mt-0">
+                        <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
+                            <ColetasPesquisa researchId={research.id} recordInterview={research.recordInterview} />
+                        </div>
+                    </TabsContent>
+                )}
             </Tabs>
         </section>
     );

@@ -51,6 +51,9 @@ model User {
   profile      Profile
   companyId    Int?
   company      Company?  @relation(fields: [companyId], references: [id])
+  researchLinks ResearchResearcher[]
+  collections  Collection[] @relation("CollectionResearcher")
+  consentsConfirmed Collection[] @relation("CollectionConsentConfirmedBy")
   createdAt    TimestamptzString @default(now())
   updatedAt    temporal.updatedAtString()
 }
@@ -64,10 +67,13 @@ model Research {
   endDate        TimestamptzString @default(now())
   targetAudience String
   status         ResearchStatus   @default(DRAFT)
+  recordInterview Boolean @default(false)
   companyId      Int
   company        Company  @relation(fields: [companyId], references: [id])
   sections       Section[]
+  collections    Collection[]
   questionRules  QuestionRule[]
+  researchers    ResearchResearcher[]
   createdAt      TimestamptzString @default(now())
   updatedAt      temporal.updatedAtString()
 }
@@ -124,7 +130,32 @@ model Answer {
   questionId  Int
   question    Question @relation(fields: [questionId], references: [id])
   value       String
+  collectionId Int?
+  collection  Collection? @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   createdAt   TimestamptzString @default(now())
+}
+
+// Uma coleta = uma entrevista feita por um pesquisador (respostas + consentimento + áudio opcional).
+model Collection {
+  id                   Int      @id @default(autoincrement())
+  researchId           Int
+  research             Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  researcherId         Int
+  researcher           User     @relation("CollectionResearcher", fields: [researcherId], references: [id])
+  deviceId             String?
+  clientId             String?
+  startedAt            TimestamptzString
+  finishedAt           TimestamptzString
+  receivedAt           TimestamptzString @default(now())
+  consentGiven         Boolean  @default(false)
+  consentAt            TimestamptzString?
+  consentConfirmedById Int?
+  consentConfirmedBy   User?    @relation("CollectionConsentConfirmedBy", fields: [consentConfirmedById], references: [id])
+  audioPath            String?
+  audioMimeType        String?
+  audioSizeBytes       Int?
+  audioDurationSeconds Int?
+  answers              Answer[]
 }
 
 model ResearchDownload {
@@ -132,6 +163,17 @@ model ResearchDownload {
   researchId Int
   research   Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
   deviceId   String
+  userId     Int?
+  active     Boolean  @default(true)
+  createdAt  TimestamptzString @default(now())
+}
+
+model ResearchResearcher {
+  id         Int      @id @default(autoincrement())
+  researchId Int
+  research   Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt  TimestamptzString @default(now())
 }
 

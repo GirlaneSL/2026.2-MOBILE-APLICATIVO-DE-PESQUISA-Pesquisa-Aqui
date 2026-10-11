@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'ebf51a6c34bc5e2c150cc0999f5f725b9541e88f09a9d87f9ff1530ec3bbe554'>;
+  StorageHashBase<'2740686b1824718a89d294d86298c9aef01246fc4b0ceb7dcdb0622071494518'>;
 export type ExecutionHash =
   ExecutionHashBase<'89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09'>;
 export type ProfileHash =
@@ -245,7 +245,25 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly questionId: CodecTypes['pg/int4@1']['output'];
       readonly value: CodecTypes['pg/text@1']['output'];
+      readonly collectionId: CodecTypes['pg/int4@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly Collection: {
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly researchId: CodecTypes['pg/int4@1']['output'];
+      readonly researcherId: CodecTypes['pg/int4@1']['output'];
+      readonly deviceId: CodecTypes['pg/text@1']['output'] | null;
+      readonly clientId: CodecTypes['pg/text@1']['output'] | null;
+      readonly startedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly finishedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly consentGiven: CodecTypes['pg/bool@1']['output'];
+      readonly consentAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly consentConfirmedById: CodecTypes['pg/int4@1']['output'] | null;
+      readonly audioPath: CodecTypes['pg/text@1']['output'] | null;
+      readonly audioMimeType: CodecTypes['pg/text@1']['output'] | null;
+      readonly audioSizeBytes: CodecTypes['pg/int4@1']['output'] | null;
+      readonly audioDurationSeconds: CodecTypes['pg/int4@1']['output'] | null;
     };
     readonly Company: {
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -312,6 +330,7 @@ export type FieldOutputTypes = {
       readonly endDate: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly targetAudience: CodecTypes['pg/text@1']['output'];
       readonly status: 'DRAFT' | 'PUBLISHED' | 'IN_FIELD' | 'CLOSED';
+      readonly recordInterview: CodecTypes['pg/bool@1']['output'];
       readonly companyId: CodecTypes['pg/int4@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -320,6 +339,14 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly researchId: CodecTypes['pg/int4@1']['output'];
       readonly deviceId: CodecTypes['pg/text@1']['output'];
+      readonly userId: CodecTypes['pg/int4@1']['output'] | null;
+      readonly active: CodecTypes['pg/bool@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly ResearchResearcher: {
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly researchId: CodecTypes['pg/int4@1']['output'];
+      readonly userId: CodecTypes['pg/int4@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly Section: {
@@ -348,7 +375,25 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly questionId: CodecTypes['pg/int4@1']['input'];
       readonly value: CodecTypes['pg/text@1']['input'];
+      readonly collectionId: CodecTypes['pg/int4@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly Collection: {
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly researchId: CodecTypes['pg/int4@1']['input'];
+      readonly researcherId: CodecTypes['pg/int4@1']['input'];
+      readonly deviceId: CodecTypes['pg/text@1']['input'] | null;
+      readonly clientId: CodecTypes['pg/text@1']['input'] | null;
+      readonly startedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly finishedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly consentGiven: CodecTypes['pg/bool@1']['input'];
+      readonly consentAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly consentConfirmedById: CodecTypes['pg/int4@1']['input'] | null;
+      readonly audioPath: CodecTypes['pg/text@1']['input'] | null;
+      readonly audioMimeType: CodecTypes['pg/text@1']['input'] | null;
+      readonly audioSizeBytes: CodecTypes['pg/int4@1']['input'] | null;
+      readonly audioDurationSeconds: CodecTypes['pg/int4@1']['input'] | null;
     };
     readonly Company: {
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -415,6 +460,7 @@ export type FieldInputTypes = {
       readonly endDate: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly targetAudience: CodecTypes['pg/text@1']['input'];
       readonly status: 'DRAFT' | 'PUBLISHED' | 'IN_FIELD' | 'CLOSED';
+      readonly recordInterview: CodecTypes['pg/bool@1']['input'];
       readonly companyId: CodecTypes['pg/int4@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -423,6 +469,14 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly researchId: CodecTypes['pg/int4@1']['input'];
       readonly deviceId: CodecTypes['pg/text@1']['input'];
+      readonly userId: CodecTypes['pg/int4@1']['input'] | null;
+      readonly active: CodecTypes['pg/bool@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly ResearchResearcher: {
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly researchId: CodecTypes['pg/int4@1']['input'];
+      readonly userId: CodecTypes['pg/int4@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly Section: {
@@ -448,10 +502,28 @@ export type FieldInputTypes = {
 export type StorageColumnTypes = {
   readonly public: {
     readonly answer: {
+      readonly collectionId: CodecTypes['pg/int4@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly questionId: CodecTypes['pg/int4@1']['output'];
       readonly value: CodecTypes['pg/text@1']['output'];
+    };
+    readonly collection: {
+      readonly audioDurationSeconds: CodecTypes['pg/int4@1']['output'] | null;
+      readonly audioMimeType: CodecTypes['pg/text@1']['output'] | null;
+      readonly audioPath: CodecTypes['pg/text@1']['output'] | null;
+      readonly audioSizeBytes: CodecTypes['pg/int4@1']['output'] | null;
+      readonly clientId: CodecTypes['pg/text@1']['output'] | null;
+      readonly consentAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly consentConfirmedById: CodecTypes['pg/int4@1']['output'] | null;
+      readonly consentGiven: CodecTypes['pg/bool@1']['output'];
+      readonly deviceId: CodecTypes['pg/text@1']['output'] | null;
+      readonly finishedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly researcherId: CodecTypes['pg/int4@1']['output'];
+      readonly researchId: CodecTypes['pg/int4@1']['output'];
+      readonly startedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly company: {
       readonly contactInformation: CodecTypes['pg/text@1']['output'];
@@ -516,6 +588,7 @@ export type StorageColumnTypes = {
       readonly endDate: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly objective: CodecTypes['pg/text@1']['output'];
+      readonly recordInterview: CodecTypes['pg/bool@1']['output'];
       readonly startDate: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly status: 'DRAFT' | 'PUBLISHED' | 'IN_FIELD' | 'CLOSED';
       readonly targetAudience: CodecTypes['pg/text@1']['output'];
@@ -523,10 +596,18 @@ export type StorageColumnTypes = {
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly researchDownload: {
+      readonly active: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly deviceId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly researchId: CodecTypes['pg/int4@1']['output'];
+      readonly userId: CodecTypes['pg/int4@1']['output'] | null;
+    };
+    readonly researchResearcher: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly researchId: CodecTypes['pg/int4@1']['output'];
+      readonly userId: CodecTypes['pg/int4@1']['output'];
     };
     readonly section: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -551,10 +632,28 @@ export type StorageColumnTypes = {
 export type StorageColumnInputTypes = {
   readonly public: {
     readonly answer: {
+      readonly collectionId: CodecTypes['pg/int4@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly questionId: CodecTypes['pg/int4@1']['input'];
       readonly value: CodecTypes['pg/text@1']['input'];
+    };
+    readonly collection: {
+      readonly audioDurationSeconds: CodecTypes['pg/int4@1']['input'] | null;
+      readonly audioMimeType: CodecTypes['pg/text@1']['input'] | null;
+      readonly audioPath: CodecTypes['pg/text@1']['input'] | null;
+      readonly audioSizeBytes: CodecTypes['pg/int4@1']['input'] | null;
+      readonly clientId: CodecTypes['pg/text@1']['input'] | null;
+      readonly consentAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly consentConfirmedById: CodecTypes['pg/int4@1']['input'] | null;
+      readonly consentGiven: CodecTypes['pg/bool@1']['input'];
+      readonly deviceId: CodecTypes['pg/text@1']['input'] | null;
+      readonly finishedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly researcherId: CodecTypes['pg/int4@1']['input'];
+      readonly researchId: CodecTypes['pg/int4@1']['input'];
+      readonly startedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly company: {
       readonly contactInformation: CodecTypes['pg/text@1']['input'];
@@ -619,6 +718,7 @@ export type StorageColumnInputTypes = {
       readonly endDate: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly objective: CodecTypes['pg/text@1']['input'];
+      readonly recordInterview: CodecTypes['pg/bool@1']['input'];
       readonly startDate: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly status: 'DRAFT' | 'PUBLISHED' | 'IN_FIELD' | 'CLOSED';
       readonly targetAudience: CodecTypes['pg/text@1']['input'];
@@ -626,10 +726,18 @@ export type StorageColumnInputTypes = {
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly researchDownload: {
+      readonly active: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly deviceId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly researchId: CodecTypes['pg/int4@1']['input'];
+      readonly userId: CodecTypes['pg/int4@1']['input'] | null;
+    };
+    readonly researchResearcher: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly researchId: CodecTypes['pg/int4@1']['input'];
+      readonly userId: CodecTypes['pg/int4@1']['input'];
     };
     readonly section: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -690,6 +798,11 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
                 };
+                readonly collectionId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz-string@1';
@@ -706,6 +819,12 @@ type ContractBase = Omit<
                   readonly columns: readonly ['questionId'];
                   readonly unique: false;
                 },
+                {
+                  readonly name: 'answer_collectionId_idx_b344fc1a';
+                  readonly prefix: 'answer_collectionId_idx';
+                  readonly columns: readonly ['collectionId'];
+                  readonly unique: false;
+                },
               ];
               foreignKeys: readonly [
                 {
@@ -717,6 +836,166 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'question';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'answer';
+                    readonly columns: readonly ['collectionId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'collection';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly collection: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'autoincrement()';
+                  };
+                };
+                readonly researchId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly researcherId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly deviceId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly clientId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly startedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+                readonly finishedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+                readonly receivedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly consentGiven: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly consentAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly consentConfirmedById: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly audioPath: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly audioMimeType: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly audioSizeBytes: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly audioDurationSeconds: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'collection_researchId_idx_36f1b4c8';
+                  readonly prefix: 'collection_researchId_idx';
+                  readonly columns: readonly ['researchId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'collection_researcherId_idx_0654ce39';
+                  readonly prefix: 'collection_researcherId_idx';
+                  readonly columns: readonly ['researcherId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'collection_consentConfirmedById_idx_7ff4aaf2';
+                  readonly prefix: 'collection_consentConfirmedById_idx';
+                  readonly columns: readonly ['consentConfirmedById'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'collection';
+                    readonly columns: readonly ['researchId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'research';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'collection';
+                    readonly columns: readonly ['researcherId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'collection';
+                    readonly columns: readonly ['consentConfirmedById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1109,6 +1388,15 @@ type ContractBase = Omit<
                     readonly value: DefaultLiteralValue<'pg/text@1', 'DRAFT'>;
                   };
                 };
+                readonly recordInterview: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
                 readonly companyId: {
                   readonly nativeType: 'int4';
                   readonly codecId: 'pg/int4@1';
@@ -1172,6 +1460,20 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
                 };
+                readonly userId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly active: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', true>;
+                  };
+                };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz-string@1';
@@ -1199,6 +1501,77 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'research';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly researchResearcher: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'autoincrement()';
+                  };
+                };
+                readonly researchId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly userId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'researchResearcher_researchId_idx_36f1b4c8';
+                  readonly prefix: 'researchResearcher_researchId_idx';
+                  readonly columns: readonly ['researchId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'researchResearcher_userId_idx_a489d58a';
+                  readonly prefix: 'researchResearcher_userId_idx';
+                  readonly columns: readonly ['userId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'researchResearcher';
+                    readonly columns: readonly ['researchId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'research';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'researchResearcher';
+                    readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1392,9 +1765,17 @@ type ContractBase = Omit<
       readonly model: 'QuestionOption';
     };
     readonly answer: { readonly namespace: 'public' & NamespaceId; readonly model: 'Answer' };
+    readonly collection: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'Collection';
+    };
     readonly researchDownload: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ResearchDownload';
+    };
+    readonly researchResearcher: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ResearchResearcher';
     };
     readonly questionRule: {
       readonly namespace: 'public' & NamespaceId;
@@ -1419,6 +1800,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly collectionId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -1428,6 +1813,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly collection: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Collection';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['collectionId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
               readonly question: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -1447,7 +1843,145 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly questionId: { readonly column: 'questionId' };
                 readonly value: { readonly column: 'value' };
+                readonly collectionId: { readonly column: 'collectionId' };
                 readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly Collection: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly researchId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly researcherId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly deviceId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly clientId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly startedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly finishedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly receivedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly consentGiven: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly consentAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly consentConfirmedById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly audioPath: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly audioMimeType: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly audioSizeBytes: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly audioDurationSeconds: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+            };
+            readonly relations: {
+              readonly answers: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Answer';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['collectionId'];
+                };
+              };
+              readonly consentConfirmedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['consentConfirmedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly research: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Research';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['researchId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly researcher: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['researcherId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'collection';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly researchId: { readonly column: 'researchId' };
+                readonly researcherId: { readonly column: 'researcherId' };
+                readonly deviceId: { readonly column: 'deviceId' };
+                readonly clientId: { readonly column: 'clientId' };
+                readonly startedAt: { readonly column: 'startedAt' };
+                readonly finishedAt: { readonly column: 'finishedAt' };
+                readonly receivedAt: { readonly column: 'receivedAt' };
+                readonly consentGiven: { readonly column: 'consentGiven' };
+                readonly consentAt: { readonly column: 'consentAt' };
+                readonly consentConfirmedById: { readonly column: 'consentConfirmedById' };
+                readonly audioPath: { readonly column: 'audioPath' };
+                readonly audioMimeType: { readonly column: 'audioMimeType' };
+                readonly audioSizeBytes: { readonly column: 'audioSizeBytes' };
+                readonly audioDurationSeconds: { readonly column: 'audioDurationSeconds' };
               };
             };
           };
@@ -1841,6 +2375,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly recordInterview: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
               readonly companyId: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
@@ -1861,6 +2399,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly collections: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Collection';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['researchId'];
+                };
+              };
               readonly company: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -1876,6 +2425,17 @@ type ContractBase = Omit<
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'QuestionRule';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['researchId'];
+                };
+              };
+              readonly researchers: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ResearchResearcher';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -1907,6 +2467,7 @@ type ContractBase = Omit<
                 readonly endDate: { readonly column: 'endDate' };
                 readonly targetAudience: { readonly column: 'targetAudience' };
                 readonly status: { readonly column: 'status' };
+                readonly recordInterview: { readonly column: 'recordInterview' };
                 readonly companyId: { readonly column: 'companyId' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
@@ -1926,6 +2487,14 @@ type ContractBase = Omit<
               readonly deviceId: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly userId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly active: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
               readonly createdAt: {
                 readonly nullable: false;
@@ -1955,6 +2524,62 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly researchId: { readonly column: 'researchId' };
                 readonly deviceId: { readonly column: 'deviceId' };
+                readonly userId: { readonly column: 'userId' };
+                readonly active: { readonly column: 'active' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly ResearchResearcher: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly researchId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly research: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Research';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['researchId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'researchResearcher';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly researchId: { readonly column: 'researchId' };
+                readonly userId: { readonly column: 'userId' };
                 readonly createdAt: { readonly column: 'createdAt' };
               };
             };
@@ -2071,6 +2696,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly collections: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Collection';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['researcherId'];
+                };
+              };
               readonly company: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -2080,6 +2716,28 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['companyId'];
                   readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly consentsConfirmed: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Collection';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['consentConfirmedById'];
+                };
+              };
+              readonly researchLinks: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ResearchResearcher';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
                 };
               };
             };

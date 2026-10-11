@@ -13,6 +13,7 @@ export interface Research {
     startDate: string;
     endDate: string;
     targetAudience: string;
+    recordInterview?: boolean;
     isDownloaded?: boolean;
 }
 
@@ -67,7 +68,9 @@ export async function downloadResearchPackage(id: number): Promise<void> {
     });
 
     if (!response.ok) {
-        throw new Error('Falha ao baixar pacote da pesquisa');
+        // A API explica o motivo (não vinculado, encerrada, fora da vigência...)
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message || 'Falha ao baixar pacote da pesquisa');
     }
 
     const fullPackage = await response.json();

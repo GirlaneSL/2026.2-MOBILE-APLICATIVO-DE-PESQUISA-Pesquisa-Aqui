@@ -1,19 +1,23 @@
 import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, RefreshControl, Alert } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import PesquisaCard from './_components/PesquisaCard';
 import { getCachedResearches, syncResearches, downloadResearchPackage, type Research } from '@/lib/researchCache';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { listCollections, type LocalCollection } from '@/lib/collectionStore';
 
 export default function Pesquisas() {
     const [pesquisas, setPesquisas] = useState<Research[]>([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [collections, setCollections] = useState<LocalCollection[]>([]);
     const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
     const isOnline = useNetworkStatus();
 
     const loadFromCache = useCallback(async () => {
         const cached = await getCachedResearches();
         setPesquisas(cached);
+        // Coletas e rascunhos ficam no aparelho: a contagem funciona sem internet
+        setCollections(await listCollections());
     }, []);
 
     useFocusEffect(
@@ -51,7 +55,8 @@ export default function Pesquisas() {
             Alert.alert("Sucesso", `A pesquisa "${title}" foi baixada e está pronta para uso offline.`);
             await loadFromCache(); // Atualiza a lista para refletir o status
         } catch (error) {
-            Alert.alert("Erro", "A conexão falhou ou ocorreu um erro. A pesquisa não foi baixada.");
+            const reason = error instanceof Error ? error.message : "A conexão falhou ou ocorreu um erro.";
+            Alert.alert("Erro", `${reason} A pesquisa não foi baixada.`);
         } finally {
             setDownloadingIds(prev => {
                 const next = new Set(prev);
@@ -59,6 +64,19 @@ export default function Pesquisas() {
                 return next;
             });
         }
+    };
+
+    const startCollection = (researchId: number) => {
+        router.push({ pathname: '/coleta/[researchId]', params: { researchId: String(researchId) } });
+    };
+
+    const resumeDraft = (researchId: number) => {
+        const draft = collections.find((c) => c.researchId === researchId && c.status === 'IN_PROGRESS');
+        if (!draft) return startCollection(researchId);
+        router.push({
+            pathname: '/coleta/[researchId]',
+            params: { researchId: String(researchId), clientId: draft.clientId },
+        });
     };
 
     return (
@@ -91,7 +109,11 @@ export default function Pesquisas() {
                             isDownloaded={!!item.isDownloaded}
                             isOnline={isOnline}
                             isDownloading={downloadingIds.has(item.id)}
+                            coletasCount={collections.filter((c) => c.researchId === item.id && c.status === 'FINISHED').length}
+                            draftCount={collections.filter((c) => c.researchId === item.id && c.status === 'IN_PROGRESS').length}
                             onDownload={() => handleDownload(item.id, item.title)}
+                            onStart={() => startCollection(item.id)}
+                            onResume={() => resumeDraft(item.id)}
                         />
                     )}
                     contentContainerStyle={styles.listContainer}

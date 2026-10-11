@@ -47,6 +47,7 @@ export class ResearchService {
             endDate: createResearchDto.endDate,
             targetAudience: createResearchDto.targetAudience,
             status: 'DRAFT',
+            recordInterview: createResearchDto.recordInterview ?? false,
             companyId: companyId,
         })
     }
@@ -78,15 +79,91 @@ export class ResearchService {
 
         if (research.status === ResearchStatus.CLOSED) throw new BadRequestException('Closed research cannot be modified');
 
+        // Gravar a entrevista é decisão de estrutura (muda o que o aplicativo exige e coleta):
+        // depois de publicada, e enquanto estiver em campo, não pode ser ligada nem desligada.
+        if (
+            updateResearchDto.recordInterview !== undefined &&
+            updateResearchDto.recordInterview !== research.recordInterview &&
+            research.status !== ResearchStatus.DRAFT
+        ) {
+            throw new BadRequestException(
+                'A gravação da entrevista não pode ser ligada ou desligada depois que a pesquisa foi publicada ou está em campo.'
+            );
+        }
+
         if (updateResearchDto.startDate && updateResearchDto.endDate) {
             if (new Date(updateResearchDto.endDate) < new Date(updateResearchDto.startDate)) throw new BadRequestException('The end date cannot be earlier than the start date');
         }
 
         if (updateResearchDto.status) {
             assertValidTransition(research.status as ResearchStatus, updateResearchDto.status);
+
+            if (updateResearchDto.status === ResearchStatus.PUBLISHED && research.status !== ResearchStatus.PUBLISHED) {
+                if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot publish research');
+                await this.assertHasQuestions(id);
+            }
         }
 
         return await this.prisma.client.orm.public.Research.where({ id }).update(updateResearchDto);
+    }
+
+    // Publicar: DRAFT -> PUBLISHED. A partir daqui a pesquisa fica visível para o app.
+    async publish(id: number, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot publish research');
+
+        const research = await this.findOne(id, currentUser);
+
+        if (research.status !== ResearchStatus.DRAFT) {
+            throw new BadRequestException(`Only draft research can be published (current status: ${research.status})`);
+        }
+
+        await this.assertHasQuestions(id);
+
+        return await this.prisma.client.orm.public.Research.where({ id }).update({ status: ResearchStatus.PUBLISHED });
+    }
+
+    // Pesquisa sem nenhuma questão não pode ser publicada
+    private async assertHasQuestions(researchId: number) {
+        const orm = this.prisma.client.orm.public;
+        const sections = await orm.Section.where({ researchId }).all();
+
+        for (const section of sections) {
+            const first = await orm.Question.where({ sectionId: section.id }).first();
+            if (first) return;
+        }
+
+        throw new BadRequestException('A research without questions cannot be published');
+    }
+
+    // ---------- vínculo pesquisador <-> pesquisa ----------
+
+    async listResearchers(researchId: number, currentUser: UserPayLoad) {
+        await this.findOne(researchId, currentUser);
+        const links = await this.prisma.client.orm.public.ResearchResearcher.where({ researchId }).all();
+        return links.map((l) => ({ id: l.id, researchId: l.researchId, userId: l.userId }));
+    }
+
+    async addResearcher(researchId: number, userId: number, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot link researchers');
+
+        const research = await this.findOne(researchId, currentUser);
+        const orm = this.prisma.client.orm.public;
+
+        const user = await orm.User.where({ id: userId }).first();
+        if (!user || user.profile !== 'RESEARCHER') throw new NotFoundException('Researcher not found');
+        if (user.companyId !== research.companyId) throw new BadRequestException('The researcher belongs to another company');
+
+        const existing = await orm.ResearchResearcher.where({ researchId, userId }).first();
+        if (existing) return existing;
+
+        return await orm.ResearchResearcher.create({ researchId, userId });
+    }
+
+    async removeResearcher(researchId: number, userId: number, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot unlink researchers');
+
+        await this.findOne(researchId, currentUser);
+        return await this.prisma.client.orm.public.ResearchResearcher.where({ researchId, userId }).delete();
     }
 
     async delete(id: number, currentUser: UserPayLoad) {
@@ -97,33 +174,71 @@ export class ResearchService {
         return this.prisma.client.orm.public.Research.where({ id }).delete()
     }
 
-    // Retorna o pacote completo da pesquisa para o app móvel
-    async downloadPackage(researchId: number, deviceId: string) {
-        const research = await this.prisma.client.orm.public.Research
-            .where({ id: researchId })
-            .first();
+    // Pacote completo da pesquisa para o app móvel (uma única resposta)
+    async downloadPackage(researchId: number, deviceId: string, currentUser: UserPayLoad) {
+        const orm = this.prisma.client.orm.public;
 
-        if (!research) {
+        if (currentUser.profile !== 'RESEARCHER') {
+            throw new ForbiddenException('Only researchers linked to this research can download it');
+        }
+
+        const research = await orm.Research.where({ id: researchId }).first();
+
+        // Rascunho não é visível para o app; pesquisa de outra empresa também não.
+        if (!research || research.status === ResearchStatus.DRAFT || research.companyId !== currentUser.companyId) {
             throw new NotFoundException('Pesquisa não encontrada.');
         }
 
-        // Busca seções relacionadas (já na ordem do questionário)
-        const sections = (await this.prisma.client.orm.public.Section
-            .where({ researchId: research.id })
-            .all()).sort((a, b) => a.order - b.order);
+        // No token, `sub` é o username (não o id numérico)
+        const user = await orm.User.where({ username: String(currentUser.sub) }).first();
+        if (!user) throw new ForbiddenException('Usuário não encontrado.');
+
+        const link = await orm.ResearchResearcher.where({ researchId, userId: user.id }).first();
+        if (!link) throw new ForbiddenException('Você não está vinculado a esta pesquisa.');
+
+        if (research.status === ResearchStatus.CLOSED) {
+            throw new ForbiddenException('Pesquisa encerrada: não está disponível para download.');
+        }
+
+        const now = new Date();
+        const start = new Date(research.startDate);
+        const end = new Date(research.endDate);
+        // data de término sem horário vale até o fim do dia
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(research.endDate))) end.setUTCHours(23, 59, 59, 999);
+
+        if (now < start || now > end) {
+            throw new ForbiddenException('Pesquisa fora da vigência: não está disponível para download.');
+        }
+
+        // Seções, questões e opções, sempre na ordem do questionário
+        const sections = (await orm.Section.where({ researchId: research.id }).all()).sort((a, b) => a.order - b.order);
 
         const sectionsWithDetails = await Promise.all(
             sections.map(async (section) => {
-                const questions = (await this.prisma.client.orm.public.Question
-                    .where({ sectionId: section.id })
-                    .all()).sort((a, b) => a.order - b.order);
+                const questions = (await orm.Question.where({ sectionId: section.id }).all()).sort((a, b) => a.order - b.order);
 
                 const questionsWithDetails = await Promise.all(
                     questions.map(async (question) => {
-                        const options = (await this.prisma.client.orm.public.QuestionOption
-                            .where({ questionId: question.id })
-                            .all()).sort((a, b) => a.order - b.order);
-                        return { ...question, options };
+                        const options = (await orm.QuestionOption.where({ questionId: question.id }).all()).sort((a, b) => a.order - b.order);
+
+                        return {
+                            ...question, // campos planos mantidos por compatibilidade com o app
+                            options,
+                            validations: {
+                                isRequired: question.isRequired,
+                                minSelections: question.minSelections,
+                                maxSelections: question.maxSelections,
+                                minValue: question.minValue,
+                                maxValue: question.maxValue,
+                                minDate: question.minDate,
+                                maxDate: question.maxDate,
+                                maxLength: question.maxLength,
+                            },
+                            recording: {
+                                maxFiles: question.maxFiles,
+                                maxDuration: question.maxDuration,
+                            },
+                        };
                     })
                 );
 
@@ -131,11 +246,9 @@ export class ResearchService {
             })
         );
 
-        // Regras de exibição: a questão afetada só aparece quando a questão de origem
-        // recebe a resposta triggerValue (ver QuestionRule no contrato).
-        const rules = await this.prisma.client.orm.public.QuestionRule
-            .where({ researchId: research.id })
-            .all();
+        // Regras de pulo/exibição: a questão alvo só aparece quando a questão de origem
+        // recebe a resposta triggerValue.
+        const rules = await orm.QuestionRule.where({ researchId: research.id }).all();
         const displayRules = rules.map((rule) => ({
             id: rule.id,
             sourceQuestionId: rule.sourceQuestionId,
@@ -143,17 +256,26 @@ export class ResearchService {
             targetQuestionId: rule.targetQuestionId,
         }));
 
-        // Registra ou contabiliza a cópia para o dispositivo
-        await this.prisma.client.orm.public.ResearchDownload.create({
+        // Registra a cópia ativa: a cópia anterior deste pesquisador para esta pesquisa deixa de ser ativa
+        // (regra completa em W11).
+        const previous = await orm.ResearchDownload.where({ researchId: research.id, userId: user.id, active: true }).all();
+        for (const old of previous) {
+            await orm.ResearchDownload.where({ id: old.id }).update({ active: false });
+        }
+        const copy = await orm.ResearchDownload.create({
             researchId: research.id,
-            deviceId: deviceId,
+            deviceId,
+            userId: user.id,
+            active: true,
         });
 
-        // Retorna o pacote completo estruturado
         return {
             ...research,
+            // Interruptor de gravação: o app só inicia a coleta depois do consentimento quando isto é true
+            recordInterview: research.recordInterview,
             sections: sectionsWithDetails,
             displayRules,
+            download: { id: copy.id, deviceId, downloadedAt: copy.createdAt },
         };
     }
 }

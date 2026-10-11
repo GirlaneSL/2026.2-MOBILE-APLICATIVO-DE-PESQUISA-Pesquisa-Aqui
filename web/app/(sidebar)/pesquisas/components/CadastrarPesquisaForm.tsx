@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { createResearch } from "@/lib/research";
 import { SubmitEventHandler, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
@@ -18,6 +19,7 @@ export default function CadastrarPesquisaForm({ onSuccess }: CadastrarPesquisaFo
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [targetAudience, setTargetAudience] = useState('');
+    const [recordInterview, setRecordInterview] = useState(false);
 
     const datesValid = !startDate || !endDate || startDate <= endDate;
 
@@ -40,7 +42,8 @@ export default function CadastrarPesquisaForm({ onSuccess }: CadastrarPesquisaFo
                 objective,
                 startDate,
                 endDate,
-                targetAudience
+                targetAudience,
+                recordInterview
             );
 
             toast.success("Pesquisa criada com sucesso!");
@@ -51,6 +54,7 @@ export default function CadastrarPesquisaForm({ onSuccess }: CadastrarPesquisaFo
             setStartDate('');
             setEndDate('');
             setTargetAudience('');
+            setRecordInterview(false);
 
             if (onSuccess) {
                 onSuccess();
@@ -146,6 +150,22 @@ export default function CadastrarPesquisaForm({ onSuccess }: CadastrarPesquisaFo
                         placeholder="Público Alvo Exemplo"
                         value={targetAudience}
                         onChange={(e) => setTargetAudience(e.target.value)}
+                        disabled={isSubmitLoading}
+                    />
+                </div>
+
+                <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                    <div className="flex flex-col gap-1">
+                        <label htmlFor="recordInterview" className="font-medium">Gravar a entrevista</label>
+                        <p className="text-xs text-muted-foreground">
+                            O aplicativo grava o áudio da coleta inteira, em segundo plano, e exige a confirmação de que o
+                            entrevistado consentiu antes de começar. Depois que a pesquisa for publicada, esta opção não pode mais ser alterada.
+                        </p>
+                    </div>
+                    <Switch
+                        id="recordInterview"
+                        checked={recordInterview}
+                        onCheckedChange={setRecordInterview}
                         disabled={isSubmitLoading}
                     />
                 </div>

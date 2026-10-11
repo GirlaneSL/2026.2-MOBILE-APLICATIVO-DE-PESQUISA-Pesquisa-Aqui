@@ -43,7 +43,21 @@
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O aplicativo registra automaticamente o local onde cada entrevista começa."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "O aplicativo usa o microfone para gravar a entrevista nas pesquisas que exigem gravação.",
+          "recordAudioAndroid": true,
+          "enableBackgroundRecording": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
