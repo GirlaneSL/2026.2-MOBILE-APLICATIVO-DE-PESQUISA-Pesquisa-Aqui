@@ -57,6 +57,86 @@ export interface FormSection {
     questions: FormQuestion[];
 }
 
+// === REGRAS DE EXIBIÇÃO ===
+// A questão afetada (target) só aparece quando a questão de origem (source)
+// recebe a resposta triggerValue. YES_NO: "YES" | "NO"; escolhas: id da opção; escala: "1".."5".
+export interface DisplayRule {
+    id: number;
+    researchId: number;
+    sourceQuestionId: number;
+    sourceLabel: string;
+    sourceStatement: string;
+    triggerValue: string;
+    triggerLabel: string;
+    targetQuestionId: number;
+    targetLabel: string;
+    targetStatement: string;
+}
+
+// A API devolve 409 quando a operação mexeria em regras; nada foi alterado ainda.
+// Repetir a chamada com force=true confirma e apaga essas regras.
+export class RulesConflictError extends Error {
+    rules: DisplayRule[];
+    constructor(message: string, rules: DisplayRule[]) {
+        super(message);
+        this.name = "RulesConflictError";
+        this.rules = rules;
+    }
+}
+
+async function throwApiError(response: Response, fallback: string): Promise<never> {
+    const body = await response.json().catch(() => null);
+    if (response.status === 409 && body?.code === "RULES_CONFLICT") {
+        throw new RulesConflictError(body.message, body.rules ?? []);
+    }
+    const message = Array.isArray(body?.message) ? body.message.join(" ") : body?.message;
+    throw new Error(message || fallback);
+}
+
+const forceQuery = (force?: boolean) => (force ? "?force=true" : "");
+
+export function describeRulesConflict(error: RulesConflictError): string {
+    const lines = error.rules.map(
+        (r) => `• ${r.targetLabel} só aparece se ${r.sourceLabel} = ${r.triggerLabel}`
+    );
+    return `${error.message}\n\n${lines.join("\n")}\n\nDeseja continuar?`;
+}
+
+/**
+ * Executa a ação; se a API avisar que há regras envolvidas, pergunta ao usuário e,
+ * confirmando, repete com force=true. Retorna { cancelled: true } se ele desistir.
+ */
+export async function withRulesConfirm<T>(
+    run: (force: boolean) => Promise<T>
+): Promise<{ cancelled: false; value: T } | { cancelled: true }> {
+    try {
+        return { cancelled: false, value: await run(false) };
+    } catch (error) {
+        if (!(error instanceof RulesConflictError)) throw error;
+        if (!window.confirm(describeRulesConflict(error))) return { cancelled: true };
+        return { cancelled: false, value: await run(true) };
+    }
+}
+
+export const getRulesApi = async (researchId: number): Promise<DisplayRule[]> => {
+    const response = await apiFetch(`/question-rule?researchId=${researchId}`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) return throwApiError(response, 'Failed to get rules');
+    return response.json();
+}
+export const createRuleApi = async (payload: { sourceQuestionId: number; triggerValue: string; targetQuestionId: number }): Promise<DisplayRule> => {
+    const response = await apiFetch(`/question-rule`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) return throwApiError(response, 'Falha ao criar a regra');
+    return response.json();
+}
+export const deleteRuleApi = async (id: number) => {
+    const response = await apiFetch(`/question-rule/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (!response.ok) return throwApiError(response, 'Falha ao excluir a regra');
+    return response.json();
+}
+
 // === SEÇÕES ===
 export const getSections = async (researchId: number) => {
     const response = await apiFetch(`/section?researchId=${researchId}`, { method: 'GET', credentials: 'include' });
@@ -79,12 +159,18 @@ export const updateSectionApi = async (id: number, payload: { title?: string; or
     if (!response.ok) throw new Error('Failed to update section');
     return response.json();
 }
-export const deleteSectionApi = async (id: number) => {
-    const response = await apiFetch(`/section/${id}`, { method: 'DELETE' });
-    if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.message || 'Failed to delete section');
-    }
+export const deleteSectionApi = async (id: number, force = false) => {
+    const response = await apiFetch(`/section/${id}${forceQuery(force)}`, { method: 'DELETE' });
+    if (!response.ok) return throwApiError(response, 'Failed to delete section');
+    return response.json();
+}
+// Reordena todas as seções de uma vez (a API valida as regras no resultado final).
+export const reorderSectionsApi = async (researchId: number, orderedIds: number[], force = false) => {
+    const response = await apiFetch(`/section/reorder`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ researchId, orderedIds, force }),
+    });
+    if (!response.ok) return throwApiError(response, 'Failed to reorder sections');
     return response.json();
 }
 
@@ -102,20 +188,26 @@ export const createQuestion = async (payload: any) => {
     if (!response.ok) throw new Error('Failed to create question');
     return response.json();
 }
-export const updateQuestionApi = async (id: number, payload: any) => {
-    const response = await apiFetch(`/question/${id}`, {
+export const updateQuestionApi = async (id: number, payload: any, force = false) => {
+    const response = await apiFetch(`/question/${id}${forceQuery(force)}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error('Failed to update question');
+    if (!response.ok) return throwApiError(response, 'Failed to update question');
     return response.json();
 }
-export const deleteQuestionApi = async (id: number) => {
-    const response = await apiFetch(`/question/${id}`, { method: 'DELETE' });
-    if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.message || 'Failed to delete question');
-    }
+export const deleteQuestionApi = async (id: number, force = false) => {
+    const response = await apiFetch(`/question/${id}${forceQuery(force)}`, { method: 'DELETE' });
+    if (!response.ok) return throwApiError(response, 'Failed to delete question');
+    return response.json();
+}
+// Reordena todas as questões de uma seção de uma vez (a API valida as regras no resultado final).
+export const reorderQuestionsApi = async (sectionId: number, orderedIds: number[], force = false) => {
+    const response = await apiFetch(`/question/reorder`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ sectionId, orderedIds, force }),
+    });
+    if (!response.ok) return throwApiError(response, 'Failed to reorder questions');
     return response.json();
 }
 
@@ -136,9 +228,9 @@ export const updateOptionApi = async (id: number, payload: { text?: string; orde
     if (!response.ok) throw new Error('Failed to update option');
     return response.json();
 }
-export const deleteOptionApi = async (id: number) => {
-    const response = await apiFetch(`/question/option/${id}`, { method: 'DELETE', credentials: 'include' });
-    if (!response.ok) throw new Error('Failed to delete option');
+export const deleteOptionApi = async (id: number, force = false) => {
+    const response = await apiFetch(`/question/option/${id}${forceQuery(force)}`, { method: 'DELETE', credentials: 'include' });
+    if (!response.ok) return throwApiError(response, 'Failed to delete option');
     return response.json();
 }
 export const getOptionsApi = async (questionId: number) => {

@@ -20,8 +20,16 @@
       "model": "QuestionOption",
       "namespace": "public"
     },
+    "questionRule": {
+      "model": "QuestionRule",
+      "namespace": "public"
+    },
     "research": {
       "model": "Research",
+      "namespace": "public"
+    },
+    "researchDownload": {
+      "model": "ResearchDownload",
       "namespace": "public"
     },
     "section": {
@@ -497,6 +505,36 @@
                   "model": "Section",
                   "namespace": "public"
                 }
+              },
+              "sourceRules": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "sourceQuestionId"
+                  ]
+                },
+                "to": {
+                  "model": "QuestionRule",
+                  "namespace": "public"
+                }
+              },
+              "targetRules": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "targetQuestionId"
+                  ]
+                },
+                "to": {
+                  "model": "QuestionRule",
+                  "namespace": "public"
+                }
               }
             },
             "storage": {
@@ -633,6 +671,123 @@
               "table": "questionOption"
             }
           },
+          "QuestionRule": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "researchId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "sourceQuestionId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "targetQuestionId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "triggerValue": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "research": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "researchId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Research",
+                  "namespace": "public"
+                }
+              },
+              "sourceQuestion": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "sourceQuestionId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Question",
+                  "namespace": "public"
+                }
+              },
+              "targetQuestion": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "targetQuestionId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Question",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "researchId": {
+                  "column": "researchId"
+                },
+                "sourceQuestionId": {
+                  "column": "sourceQuestionId"
+                },
+                "targetQuestionId": {
+                  "column": "targetQuestionId"
+                },
+                "triggerValue": {
+                  "column": "triggerValue"
+                }
+              },
+              "namespaceId": "public",
+              "table": "questionRule"
+            }
+          },
           "Research": {
             "fields": {
               "companyId": {
@@ -735,6 +890,21 @@
                   "namespace": "public"
                 }
               },
+              "questionRules": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "researchId"
+                  ]
+                },
+                "to": {
+                  "model": "QuestionRule",
+                  "namespace": "public"
+                }
+              },
               "sections": {
                 "cardinality": "1:N",
                 "on": {
@@ -789,6 +959,73 @@
               },
               "namespaceId": "public",
               "table": "research"
+            }
+          },
+          "ResearchDownload": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "deviceId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "researchId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "research": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "researchId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Research",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "deviceId": {
+                  "column": "deviceId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "researchId": {
+                  "column": "researchId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "researchDownload"
             }
           },
           "Section": {
@@ -1375,6 +1612,133 @@
               },
               "uniques": []
             },
+            "questionRule": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "researchId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "sourceQuestionId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "targetQuestionId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "triggerValue": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "researchId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "questionRule"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "research"
+                  }
+                },
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "sourceQuestionId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "questionRule"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "question"
+                  }
+                },
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "targetQuestionId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "questionRule"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "question"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "researchId"
+                  ],
+                  "name": "questionRule_researchId_idx_36f1b4c8",
+                  "prefix": "questionRule_researchId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "sourceQuestionId"
+                  ],
+                  "name": "questionRule_sourceQuestionId_idx_cdb26c3f",
+                  "prefix": "questionRule_sourceQuestionId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "targetQuestionId"
+                  ],
+                  "name": "questionRule_targetQuestionId_idx_99c9d653",
+                  "prefix": "questionRule_targetQuestionId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "research": {
               "checks": [
                 {
@@ -1491,6 +1855,73 @@
                   ],
                   "name": "research_companyId_idx_33acc5ed",
                   "prefix": "research_companyId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "researchDownload": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "deviceId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "researchId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "researchId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "researchDownload"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "research"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "researchId"
+                  ],
+                  "name": "researchDownload_researchId_idx_36f1b4c8",
+                  "prefix": "researchDownload_researchId_idx",
                   "unique": false
                 }
               ],
@@ -1732,7 +2163,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "8d756b762586b1d4ad84375ecd99e47cfbbe758fde791b4d24712dcf3fbd9bc1"
+    "storageHash": "ebf51a6c34bc5e2c150cc0999f5f725b9541e88f09a9d87f9ff1530ec3bbe554"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",

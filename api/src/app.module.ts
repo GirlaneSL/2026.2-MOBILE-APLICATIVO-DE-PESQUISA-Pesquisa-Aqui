@@ -8,9 +8,10 @@ import { UserModule } from './user/user.module.js';
 import { ResearchModule } from './research/research.module.js';
 import { SectionModule } from './section/section.module.js';
 import { QuestionModule } from './question/question.module.js';
+import { QuestionRuleModule } from './question-rule/question-rule.module.js';
 
 @Module({
-  imports: [CompanyModule, AuthModule, UserModule, ResearchModule, SectionModule, QuestionModule],
+  imports: [CompanyModule, AuthModule, UserModule, ResearchModule, SectionModule, QuestionModule, QuestionRuleModule],
   controllers: [AppController],
   providers: [AppService, PrismaService],
 })
