@@ -33,6 +33,11 @@ enum QuestionType {
   AUDIO
 }
 
+enum FileKind {
+  PHOTO
+  AUDIO
+}
+
 model Company {
   id                  Int      @id @default(autoincrement())
   legalName           String
@@ -156,6 +161,24 @@ model Collection {
   audioSizeBytes       Int?
   audioDurationSeconds Int?
   answers              Answer[]
+  files                CollectionFile[]
+}
+
+// Arquivo (foto ou áudio) de uma coleta. Sobe separado das respostas, depois que a coleta chegou.
+model CollectionFile {
+  id           Int        @id @default(autoincrement())
+  collectionId Int
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  kind         FileKind
+  questionId   Int?
+  fileName     String
+  // Chave única do arquivo na coleta: impede gravar o mesmo arquivo duas vezes.
+  // Foto: "<coleta>:PHOTO:<questão>:<nome>". Áudio: "<coleta>:AUDIO".
+  fileKey      String     @unique
+  mimeType     String
+  sizeBytes    Int
+  storagePath  String
+  createdAt    TimestamptzString @default(now())
 }
 
 model ResearchDownload {

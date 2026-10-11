@@ -1,5 +1,11 @@
 import { apiFetch } from "./apiFetcher";
 
+export interface CollectionFilesCounts {
+    expected: number;
+    received: number;
+    missing: number;
+}
+
 export interface CollectionSummary {
     id: number;
     researchId: number;
@@ -17,6 +23,23 @@ export interface CollectionSummary {
     hasAudio: boolean;
     audioDurationSeconds: number | null;
     audioSizeBytes: number | null;
+    // Arquivos (fotos e áudio) que a coleta deve ter: quantos chegaram e quantos faltam
+    files: CollectionFilesCounts;
+}
+
+export interface CollectionFileEntry {
+    kind: 'PHOTO' | 'AUDIO';
+    questionId: number | null;
+    fileName: string;
+    received: boolean;
+    fileId: number | null;
+    mimeType: string | null;
+    sizeBytes: number | null;
+}
+
+export interface CollectionFilesDetail extends CollectionFilesCounts {
+    collectionId: number;
+    files: CollectionFileEntry[];
 }
 
 const readError = async (response: Response, fallback: string) => {
@@ -46,6 +69,30 @@ export const getCollectionAudio = async (collectionId: number): Promise<Blob> =>
     });
 
     if (!response.ok) throw await readError(response, 'Falha ao carregar o áudio da coleta');
+
+    return response.blob();
+};
+
+// Lista os arquivos da coleta: os que já chegaram e os que faltam.
+export const getCollectionFiles = async (collectionId: number): Promise<CollectionFilesDetail> => {
+    const response = await apiFetch(`/collection/${collectionId}/files`, {
+        method: 'GET',
+        credentials: 'include',
+    });
+
+    if (!response.ok) throw await readError(response, 'Falha ao carregar os arquivos da coleta');
+
+    return response.json();
+};
+
+// Baixa uma foto da coleta pela API autenticada (o arquivo nunca é público).
+export const getCollectionFileBlob = async (collectionId: number, fileId: number): Promise<Blob> => {
+    const response = await apiFetch(`/collection/${collectionId}/files/${fileId}`, {
+        method: 'GET',
+        credentials: 'include',
+    });
+
+    if (!response.ok) throw await readError(response, 'Falha ao carregar o arquivo da coleta');
 
     return response.blob();
 };

@@ -43,6 +43,28 @@ export interface CollectionInput {
 // O servidor recusou a coleta por falta do consentimento registrado (pesquisa com gravação).
 export class ConsentRequiredError extends Error { }
 
+// Arquivo (foto ou áudio) a enviar depois que a coleta chegou ao servidor.
+export type CollectionFileInput =
+    | { kind: 'PHOTO'; questionId: number; uri: string; name: string; mimeType: string }
+    | { kind: 'AUDIO'; uri: string; name: string; mimeType: string };
+
+// O servidor respondeu ao envio do arquivo com erro. `retryable` diz se vale tentar de novo:
+// falha do servidor e "coleta ainda não chegou" passam; arquivo inválido ou grande demais, não.
+export class FileUploadError extends Error {
+    status: number;
+    code: string | undefined;
+    retryable: boolean;
+
+    constructor(message: string, status: number, code: string | undefined, retryable: boolean) {
+        super(message);
+        this.status = status;
+        this.code = code;
+        this.retryable = retryable;
+    }
+}
+
+// Só os dados da coleta: os arquivos (áudio e fotos) sobem depois, um a um, por uploadCollectionFile.
+// `audioDurationSeconds` avisa o servidor de que um áudio está a caminho.
 export function buildCollectionFormData(input: CollectionInput): FormData {
     const payload = {
         researchId: input.researchId,
@@ -57,29 +79,10 @@ export function buildCollectionFormData(input: CollectionInput): FormData {
 
     const form = new FormData();
     form.append('payload', JSON.stringify(payload));
-
-    if (input.audio) {
-        // Formato de arquivo do React Native para multipart
-        form.append('audio', {
-            uri: input.audio.uri,
-            name: `coleta-${input.clientId}.m4a`,
-            type: input.audio.mimeType ?? 'audio/mp4',
-        } as unknown as Blob);
-    }
-
-    // Fotos: um campo `photos` por arquivo, todos na mesma requisição da coleta
-    for (const photo of input.photos ?? []) {
-        form.append('photos', {
-            uri: photo.uri,
-            name: photo.name,
-            type: photo.mimeType,
-        } as unknown as Blob);
-    }
-
     return form;
 }
 
-// Envia a coleta: respostas, consentimento (data, hora) e o áudio, tudo na mesma requisição.
+// Envia a coleta: respostas e consentimento (data, hora). Os arquivos vão em seguida, separados.
 export async function uploadCollection(input: CollectionInput) {
     const response = await apiFetch('/collection', {
         method: 'POST',
@@ -92,6 +95,44 @@ export async function uploadCollection(input: CollectionInput) {
         throw new Error(
             Array.isArray(body?.message) ? body.message.join(', ') : body?.message || 'Falha ao enviar a coleta'
         );
+    }
+
+    return response.json();
+}
+
+// Envia um arquivo de uma coleta que já chegou. O mesmo arquivo enviado de novo volta como
+// ALREADY_RECEIVED, e isso conta como sucesso: o servidor já tem o arquivo.
+export async function uploadCollectionFile(
+    clientId: string,
+    file: CollectionFileInput,
+): Promise<{ status: 'RECEIVED' | 'ALREADY_RECEIVED' }> {
+    const form = new FormData();
+    form.append('kind', file.kind);
+    if (file.kind === 'PHOTO') {
+        form.append('questionId', String(file.questionId));
+        form.append('fileName', file.name);
+    }
+    // Formato de arquivo do React Native para multipart
+    form.append('file', {
+        uri: file.uri,
+        name: file.name,
+        type: file.mimeType,
+    } as unknown as Blob);
+
+    const response = await apiFetch(`/collection/${encodeURIComponent(clientId)}/files`, {
+        method: 'POST',
+        body: form,
+    });
+
+    if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        const message = Array.isArray(body?.message) ? body.message.join(', ') : body?.message;
+        const retryable =
+            response.status >= 500 ||
+            response.status === 408 ||
+            response.status === 429 ||
+            body?.code === 'COLLECTION_NOT_RECEIVED';
+        throw new FileUploadError(message || 'Falha ao enviar o arquivo', response.status, body?.code, retryable);
     }
 
     return response.json();

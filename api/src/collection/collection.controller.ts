@@ -3,6 +3,7 @@ import {
     Controller,
     Get,
     Header,
+    HttpCode,
     Param,
     ParseIntPipe,
     Post,
@@ -18,19 +19,22 @@ import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { CollectionService } from './collection.service.js';
 import type { UploadedAudio } from './collection.service.js';
+import { CollectionFilesService } from './collection-files.service.js';
 import { CreateCollectionDto } from './dto/create-collection.dto.js';
-
-// Limite do arquivo de áudio por coleta (padrão 150 MB; ajustável por AUDIO_MAX_BYTES).
-const MAX_AUDIO_BYTES = Number(process.env.AUDIO_MAX_BYTES) || 150 * 1024 * 1024;
+import { UploadCollectionFileDto } from './dto/upload-collection-file.dto.js';
+import { maxAudioBytes, maxUploadBytes } from './file-limits.js';
 
 @UseGuards(AuthGuard)
 @Controller('collection')
 export class CollectionController {
-    constructor(private collectionService: CollectionService) { }
+    constructor(
+        private collectionService: CollectionService,
+        private filesService: CollectionFilesService,
+    ) { }
 
     // multipart/form-data: campo `payload` (JSON com respostas e consentimento) + arquivo `audio` opcional
     @Post()
-    @UseInterceptors(FileInterceptor('audio', { limits: { fileSize: MAX_AUDIO_BYTES, files: 1 } }))
+    @UseInterceptors(FileInterceptor('audio', { limits: { fileSize: maxAudioBytes(), files: 1 } }))
     create(
         @Body() dto: CreateCollectionDto,
         @UploadedFile() audio: UploadedAudio | undefined,
@@ -39,16 +43,52 @@ export class CollectionController {
         return this.collectionService.create(dto.payload, audio, currentUser);
     }
 
+    // Envio de um arquivo (foto ou áudio) de uma coleta que já chegou.
+    // multipart/form-data: `kind`, `questionId` e `fileName` (foto) + o arquivo no campo `file`.
+    // O UUID da coleta (clientId) vai na rota.
+    @Post(':clientId/files')
+    @HttpCode(200)
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: maxUploadBytes(), files: 1 } }))
+    uploadFile(
+        @Param('clientId') clientId: string,
+        @Body() dto: UploadCollectionFileDto,
+        @UploadedFile() file: UploadedAudio | undefined,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.filesService.upload(clientId, dto, file, currentUser);
+    }
+
     @Get()
-    findAll(@Query('researchId', ParseIntPipe) researchId: number, @CurrentUser() currentUser: UserPayLoad) {
-        return this.collectionService.findAll(researchId, currentUser);
+    async findAll(@Query('researchId', ParseIntPipe) researchId: number, @CurrentUser() currentUser: UserPayLoad) {
+        const collections = await this.collectionService.findAll(researchId, currentUser);
+        return this.filesService.attachFilesStatus(researchId, collections);
+    }
+
+    // Arquivos da coleta: quais chegaram e quais faltam.
+    @Get(':id/files')
+    files(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+        return this.filesService.listFiles(id, currentUser);
+    }
+
+    @Get(':id/files/:fileId')
+    @Header('Cache-Control', 'private, no-store')
+    @Header('X-Content-Type-Options', 'nosniff')
+    async file(
+        @Param('id', ParseIntPipe) id: number,
+        @Param('fileId', ParseIntPipe) fileId: number,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        const { stream, size, mimeType } = await this.filesService.openFile(id, fileId, currentUser);
+        return new StreamableFile(stream, { type: mimeType, length: size, disposition: 'inline' });
     }
 
     @Get(':id/audio')
     @Header('Cache-Control', 'private, no-store')
     @Header('X-Content-Type-Options', 'nosniff')
     async audio(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
-        const { stream, size, mimeType } = await this.collectionService.getAudio(id, currentUser);
+        // Áudio enviado separado tem prioridade; senão vale o áudio gravado no envio antigo da coleta.
+        const received = await this.filesService.openReceivedAudio(id, currentUser);
+        const { stream, size, mimeType } = received ?? (await this.collectionService.getAudio(id, currentUser));
         return new StreamableFile(stream, { type: mimeType, length: size, disposition: 'inline' });
     }
 }

@@ -91,7 +91,7 @@ export class CollectionService {
                 audioPath,
                 audioMimeType: audio ? audio.mimetype : null,
                 audioSizeBytes: audio ? audio.buffer.length : null,
-                audioDurationSeconds: audio ? (payload.audioDurationSeconds ?? null) : null,
+                audioDurationSeconds: payload.audioDurationSeconds ?? null,
             });
 
             for (const answer of payload.answers) {

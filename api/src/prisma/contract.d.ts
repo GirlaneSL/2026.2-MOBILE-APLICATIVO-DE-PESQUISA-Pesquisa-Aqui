@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'2740686b1824718a89d294d86298c9aef01246fc4b0ceb7dcdb0622071494518'>;
+  StorageHashBase<'71c37f4cbd49e71cbec1d0214916a73c451678950a5c8b69227f39c3015e39e8'>;
 export type ExecutionHash =
   ExecutionHashBase<'89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09'>;
 export type ProfileHash =
@@ -265,6 +265,18 @@ export type FieldOutputTypes = {
       readonly audioSizeBytes: CodecTypes['pg/int4@1']['output'] | null;
       readonly audioDurationSeconds: CodecTypes['pg/int4@1']['output'] | null;
     };
+    readonly CollectionFile: {
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly collectionId: CodecTypes['pg/int4@1']['output'];
+      readonly kind: 'PHOTO' | 'AUDIO';
+      readonly questionId: CodecTypes['pg/int4@1']['output'] | null;
+      readonly fileName: CodecTypes['pg/text@1']['output'];
+      readonly fileKey: CodecTypes['pg/text@1']['output'];
+      readonly mimeType: CodecTypes['pg/text@1']['output'];
+      readonly sizeBytes: CodecTypes['pg/int4@1']['output'];
+      readonly storagePath: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
     readonly Company: {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly legalName: CodecTypes['pg/text@1']['output'];
@@ -394,6 +406,18 @@ export type FieldInputTypes = {
       readonly audioMimeType: CodecTypes['pg/text@1']['input'] | null;
       readonly audioSizeBytes: CodecTypes['pg/int4@1']['input'] | null;
       readonly audioDurationSeconds: CodecTypes['pg/int4@1']['input'] | null;
+    };
+    readonly CollectionFile: {
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly collectionId: CodecTypes['pg/int4@1']['input'];
+      readonly kind: 'PHOTO' | 'AUDIO';
+      readonly questionId: CodecTypes['pg/int4@1']['input'] | null;
+      readonly fileName: CodecTypes['pg/text@1']['input'];
+      readonly fileKey: CodecTypes['pg/text@1']['input'];
+      readonly mimeType: CodecTypes['pg/text@1']['input'];
+      readonly sizeBytes: CodecTypes['pg/int4@1']['input'];
+      readonly storagePath: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly Company: {
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -525,6 +549,18 @@ export type StorageColumnTypes = {
       readonly researchId: CodecTypes['pg/int4@1']['output'];
       readonly startedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
+    readonly collectionFile: {
+      readonly collectionId: CodecTypes['pg/int4@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly fileKey: CodecTypes['pg/text@1']['output'];
+      readonly fileName: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly kind: 'PHOTO' | 'AUDIO';
+      readonly mimeType: CodecTypes['pg/text@1']['output'];
+      readonly questionId: CodecTypes['pg/int4@1']['output'] | null;
+      readonly sizeBytes: CodecTypes['pg/int4@1']['output'];
+      readonly storagePath: CodecTypes['pg/text@1']['output'];
+    };
     readonly company: {
       readonly contactInformation: CodecTypes['pg/text@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -654,6 +690,18 @@ export type StorageColumnInputTypes = {
       readonly researcherId: CodecTypes['pg/int4@1']['input'];
       readonly researchId: CodecTypes['pg/int4@1']['input'];
       readonly startedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly collectionFile: {
+      readonly collectionId: CodecTypes['pg/int4@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly fileKey: CodecTypes['pg/text@1']['input'];
+      readonly fileName: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly kind: 'PHOTO' | 'AUDIO';
+      readonly mimeType: CodecTypes['pg/text@1']['input'];
+      readonly questionId: CodecTypes['pg/int4@1']['input'] | null;
+      readonly sizeBytes: CodecTypes['pg/int4@1']['input'];
+      readonly storagePath: CodecTypes['pg/text@1']['input'];
     };
     readonly company: {
       readonly contactInformation: CodecTypes['pg/text@1']['input'];
@@ -996,6 +1044,89 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly collectionFile: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'autoincrement()';
+                  };
+                };
+                readonly collectionId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly kind: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly questionId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly fileName: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly fileKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly mimeType: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly sizeBytes: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly storagePath: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['fileKey'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'collectionFile_collectionId_idx_b344fc1a';
+                  readonly prefix: 'collectionFile_collectionId_idx';
+                  readonly columns: readonly ['collectionId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'collectionFile';
+                    readonly columns: readonly ['collectionId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'collection';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1719,6 +1850,10 @@ type ContractBase = Omit<
               readonly kind: 'valueSet';
               readonly values: readonly ['ACTIVE', 'INACTIVE'];
             };
+            readonly FileKind: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['PHOTO', 'AUDIO'];
+            };
             readonly Profile: {
               readonly kind: 'valueSet';
               readonly values: readonly ['SUPERADMINISTRATOR', 'ADMINISTRATOR', 'RESEARCHER'];
@@ -1768,6 +1903,10 @@ type ContractBase = Omit<
     readonly collection: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'Collection';
+    };
+    readonly collectionFile: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'CollectionFile';
     };
     readonly researchDownload: {
       readonly namespace: 'public' & NamespaceId;
@@ -1943,6 +2082,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
+              readonly files: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'CollectionFile';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['collectionId'];
+                };
+              };
               readonly research: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -1982,6 +2132,82 @@ type ContractBase = Omit<
                 readonly audioMimeType: { readonly column: 'audioMimeType' };
                 readonly audioSizeBytes: { readonly column: 'audioSizeBytes' };
                 readonly audioDurationSeconds: { readonly column: 'audioDurationSeconds' };
+              };
+            };
+          };
+          readonly CollectionFile: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly collectionId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly kind: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly questionId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly fileName: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly fileKey: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly mimeType: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly sizeBytes: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly storagePath: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly collection: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Collection';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['collectionId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'collectionFile';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly collectionId: { readonly column: 'collectionId' };
+                readonly kind: { readonly column: 'kind' };
+                readonly questionId: { readonly column: 'questionId' };
+                readonly fileName: { readonly column: 'fileName' };
+                readonly fileKey: { readonly column: 'fileKey' };
+                readonly mimeType: { readonly column: 'mimeType' };
+                readonly sizeBytes: { readonly column: 'sizeBytes' };
+                readonly storagePath: { readonly column: 'storagePath' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -2796,6 +3022,13 @@ type ContractBase = Omit<
               { readonly name: 'PHOTO'; readonly value: 'PHOTO' },
               { readonly name: 'MULTIPLE_PHOTOS'; readonly value: 'MULTIPLE_PHOTOS' },
               { readonly name: 'LOCATION'; readonly value: 'LOCATION' },
+              { readonly name: 'AUDIO'; readonly value: 'AUDIO' },
+            ];
+          };
+          readonly FileKind: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'PHOTO'; readonly value: 'PHOTO' },
               { readonly name: 'AUDIO'; readonly value: 'AUDIO' },
             ];
           };

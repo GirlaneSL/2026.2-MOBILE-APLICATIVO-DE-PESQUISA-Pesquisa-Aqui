@@ -12,6 +12,10 @@
       "model": "Collection",
       "namespace": "public"
     },
+    "collectionFile": {
+      "model": "CollectionFile",
+      "namespace": "public"
+    },
     "company": {
       "model": "Company",
       "namespace": "public"
@@ -63,6 +67,19 @@
               {
                 "name": "INACTIVE",
                 "value": "INACTIVE"
+              }
+            ]
+          },
+          "FileKind": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "PHOTO",
+                "value": "PHOTO"
+              },
+              {
+                "name": "AUDIO",
+                "value": "AUDIO"
               }
             ]
           },
@@ -390,6 +407,21 @@
                   "namespace": "public"
                 }
               },
+              "files": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "collectionId"
+                  ]
+                },
+                "to": {
+                  "model": "CollectionFile",
+                  "namespace": "public"
+                }
+              },
               "research": {
                 "cardinality": "N:1",
                 "on": {
@@ -471,6 +503,139 @@
               },
               "namespaceId": "public",
               "table": "collection"
+            }
+          },
+          "CollectionFile": {
+            "fields": {
+              "collectionId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "fileKey": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "fileName": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "kind": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "FileKind",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "mimeType": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "questionId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "sizeBytes": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "storagePath": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "collection": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "collectionId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Collection",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "collectionId": {
+                  "column": "collectionId"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "fileKey": {
+                  "column": "fileKey"
+                },
+                "fileName": {
+                  "column": "fileName"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "kind": {
+                  "column": "kind"
+                },
+                "mimeType": {
+                  "column": "mimeType"
+                },
+                "questionId": {
+                  "column": "questionId"
+                },
+                "sizeBytes": {
+                  "column": "sizeBytes"
+                },
+                "storagePath": {
+                  "column": "storagePath"
+                }
+              },
+              "namespaceId": "public",
+              "table": "collectionFile"
             }
           },
           "Company": {
@@ -1964,6 +2129,122 @@
               },
               "uniques": []
             },
+            "collectionFile": {
+              "checks": [
+                {
+                  "expression": "\"kind\" IN ('PHOTO', 'AUDIO')",
+                  "name": "collectionFile_kind_check_f7ea1c7d",
+                  "prefix": "collectionFile_kind_check"
+                }
+              ],
+              "columns": {
+                "collectionId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "fileKey": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "fileName": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "kind": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "FileKind",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "mimeType": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "questionId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "sizeBytes": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "storagePath": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "collectionId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "collectionFile"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "collection"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "collectionId"
+                  ],
+                  "name": "collectionFile_collectionId_idx_b344fc1a",
+                  "prefix": "collectionFile_collectionId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "fileKey"
+                  ]
+                }
+              ]
+            },
             "company": {
               "checks": [
                 {
@@ -2884,6 +3165,13 @@
                 "INACTIVE"
               ]
             },
+            "FileKind": {
+              "kind": "valueSet",
+              "values": [
+                "PHOTO",
+                "AUDIO"
+              ]
+            },
             "Profile": {
               "kind": "valueSet",
               "values": [
@@ -2924,7 +3212,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "2740686b1824718a89d294d86298c9aef01246fc4b0ceb7dcdb0622071494518"
+    "storageHash": "71c37f4cbd49e71cbec1d0214916a73c451678950a5c8b69227f39c3015e39e8"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",
