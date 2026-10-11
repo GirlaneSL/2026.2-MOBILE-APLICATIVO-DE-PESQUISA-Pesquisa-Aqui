@@ -44,6 +44,10 @@
       "model": "Section",
       "namespace": "public"
     },
+    "syncLog": {
+      "model": "SyncLog",
+      "namespace": "public"
+    },
     "user": {
       "model": "User",
       "namespace": "public"
@@ -1527,6 +1531,123 @@
               "table": "section"
             }
           },
+          "SyncLog": {
+            "fields": {
+              "acceptedCount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "details": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "deviceId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "existingCount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "receivedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "rejectedCount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "researcherId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "totalCount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "researcher": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "researcherId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "acceptedCount": {
+                  "column": "acceptedCount"
+                },
+                "details": {
+                  "column": "details"
+                },
+                "deviceId": {
+                  "column": "deviceId"
+                },
+                "existingCount": {
+                  "column": "existingCount"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "receivedAt": {
+                  "column": "receivedAt"
+                },
+                "rejectedCount": {
+                  "column": "rejectedCount"
+                },
+                "researcherId": {
+                  "column": "researcherId"
+                },
+                "totalCount": {
+                  "column": "totalCount"
+                }
+              },
+              "namespaceId": "public",
+              "table": "syncLog"
+            }
+          },
           "User": {
             "fields": {
               "companyId": {
@@ -1650,6 +1771,21 @@
                 },
                 "to": {
                   "model": "ResearchResearcher",
+                  "namespace": "public"
+                }
+              },
+              "syncLogs": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "researcherId"
+                  ]
+                },
+                "to": {
+                  "model": "SyncLog",
                   "namespace": "public"
                 }
               }
@@ -1962,7 +2098,14 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "researcherId",
+                    "clientId"
+                  ]
+                }
+              ]
             },
             "company": {
               "checks": [
@@ -2770,6 +2913,97 @@
               },
               "uniques": []
             },
+            "syncLog": {
+              "columns": {
+                "acceptedCount": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "details": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "deviceId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "existingCount": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "receivedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "rejectedCount": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "researcherId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "totalCount": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "researcherId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "syncLog"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "researcherId"
+                  ],
+                  "name": "syncLog_researcherId_idx_0654ce39",
+                  "prefix": "syncLog_researcherId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "user": {
               "checks": [
                 {
@@ -2924,7 +3158,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "2740686b1824718a89d294d86298c9aef01246fc4b0ceb7dcdb0622071494518"
+    "storageHash": "a1fcd91d3097d1341d0bffa70083472ea5d0b8ed7d8ebfa66794952e4f125c46"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",
