@@ -4,6 +4,7 @@ import * as Location from 'expo-location';
 import type { CollectionAudio, CollectionInput, InterviewConsent } from './collectionUpload';
 import { getDeviceId } from './researchCache';
 import type { AnswerValue, Answers, PackageQuestion } from './displayRules';
+import { isQuestionTypeSupported } from './questionTypes';
 
 // Coletas guardadas no aparelho (AsyncStorage): tudo aqui funciona sem internet.
 // Uma chave por coleta, para que gravar uma resposta nunca reescreva as outras coletas.
@@ -36,20 +37,6 @@ export interface LocalCollection {
     audio?: CollectionAudio;
     updatedAt: string;
 }
-
-// Tipos que a tela de coleta ainda sabe preencher. Foto, várias fotos e áudio dependem de
-// câmera/gravador por questão e ficam para uma próxima história.
-export const SUPPORTED_QUESTION_TYPES = new Set([
-    'FREE_TEXT',
-    'NUMERIC',
-    'DATE',
-    'TIME',
-    'YES_NO',
-    'SINGLE_CHOICE',
-    'MULTIPLE_CHOICE',
-    'SCALE_1_5',
-    'LOCATION',
-]);
 
 export class CollectionClosedError extends Error {
     constructor() {
@@ -208,7 +195,7 @@ export function getBlockingMissing(
     isAnswerEmpty: (answer: AnswerValue) => boolean,
 ): PackageQuestion[] {
     return visibleQuestions.filter(
-        (q) => q.isRequired && SUPPORTED_QUESTION_TYPES.has(q.type) && isAnswerEmpty(answers[q.id]),
+        (q) => q.isRequired && isQuestionTypeSupported(q.type) && isAnswerEmpty(answers[q.id]),
     );
 }
 
@@ -216,6 +203,8 @@ function serializeAnswer(question: PackageQuestion, answer: AnswerValue): string
     if (answer === null || answer === undefined) return null;
 
     if (question.type === 'YES_NO') return answer === true ? 'YES' : answer === false ? 'NO' : String(answer);
+    // Número sempre com ponto decimal, mesmo que o pesquisador tenha digitado vírgula
+    if (question.type === 'NUMERIC' && typeof answer === 'string') return answer.trim().replace(',', '.');
     if (question.type === 'DATE' && typeof answer === 'string') {
         const m = answer.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
         return m ? `${m[3]}-${m[2]}-${m[1]}` : answer;

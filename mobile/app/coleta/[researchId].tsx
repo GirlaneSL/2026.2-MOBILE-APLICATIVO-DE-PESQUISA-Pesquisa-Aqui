@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ConsentModal from '@/components/ConsentModal';
-import QuestionInput, { getFormatError } from '@/components/QuestionInput';
+import QuestionInput from '@/components/QuestionInput';
 import { useInterviewRecording } from '@/hooks/useInterviewRecording';
 import {
     CollectionClosedError,
@@ -26,7 +26,6 @@ import {
     getDurationSeconds,
     saveCollection,
     startCollection,
-    SUPPORTED_QUESTION_TYPES,
     type LocalCollection,
 } from '@/lib/collectionStore';
 import type { InterviewConsent } from '@/lib/collectionUpload';
@@ -38,6 +37,7 @@ import {
     type AnswerValue,
     type ResearchPackage,
 } from '@/lib/displayRules';
+import { isQuestionTypeSupported, validateAnswer } from '@/lib/questionTypes';
 import { getCachedResearchPackage } from '@/lib/researchCache';
 
 type Phase = 'loading' | 'consent' | 'starting' | 'running' | 'finished' | 'error';
@@ -82,21 +82,29 @@ export default function ColetaScreen() {
 
     // ---------- Gravação no aparelho ----------
 
-    const flush = useCallback((): Promise<void> => {
+    // Devolve true quando tudo o que estava na memória já está gravado no aparelho.
+    const flush = useCallback(async (): Promise<boolean> => {
         if (saveTimer.current) {
             clearTimeout(saveTimer.current);
             saveTimer.current = null;
         }
         const snapshot = collectionRef.current;
-        if (!snapshot || snapshot.status === 'FINISHED') return writeChain.current;
+        if (!snapshot || snapshot.status === 'FINISHED') {
+            await writeChain.current;
+            return true;
+        }
 
         // Gravações em fila, uma de cada vez, para a mais nova nunca ser sobrescrita por uma antiga.
+        let saved = true;
         writeChain.current = writeChain.current
             .then(() => saveCollection(snapshot))
             .catch((error) => {
-                if (!(error instanceof CollectionClosedError)) console.log('Falha ao salvar rascunho:', error);
+                if (error instanceof CollectionClosedError) return;
+                saved = false;
+                console.log('Falha ao salvar rascunho:', error);
             });
-        return writeChain.current;
+        await writeChain.current;
+        return saved;
     }, []);
 
     const updateCollection = useCallback(
@@ -246,10 +254,24 @@ export default function ColetaScreen() {
     const currentQuestion = visibleQuestions[currentIndex];
     const isLast = currentIndex === visibleQuestions.length - 1;
 
-    const goToQuestion = (questionId: number) => {
-        setValidationMessage(null);
+    // Grava no banco local a resposta da questão que está sendo deixada e só então mostra a próxima.
+    // Se a gravação falhar, o pesquisador continua onde está (nada se perde) e é avisado.
+    const saveBeforeLeaving = async (): Promise<boolean> => {
+        const saved = await flush();
+        if (!saved) {
+            Alert.alert(
+                'Resposta não gravada',
+                'Não foi possível gravar a resposta no aparelho. Tente avançar novamente.',
+            );
+        }
+        return saved;
+    };
+
+    const goToQuestion = async (questionId: number, message: string | null = null) => {
+        if (!(await saveBeforeLeaving())) return;
+        setValidationMessage(message);
         updateCollection({ currentQuestionId: questionId });
-        void flush();
+        void flush(); // grava também o ponto em que o pesquisador parou
     };
 
     const handleChange = (value: AnswerValue) => {
@@ -261,16 +283,16 @@ export default function ColetaScreen() {
     };
 
     const handleBack = () => {
-        if (currentIndex > 0) goToQuestion(visibleQuestions[currentIndex - 1].id);
+        if (currentIndex > 0) void goToQuestion(visibleQuestions[currentIndex - 1].id);
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (!collection || !currentQuestion) return;
         const answer = collection.answers[currentQuestion.id];
 
         if (
             currentQuestion.isRequired &&
-            SUPPORTED_QUESTION_TYPES.has(currentQuestion.type) &&
+            isQuestionTypeSupported(currentQuestion.type) &&
             isAnswerEmpty(answer)
         ) {
             setValidationMessage(
@@ -279,16 +301,17 @@ export default function ColetaScreen() {
             return;
         }
 
-        const formatError = getFormatError(currentQuestion, answer);
+        // Formato e limites vêm do pacote (tamanho do texto, mínimo/máximo, intervalo de datas)
+        const formatError = validateAnswer(currentQuestion, answer);
         if (formatError) {
             setValidationMessage(`Questão ${currentIndex + 1}: ${formatError}`);
             return;
         }
 
         if (isLast) {
-            confirmFinish();
+            if (await saveBeforeLeaving()) confirmFinish();
         } else {
-            goToQuestion(visibleQuestions[currentIndex + 1].id);
+            await goToQuestion(visibleQuestions[currentIndex + 1].id);
         }
     };
 
@@ -302,8 +325,19 @@ export default function ColetaScreen() {
         if (missing.length > 0) {
             const first = missing[0];
             const position = visibleQuestions.findIndex((q) => q.id === first.id) + 1;
-            goToQuestion(first.id);
-            setValidationMessage(`Questão ${position} é obrigatória: "${first.statement}". Responda para finalizar.`);
+            void goToQuestion(
+                first.id,
+                `Questão ${position} é obrigatória: "${first.statement}". Responda para finalizar.`,
+            );
+            return;
+        }
+
+        // Quem voltou e deixou uma resposta fora do formato/limite não consegue finalizar com ela
+        const invalid = visibleQuestions
+            .map((q, i) => ({ question: q, position: i + 1, error: validateAnswer(q, collection.answers[q.id]) }))
+            .find((item) => item.error);
+        if (invalid) {
+            void goToQuestion(invalid.question.id, `Questão ${invalid.position}: ${invalid.error}`);
             return;
         }
 
@@ -497,7 +531,12 @@ export default function ColetaScreen() {
                         {currentQuestion.isRequired ? <Text style={styles.required}> *</Text> : null}
                     </Text>
 
-                    <QuestionInput question={currentQuestion} value={answer} onChange={handleChange} />
+                    <QuestionInput
+                        key={currentQuestion.id}
+                        question={currentQuestion}
+                        value={answer}
+                        onChange={handleChange}
+                    />
 
                     {validationMessage ? (
                         <View style={styles.validationBox}>
