@@ -18,6 +18,15 @@ export interface CollectionAudio {
     mimeType?: string;
 }
 
+// Foto tirada numa questão de foto / várias fotos. O arquivo já está reduzido e guardado no aparelho.
+export interface CollectionPhoto {
+    questionId: number;
+    uri: string;
+    // Nome do arquivo: é o valor que a resposta da questão guarda, para o servidor ligar arquivo e questão
+    name: string;
+    mimeType: string;
+}
+
 export interface CollectionInput {
     researchId: number;
     // Identificador único da coleta no aparelho: reenviar a mesma coleta não a duplica no servidor
@@ -28,6 +37,7 @@ export interface CollectionInput {
     answers: CollectionAnswer[];
     consent?: InterviewConsent;
     audio?: CollectionAudio;
+    photos?: CollectionPhoto[];
 }
 
 // O servidor recusou a coleta por falta do consentimento registrado (pesquisa com gravação).
@@ -54,6 +64,15 @@ export function buildCollectionFormData(input: CollectionInput): FormData {
             uri: input.audio.uri,
             name: `coleta-${input.clientId}.m4a`,
             type: input.audio.mimeType ?? 'audio/mp4',
+        } as unknown as Blob);
+    }
+
+    // Fotos: um campo `photos` por arquivo, todos na mesma requisição da coleta
+    for (const photo of input.photos ?? []) {
+        form.append('photos', {
+            uri: photo.uri,
+            name: photo.name,
+            type: photo.mimeType,
         } as unknown as Blob);
     }
 

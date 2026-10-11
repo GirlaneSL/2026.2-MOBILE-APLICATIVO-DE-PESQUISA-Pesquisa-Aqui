@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, RefreshControl, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import PesquisaCard from './_components/PesquisaCard';
+import DraftPickerModal from './_components/DraftPickerModal';
 import { getCachedResearches, syncResearches, downloadResearchPackage, type Research } from '@/lib/researchCache';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { listCollections, type LocalCollection } from '@/lib/collectionStore';
@@ -11,6 +12,8 @@ export default function Pesquisas() {
     const [refreshing, setRefreshing] = useState(false);
     const [collections, setCollections] = useState<LocalCollection[]>([]);
     const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
+    // Pesquisa cujos rascunhos o pesquisador está escolhendo (null = lista fechada)
+    const [pickingResearch, setPickingResearch] = useState<Research | null>(null);
     const isOnline = useNetworkStatus();
 
     const loadFromCache = useCallback(async () => {
@@ -70,13 +73,22 @@ export default function Pesquisas() {
         router.push({ pathname: '/coleta/[researchId]', params: { researchId: String(researchId) } });
     };
 
-    const resumeDraft = (researchId: number) => {
-        const draft = collections.find((c) => c.researchId === researchId && c.status === 'IN_PROGRESS');
-        if (!draft) return startCollection(researchId);
+    const openDraft = (researchId: number, clientId: string) => {
         router.push({
             pathname: '/coleta/[researchId]',
-            params: { researchId: String(researchId), clientId: draft.clientId },
+            params: { researchId: String(researchId), clientId },
         });
+    };
+
+    const draftsOf = (researchId: number) =>
+        collections.filter((c) => c.researchId === researchId && c.status === 'IN_PROGRESS');
+
+    // Um rascunho: retoma direto. Vários: o pesquisador escolhe qual continuar.
+    const resumeDraft = (research: Research) => {
+        const drafts = draftsOf(research.id);
+        if (drafts.length === 0) return startCollection(research.id);
+        if (drafts.length === 1) return openDraft(research.id, drafts[0].clientId);
+        setPickingResearch(research);
     };
 
     return (
@@ -113,7 +125,7 @@ export default function Pesquisas() {
                             draftCount={collections.filter((c) => c.researchId === item.id && c.status === 'IN_PROGRESS').length}
                             onDownload={() => handleDownload(item.id, item.title)}
                             onStart={() => startCollection(item.id)}
-                            onResume={() => resumeDraft(item.id)}
+                            onResume={() => resumeDraft(item)}
                         />
                     )}
                     contentContainerStyle={styles.listContainer}
@@ -121,6 +133,17 @@ export default function Pesquisas() {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
                 />
             )}
+
+            <DraftPickerModal
+                visible={pickingResearch !== null}
+                title={pickingResearch?.title ?? ''}
+                drafts={pickingResearch ? draftsOf(pickingResearch.id) : []}
+                onClose={() => setPickingResearch(null)}
+                onSelect={(draft) => {
+                    setPickingResearch(null);
+                    openDraft(draft.researchId, draft.clientId);
+                }}
+            />
         </View>
     );
 }

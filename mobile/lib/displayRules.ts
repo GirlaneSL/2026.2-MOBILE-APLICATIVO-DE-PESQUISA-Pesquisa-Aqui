@@ -18,6 +18,9 @@ export interface PackageOption {
 // minDate/maxDate chegam como "AAAA-MM-DD".
 export interface QuestionValidations {
     isRequired?: boolean;
+    // Múltipla escolha: quantas opções o entrevistado pode marcar
+    minSelections?: number | null;
+    maxSelections?: number | null;
     maxLength?: number | null;
     minValue?: number | null;
     maxValue?: number | null;
@@ -34,11 +37,20 @@ export interface PackageQuestion {
     options: PackageOption[];
     // O pacote manda os limites no objeto `validations` e também nos campos planos (compatibilidade).
     validations?: QuestionValidations;
+    minSelections?: number | null;
+    maxSelections?: number | null;
+    // Escala 1 a 5: rótulos das pontas (1 e 5), cadastrados na web
+    scaleLeftLabel?: string | null;
+    scaleRightLabel?: string | null;
     maxLength?: number | null;
     minValue?: number | null;
     maxValue?: number | null;
     minDate?: string | null;
     maxDate?: string | null;
+    // Várias fotos: quantas fotos a questão aceita. O pacote manda em `recording.maxFiles`
+    // (e também no campo plano, por compatibilidade).
+    maxFiles?: number | null;
+    recording?: { maxFiles?: number | null; maxDuration?: number | null };
 }
 
 export interface PackageSection {

@@ -35,9 +35,11 @@ import {
     orderedQuestions,
     pruneHiddenAnswers,
     type AnswerValue,
+    type Answers,
     type ResearchPackage,
 } from '@/lib/displayRules';
-import { isQuestionTypeSupported, validateAnswer } from '@/lib/questionTypes';
+import { deletePhoto } from '@/lib/photoStorage';
+import { getPhotoUris, isQuestionTypeSupported, validateAnswer } from '@/lib/questionTypes';
 import { getCachedResearchPackage } from '@/lib/researchCache';
 
 type Phase = 'loading' | 'consent' | 'starting' | 'running' | 'finished' | 'error';
@@ -280,6 +282,23 @@ export default function ColetaScreen() {
         // Se a mudança esconde questões que dependiam desta, as respostas delas saem também
         const answers = pruneHiddenAnswers(pkg, { ...collection.answers, [currentQuestion.id]: value });
         updateCollection({ answers });
+        discardRemovedPhotos(collection.answers, answers);
+    };
+
+    // Foto removida (ou trocada, ou de questão que ficou escondida) não pode ficar ocupando espaço no aparelho.
+    // Só apaga o arquivo depois de gravar a resposta nova, para um rascunho nunca apontar para foto que sumiu.
+    const discardRemovedPhotos = (before: Answers, after: Answers) => {
+        if (!pkg) return;
+        const removed = orderedQuestions(pkg)
+            .filter((q) => q.type === 'PHOTO' || q.type === 'MULTIPLE_PHOTOS')
+            .flatMap((q) => {
+                const kept = new Set(getPhotoUris(after[q.id]));
+                return getPhotoUris(before[q.id]).filter((uri) => !kept.has(uri));
+            });
+        if (removed.length === 0) return;
+        void flush().then((saved) => {
+            if (saved) removed.forEach(deletePhoto);
+        });
     };
 
     const handleBack = () => {
@@ -536,6 +555,7 @@ export default function ColetaScreen() {
                         question={currentQuestion}
                         value={answer}
                         onChange={handleChange}
+                        collectionId={collection.clientId}
                     />
 
                     {validationMessage ? (
