@@ -8,6 +8,8 @@ import { isAnswerEmpty, type AnswerValue, type PackageQuestion } from './display
 // ---------- Limites vindos do servidor ----------
 
 export interface QuestionLimits {
+    minSelections?: number;
+    maxSelections?: number;
     maxLength?: number;
     minValue?: number;
     maxValue?: number;
@@ -31,13 +33,32 @@ function toIsoDate(value: unknown): string | undefined {
 export function getQuestionLimits(question: PackageQuestion): QuestionLimits {
     const v = question.validations;
     const maxLength = toNumber(v?.maxLength ?? question.maxLength);
+    const minSelections = toNumber(v?.minSelections ?? question.minSelections);
+    const maxSelections = toNumber(v?.maxSelections ?? question.maxSelections);
     return {
+        minSelections: minSelections !== undefined && minSelections > 0 ? minSelections : undefined,
+        maxSelections: maxSelections !== undefined && maxSelections > 0 ? maxSelections : undefined,
         maxLength: maxLength !== undefined && maxLength > 0 ? maxLength : undefined,
         minValue: toNumber(v?.minValue ?? question.minValue),
         maxValue: toNumber(v?.maxValue ?? question.maxValue),
         minDate: toIsoDate(v?.minDate ?? question.minDate),
         maxDate: toIsoDate(v?.maxDate ?? question.maxDate),
     };
+}
+
+// ---------- Escolhas ----------
+
+/** Texto de quantas opções podem ser marcadas ("Marque de 1 a 3 opções"), ou null se não há limite. */
+export function describeSelectionRange(minSelections?: number, maxSelections?: number): string | null {
+    const plural = (n: number) => (n === 1 ? 'opção' : 'opções');
+    if (minSelections !== undefined && maxSelections !== undefined) {
+        return minSelections === maxSelections
+            ? `Marque ${minSelections} ${plural(minSelections)}`
+            : `Marque de ${minSelections} a ${maxSelections} opções`;
+    }
+    if (minSelections !== undefined) return `Marque pelo menos ${minSelections} ${plural(minSelections)}`;
+    if (maxSelections !== undefined) return `Marque até ${maxSelections} ${plural(maxSelections)}`;
+    return null;
 }
 
 // ---------- Datas e horas ----------
@@ -155,6 +176,18 @@ function validateTime(_question: PackageQuestion, value: AnswerValue): string | 
     return typeof value === 'string' && parseTime(value) ? null : 'Informe um horário válido no formato HH:MM.';
 }
 
+function validateMultipleChoice(question: PackageQuestion, value: AnswerValue): string | null {
+    const { minSelections, maxSelections } = getQuestionLimits(question);
+    const count = Array.isArray(value) ? value.length : 0;
+    if (minSelections !== undefined && count < minSelections) {
+        return `${describeSelectionRange(minSelections, maxSelections)} (${count} marcada${count === 1 ? '' : 's'}).`;
+    }
+    if (maxSelections !== undefined && count > maxSelections) {
+        return `Marque no máximo ${maxSelections} ${maxSelections === 1 ? 'opção' : 'opções'} (${count} marcadas).`;
+    }
+    return null;
+}
+
 // Tipos que a tela de coleta sabe preencher. Foto, várias fotos e áudio dependem de câmera/gravador
 // por questão e ficam para uma próxima história. Uma entrada sem validador = tipo sem regra de formato.
 const QUESTION_TYPE_VALIDATORS = {
@@ -164,7 +197,7 @@ const QUESTION_TYPE_VALIDATORS = {
     TIME: validateTime,
     YES_NO: undefined,
     SINGLE_CHOICE: undefined,
-    MULTIPLE_CHOICE: undefined,
+    MULTIPLE_CHOICE: validateMultipleChoice,
     SCALE_1_5: undefined,
     LOCATION: undefined,
 } satisfies Record<string, Validator | undefined>;
