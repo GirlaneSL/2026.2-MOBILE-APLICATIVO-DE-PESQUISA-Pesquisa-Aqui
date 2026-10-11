@@ -36,13 +36,40 @@ export class ResearchController {
         return this.researchService.delete(id, currentUser);
     }
 
-    @Get(':id/download')
-    async download(
-        @Param('id', ParseIntPipe) id: number,
-        @Headers('x-device-id') deviceId: string,
-    ) {
-        const safeDeviceId = deviceId || 'unknown-device';
-        return this.researchService.downloadPackage(id, safeDeviceId);
+    @Post(':id/publish')
+    publish(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+        return this.researchService.publish(id, currentUser);
     }
 
+    @Get(':id/researchers')
+    listResearchers(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+        return this.researchService.listResearchers(id, currentUser);
+    }
+
+    @Post(':id/researchers/:userId')
+    addResearcher(
+        @Param('id', ParseIntPipe) id: number,
+        @Param('userId', ParseIntPipe) userId: number,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.researchService.addResearcher(id, userId, currentUser);
+    }
+
+    @Delete(':id/researchers/:userId')
+    removeResearcher(
+        @Param('id', ParseIntPipe) id: number,
+        @Param('userId', ParseIntPipe) userId: number,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.researchService.removeResearcher(id, userId, currentUser);
+    }
+
+    @Get(':id/download')
+    download(
+        @Param('id', ParseIntPipe) id: number,
+        @Headers('x-device-id') deviceId: string,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.researchService.downloadPackage(id, deviceId || 'unknown-device', currentUser);
+    }
 }

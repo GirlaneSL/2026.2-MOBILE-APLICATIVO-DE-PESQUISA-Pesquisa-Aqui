@@ -32,6 +32,10 @@
       "model": "ResearchDownload",
       "namespace": "public"
     },
+    "researchResearcher": {
+      "model": "ResearchResearcher",
+      "namespace": "public"
+    },
     "section": {
       "model": "Section",
       "namespace": "public"
@@ -905,6 +909,21 @@
                   "namespace": "public"
                 }
               },
+              "researchers": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "researchId"
+                  ]
+                },
+                "to": {
+                  "model": "ResearchResearcher",
+                  "namespace": "public"
+                }
+              },
               "sections": {
                 "cardinality": "1:N",
                 "on": {
@@ -963,6 +982,13 @@
           },
           "ResearchDownload": {
             "fields": {
+              "active": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -990,6 +1016,13 @@
                   "codecId": "pg/int4@1",
                   "kind": "scalar"
                 }
+              },
+              "userId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
               }
             },
             "relations": {
@@ -1011,6 +1044,9 @@
             },
             "storage": {
               "fields": {
+                "active": {
+                  "column": "active"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -1022,10 +1058,95 @@
                 },
                 "researchId": {
                   "column": "researchId"
+                },
+                "userId": {
+                  "column": "userId"
                 }
               },
               "namespaceId": "public",
               "table": "researchDownload"
+            }
+          },
+          "ResearchResearcher": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "researchId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "userId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "research": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "researchId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Research",
+                  "namespace": "public"
+                }
+              },
+              "user": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "researchId": {
+                  "column": "researchId"
+                },
+                "userId": {
+                  "column": "userId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "researchResearcher"
             }
           },
           "Section": {
@@ -1208,6 +1329,21 @@
                 },
                 "to": {
                   "model": "Company",
+                  "namespace": "public"
+                }
+              },
+              "researchLinks": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
+                },
+                "to": {
+                  "model": "ResearchResearcher",
                   "namespace": "public"
                 }
               }
@@ -1867,6 +2003,15 @@
             },
             "researchDownload": {
               "columns": {
+                "active": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -1894,6 +2039,11 @@
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
                   "nullable": false
+                },
+                "userId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
                 }
               },
               "foreignKeys": [
@@ -1922,6 +2072,98 @@
                   ],
                   "name": "researchDownload_researchId_idx_36f1b4c8",
                   "prefix": "researchDownload_researchId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "researchResearcher": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "researchId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "userId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "researchId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "researchResearcher"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "research"
+                  }
+                },
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "userId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "researchResearcher"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "researchId"
+                  ],
+                  "name": "researchResearcher_researchId_idx_36f1b4c8",
+                  "prefix": "researchResearcher_researchId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "userId"
+                  ],
+                  "name": "researchResearcher_userId_idx_a489d58a",
+                  "prefix": "researchResearcher_userId_idx",
                   "unique": false
                 }
               ],
@@ -2163,7 +2405,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "ebf51a6c34bc5e2c150cc0999f5f725b9541e88f09a9d87f9ff1530ec3bbe554"
+    "storageHash": "6a04094716918d3357acf51a57331e1dab5dd7a7c995fce703040b1bb2cbcecb"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",

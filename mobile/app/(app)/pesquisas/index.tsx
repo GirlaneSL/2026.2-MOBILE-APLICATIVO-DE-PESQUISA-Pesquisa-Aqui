@@ -51,7 +51,8 @@ export default function Pesquisas() {
             Alert.alert("Sucesso", `A pesquisa "${title}" foi baixada e está pronta para uso offline.`);
             await loadFromCache(); // Atualiza a lista para refletir o status
         } catch (error) {
-            Alert.alert("Erro", "A conexão falhou ou ocorreu um erro. A pesquisa não foi baixada.");
+            const reason = error instanceof Error ? error.message : "A conexão falhou ou ocorreu um erro.";
+            Alert.alert("Erro", `${reason} A pesquisa não foi baixada.`);
         } finally {
             setDownloadingIds(prev => {
                 const next = new Set(prev);

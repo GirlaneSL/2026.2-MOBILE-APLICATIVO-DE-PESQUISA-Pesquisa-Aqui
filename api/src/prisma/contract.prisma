@@ -51,6 +51,7 @@ model User {
   profile      Profile
   companyId    Int?
   company      Company?  @relation(fields: [companyId], references: [id])
+  researchLinks ResearchResearcher[]
   createdAt    TimestamptzString @default(now())
   updatedAt    temporal.updatedAtString()
 }
@@ -68,6 +69,7 @@ model Research {
   company        Company  @relation(fields: [companyId], references: [id])
   sections       Section[]
   questionRules  QuestionRule[]
+  researchers    ResearchResearcher[]
   createdAt      TimestamptzString @default(now())
   updatedAt      temporal.updatedAtString()
 }
@@ -132,6 +134,17 @@ model ResearchDownload {
   researchId Int
   research   Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
   deviceId   String
+  userId     Int?
+  active     Boolean  @default(true)
+  createdAt  TimestamptzString @default(now())
+}
+
+model ResearchResearcher {
+  id         Int      @id @default(autoincrement())
+  researchId Int
+  research   Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt  TimestamptzString @default(now())
 }
 

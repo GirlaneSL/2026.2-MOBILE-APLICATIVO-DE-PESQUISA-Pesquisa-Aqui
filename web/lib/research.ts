@@ -117,9 +117,9 @@ export const deleteResearch = async (id: number): Promise<void> => {
 }
 
 export const publishResearch = async (id: number): Promise<Research> => {
-    const response = await apiFetch(`/research/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: 'PUBLISHED' }),
+    const response = await apiFetch(`/research/${id}/publish`, {
+        method: 'POST',
+        credentials: 'include',
     });
 
     if (!response.ok) {
@@ -128,4 +128,31 @@ export const publishResearch = async (id: number): Promise<Research> => {
     }
 
     return response.json();
+};
+
+export interface ResearchResearcherLink {
+    id: number;
+    researchId: number;
+    userId: number;
+}
+
+const readError = async (response: Response, fallback: string) => {
+    const errorBody = await response.json().catch(() => null);
+    return new Error(errorBody?.message || fallback);
+};
+
+export const getResearchLinkedResearchers = async (researchId: number): Promise<ResearchResearcherLink[]> => {
+    const response = await apiFetch(`/research/${researchId}/researchers`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw await readError(response, 'Falha ao carregar pesquisadores vinculados');
+    return response.json();
+};
+
+export const linkResearcher = async (researchId: number, userId: number): Promise<void> => {
+    const response = await apiFetch(`/research/${researchId}/researchers/${userId}`, { method: 'POST', credentials: 'include' });
+    if (!response.ok) throw await readError(response, 'Falha ao vincular pesquisador');
+};
+
+export const unlinkResearcher = async (researchId: number, userId: number): Promise<void> => {
+    const response = await apiFetch(`/research/${researchId}/researchers/${userId}`, { method: 'DELETE', credentials: 'include' });
+    if (!response.ok) throw await readError(response, 'Falha ao desvincular pesquisador');
 };
