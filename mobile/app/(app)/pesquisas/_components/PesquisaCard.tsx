@@ -12,11 +12,14 @@ interface PesquisaCardProps {
     isOnline: boolean;
     isDownloading: boolean;
     coletasCount?: number;
+    draftCount?: number;
     onDownload: () => void;
+    onStart?: () => void;
+    onResume?: () => void;
 }
 
 export default function PesquisaCard({ 
-    titulo, targetAudience, startDate, endDate, isDownloaded, isOnline, isDownloading, coletasCount = 0, onDownload 
+    titulo, targetAudience, startDate, endDate, isDownloaded, isOnline, isDownloading, coletasCount = 0, draftCount = 0, onDownload, onStart, onResume 
 }: PesquisaCardProps) {
     
     // Formatação amigável das datas
@@ -39,13 +42,21 @@ export default function PesquisaCard({
                 <Text style={styles.infoText}>Período: {formattedPeriod}</Text>
                 
                 {isDownloaded && (
-                    <Text style={styles.coletasText}>{coletasCount} coleta(s) realizada(s)</Text>
+                    <Text style={styles.coletasText}>
+                        {coletasCount} coleta(s) realizada(s)
+                        {draftCount > 0 ? ` · ${draftCount} rascunho(s)` : ''}
+                    </Text>
                 )}
             </View>
 
             {isDownloaded ? (
                 <View style={styles.downloadedActions}>
-                    <TouchableOpacity style={[styles.button, styles.buttonStart]}>
+                    {draftCount > 0 && (
+                        <TouchableOpacity style={[styles.button, styles.buttonResume]} onPress={onResume}>
+                            <Text style={styles.buttonTextResume}>Retomar</Text>
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={[styles.button, styles.buttonStart]} onPress={onStart}>
                         <PlayCircle size={20} color="#fff" />
                         <Text style={styles.buttonTextStart}>Iniciar Coleta</Text>
                     </TouchableOpacity>
@@ -94,6 +105,8 @@ const styles = StyleSheet.create({
     downloadedActions: { flexDirection: 'row', gap: 8, zIndex: 1 },
     button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 8, gap: 8, flex: 1, zIndex: 1 },
     buttonStart: { backgroundColor: '#447762' },
+    buttonResume: { borderWidth: 1, borderColor: '#447762', backgroundColor: '#fff' },
+    buttonTextResume: { color: '#447762', fontWeight: 'bold', fontSize: 16 },
     buttonUpdate: { padding: 14, borderRadius: 8, borderWidth: 1, borderColor: '#447762', alignItems: 'center', justifyContent: 'center' },
     buttonDownload: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#B66D56' },
     buttonDisabled: { borderColor: '#d4d4d8', backgroundColor: '#f4f4f5' },

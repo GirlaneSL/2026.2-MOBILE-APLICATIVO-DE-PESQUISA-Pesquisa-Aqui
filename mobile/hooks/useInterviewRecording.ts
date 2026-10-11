@@ -40,8 +40,27 @@ export function useInterviewRecording(pkg: { recordInterview?: boolean } | null 
         const permission = await AudioModule.requestRecordingPermissionsAsync();
         if (!permission.granted) return { ok: false, reason: 'permission-denied' };
 
-        await setAudioModeAsync({ allowsRecording: true, allowsBackgroundRecording: true, playsInSilentMode: true });
-        await recorder.prepareToRecordAsync();
+        // Android 13+: gravar em segundo plano mostra uma notificação e exige POST_NOTIFICATIONS.
+        // Se o pesquisador negar, grava só com o app aberto em vez de travar a coleta.
+        let allowsBackgroundRecording = false;
+        try {
+            const notifications = await AudioModule.requestNotificationPermissionsAsync();
+            allowsBackgroundRecording = notifications.granted;
+        } catch {
+            allowsBackgroundRecording = false;
+        }
+
+        await setAudioModeAsync({ allowsRecording: true, allowsBackgroundRecording, playsInSilentMode: true });
+        try {
+            await recorder.prepareToRecordAsync();
+        } catch (error) {
+            // O serviço de gravação em segundo plano não subiu (ex.: build instalado sem o plugin do
+            // expo-audio atualizado). Não trava a entrevista: tenta de novo gravando só com o app aberto.
+            if (!allowsBackgroundRecording) throw error;
+            console.log('Gravação em segundo plano indisponível, gravando só em primeiro plano:', error);
+            await setAudioModeAsync({ allowsRecording: true, allowsBackgroundRecording: false, playsInSilentMode: true });
+            await recorder.prepareToRecordAsync();
+        }
         recorder.record();
         setIsRecording(true);
 
