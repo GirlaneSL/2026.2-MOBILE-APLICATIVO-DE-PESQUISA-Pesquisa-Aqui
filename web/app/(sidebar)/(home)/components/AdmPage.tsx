@@ -110,6 +110,7 @@ export default function AdmPage() {
                         animationDelayN={4}
                         isCardFooter={false}
                         cardTitle="Ultimas Atualizações"
+                        CardContentClassName={"max-h-55 overflow-auto"}
                         cardContent={<UltimasAtualizacoesList items={activities} loading={loading} />}
                     />
                 </div>
