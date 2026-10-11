@@ -4,6 +4,7 @@ import { Calendar, Check, Clock, MapPin } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
+import PhotoAnswer from '@/components/PhotoAnswer';
 import type { AnswerValue, PackageQuestion } from '@/lib/displayRules';
 import {
     describeSelectionRange,
@@ -17,6 +18,8 @@ interface QuestionInputProps {
     question: PackageQuestion;
     value: AnswerValue;
     onChange: (value: AnswerValue) => void;
+    /** UUID da coleta em andamento: as fotos tiradas ficam guardadas ligadas a ela. */
+    collectionId: string;
 }
 
 interface InputProps extends QuestionInputProps {
@@ -358,6 +361,8 @@ const ANSWER_COMPONENTS: Record<SupportedQuestionType, React.ComponentType<Input
     SINGLE_CHOICE: SingleChoiceAnswer,
     MULTIPLE_CHOICE: MultipleChoiceAnswer,
     SCALE_1_5: ScaleAnswer,
+    PHOTO: PhotoAnswer,
+    MULTIPLE_PHOTOS: PhotoAnswer,
     LOCATION: LocationAnswer,
 };
 
@@ -365,7 +370,7 @@ const ANSWER_COMPONENTS: Record<SupportedQuestionType, React.ComponentType<Input
 // em "12" não pode gritar "mínimo 10" no meio do caminho). Seletores validam na hora de escolher.
 const TYPED_TYPES = new Set<string>(['FREE_TEXT', 'NUMERIC']);
 
-export default function QuestionInput({ question, value, onChange }: QuestionInputProps) {
+export default function QuestionInput({ question, value, onChange, collectionId }: QuestionInputProps) {
     const [touched, setTouched] = useState(false);
 
     if (!isQuestionTypeSupported(question.type)) {
@@ -387,6 +392,7 @@ export default function QuestionInput({ question, value, onChange }: QuestionInp
             question={question}
             value={value}
             onChange={onChange}
+            collectionId={collectionId}
             error={error}
             onBlur={() => setTouched(true)}
         />

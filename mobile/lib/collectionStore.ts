@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as Location from 'expo-location';
-import type { CollectionAudio, CollectionInput, InterviewConsent } from './collectionUpload';
+import type { CollectionAudio, CollectionInput, CollectionPhoto, InterviewConsent } from './collectionUpload';
 import { getDeviceId } from './researchCache';
 import type { AnswerValue, Answers, PackageQuestion } from './displayRules';
-import { isQuestionTypeSupported } from './questionTypes';
+import { getPhotoUris, isQuestionTypeSupported } from './questionTypes';
 
 // Coletas guardadas no aparelho (AsyncStorage): tudo aqui funciona sem internet.
 // Uma chave por coleta, para que gravar uma resposta nunca reescreva as outras coletas.
@@ -199,8 +199,21 @@ export function getBlockingMissing(
     );
 }
 
+const isPhotoQuestion = (question: PackageQuestion) => question.type === 'PHOTO' || question.type === 'MULTIPLE_PHOTOS';
+
+/** Nome do arquivo de uma foto guardada no aparelho (último trecho do endereço). */
+const photoFileName = (uri: string) => uri.split('/').pop() ?? uri;
+
 function serializeAnswer(question: PackageQuestion, answer: AnswerValue): string | null {
     if (answer === null || answer === undefined) return null;
+
+    // Foto: o endereço local não serve ao servidor. A resposta leva o nome do arquivo (uma foto) ou a
+    // lista de nomes (várias), e os arquivos seguem junto, no mesmo envio.
+    if (isPhotoQuestion(question)) {
+        const names = getPhotoUris(answer).map(photoFileName);
+        if (names.length === 0) return null;
+        return question.type === 'PHOTO' ? names[0] : JSON.stringify(names);
+    }
 
     if (question.type === 'YES_NO') return answer === true ? 'YES' : answer === false ? 'NO' : String(answer);
     // Número sempre com ponto decimal, mesmo que o pesquisador tenha digitado vírgula
@@ -227,6 +240,16 @@ export async function buildCollectionInput(
         return value === null || value === '' ? [] : [{ questionId: question.id, value }];
     });
 
+    // Fotos guardadas no aparelho entram na mesma fila de envio da coleta
+    const photos: CollectionPhoto[] = questions.filter(isPhotoQuestion).flatMap((question) =>
+        getPhotoUris(collection.answers[question.id]).map((uri) => ({
+            questionId: question.id,
+            uri,
+            name: photoFileName(uri),
+            mimeType: 'image/jpeg',
+        })),
+    );
+
     return {
         researchId: collection.researchId,
         clientId: collection.clientId,
@@ -236,5 +259,6 @@ export async function buildCollectionInput(
         answers,
         consent: collection.consent,
         audio: collection.audio,
+        photos,
     };
 }

@@ -15,7 +15,14 @@ export interface QuestionLimits {
     maxValue?: number;
     minDate?: string; // AAAA-MM-DD
     maxDate?: string; // AAAA-MM-DD
+    maxFiles?: number; // fotos aceitas na questão
 }
+
+/**
+ * Quantas fotos "várias fotos" aceita quando o servidor não cadastrou limite. Foto pesa e o
+ * aparelho guarda tudo até o envio, então não deixamos a questão sem teto.
+ */
+export const DEFAULT_MAX_PHOTOS = 10;
 
 function toNumber(value: unknown): number | undefined {
     if (value === null || value === undefined || value === '') return undefined;
@@ -35,7 +42,9 @@ export function getQuestionLimits(question: PackageQuestion): QuestionLimits {
     const maxLength = toNumber(v?.maxLength ?? question.maxLength);
     const minSelections = toNumber(v?.minSelections ?? question.minSelections);
     const maxSelections = toNumber(v?.maxSelections ?? question.maxSelections);
+    const maxFiles = toNumber(question.recording?.maxFiles ?? question.maxFiles);
     return {
+        maxFiles: maxFiles !== undefined && maxFiles > 0 ? maxFiles : undefined,
         minSelections: minSelections !== undefined && minSelections > 0 ? minSelections : undefined,
         maxSelections: maxSelections !== undefined && maxSelections > 0 ? maxSelections : undefined,
         maxLength: maxLength !== undefined && maxLength > 0 ? maxLength : undefined,
@@ -188,8 +197,30 @@ function validateMultipleChoice(question: PackageQuestion, value: AnswerValue): 
     return null;
 }
 
-// Tipos que a tela de coleta sabe preencher. Foto, várias fotos e áudio dependem de câmera/gravador
-// por questão e ficam para uma próxima história. Uma entrada sem validador = tipo sem regra de formato.
+// ---------- Fotos ----------
+
+/** Quantas fotos a questão aceita: uma em "foto"; em "várias fotos", o limite do servidor (ou o padrão). */
+export function getPhotoLimit(question: PackageQuestion): number {
+    if (question.type === 'PHOTO') return 1;
+    return getQuestionLimits(question).maxFiles ?? DEFAULT_MAX_PHOTOS;
+}
+
+/** A resposta de foto guarda o endereço de cada arquivo no aparelho: um texto (foto) ou uma lista (várias). */
+export function getPhotoUris(value: AnswerValue): string[] {
+    if (typeof value === 'string') return value.trim() === '' ? [] : [value];
+    if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item !== '');
+    return [];
+}
+
+function validatePhotos(question: PackageQuestion, value: AnswerValue): string | null {
+    const limit = getPhotoLimit(question);
+    const count = getPhotoUris(value).length;
+    if (count <= limit) return null;
+    return `Use no máximo ${limit} ${limit === 1 ? 'foto' : 'fotos'} (${count} tiradas). Remova ${count - limit === 1 ? 'uma' : 'as que passam do limite'}.`;
+}
+
+// Tipos que a tela de coleta sabe preencher. Áudio por questão fica para uma próxima história.
+// Uma entrada sem validador = tipo sem regra de formato.
 const QUESTION_TYPE_VALIDATORS = {
     FREE_TEXT: validateText,
     NUMERIC: validateNumeric,
@@ -199,6 +230,8 @@ const QUESTION_TYPE_VALIDATORS = {
     SINGLE_CHOICE: undefined,
     MULTIPLE_CHOICE: validateMultipleChoice,
     SCALE_1_5: undefined,
+    PHOTO: validatePhotos,
+    MULTIPLE_PHOTOS: validatePhotos,
     LOCATION: undefined,
 } satisfies Record<string, Validator | undefined>;
 

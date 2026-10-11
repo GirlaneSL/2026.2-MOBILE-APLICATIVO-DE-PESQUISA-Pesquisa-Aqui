@@ -51,6 +51,12 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "cameraPermission": "O aplicativo usa a câmera para fotografar o que o pesquisador registra em campo."
+        }
+      ],
+      [
         "expo-audio",
         {
           "microphonePermission": "O aplicativo usa o microfone para gravar a entrevista nas pesquisas que exigem gravação.",

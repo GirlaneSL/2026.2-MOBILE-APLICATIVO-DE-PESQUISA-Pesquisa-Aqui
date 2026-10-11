@@ -47,6 +47,10 @@ export interface PackageQuestion {
     maxValue?: number | null;
     minDate?: string | null;
     maxDate?: string | null;
+    // Várias fotos: quantas fotos a questão aceita. O pacote manda em `recording.maxFiles`
+    // (e também no campo plano, por compatibilidade).
+    maxFiles?: number | null;
+    recording?: { maxFiles?: number | null; maxDuration?: number | null };
 }
 
 export interface PackageSection {
