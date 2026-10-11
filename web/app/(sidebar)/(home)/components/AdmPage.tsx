@@ -120,7 +120,7 @@ export default function AdmPage() {
                         animationDelayN={5}
                         isCardFooter={false}
                         cardTitle="Pesquisas"
-                        CardContentClassName={"max-h-50 overflow-auto"}
+                        CardContentClassName={"max-h-100 overflow-auto"}
                         cardContent={
                             <Tabs defaultValue="pesquisas" className="w-full">
                                 <TabsList className="grid grid-cols-2 gap-2 w-fit sticky top-0 z-10 px-5 verde-marrom shadow border-t">

@@ -109,6 +109,7 @@ export default function SuperAdmPage() {
                         animationDelayN={4}
                         isCardFooter={false}
                         cardTitle="Ultimas Atualizações"
+                        CardContentClassName={"max-h-55 overflow-auto "}
                         cardContent={<UltimasAtualizacoesList items={activities} loading={loading} />}
                     />
                 </div>
@@ -119,7 +120,7 @@ export default function SuperAdmPage() {
                         animationDelayN={5}
                         isCardFooter={false}
                         cardTitle="Empresas / Administradores"
-                        CardContentClassName={"max-h-50 overflow-auto"}
+                        CardContentClassName={"max-h-100 overflow-auto"}
                         cardContent={
                             <div className="flex flex-col gap-2 ">
                                 <ExibirEditar allowActions={false} />

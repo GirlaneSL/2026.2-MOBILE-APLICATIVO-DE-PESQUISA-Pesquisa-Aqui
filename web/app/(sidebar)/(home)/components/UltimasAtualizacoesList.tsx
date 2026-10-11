@@ -37,7 +37,7 @@ export default function UltimasAtualizacoesList({ items, loading = false }: Ulti
     }
 
     return (
-        <ul className="flex flex-col gap-2 overflow-y-auto h-55">
+        <ul className="flex flex-col gap-2 overflow-y-auto">
             {items.map((item) => {
                 const Icon = ICONS[item.kind];
 
