@@ -1,5 +1,14 @@
 import { apiFetch } from "./apiFetcher";
 
+export interface CompanyItem {
+    id: number;
+    legalName: string;
+    contactInformation: string;
+    situation: 'ACTIVE' | 'INACTIVE';
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 export const createCompany = async (
     legalName: string,
     contactInformation: string,

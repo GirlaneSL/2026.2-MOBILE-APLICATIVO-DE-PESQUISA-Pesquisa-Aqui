@@ -1,4 +1,5 @@
 import { apiFetch } from "./apiFetcher";
+import { MONTH_NAMES } from "./dashboard";
 
 export interface Research {
     id: number;
@@ -11,14 +12,11 @@ export interface Research {
     targetAudience: string;
     recordInterview: boolean;
     companyId: number;
+    createdAt?: string;
+    updatedAt?: string;
 }
-
-const ACTIVE_STATUSES: Research["status"][] = ["IN_FIELD"];
-
-const MONTH_NAMES = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-];
+//Pesquisas que vão aparecer no grafico de "Pesquisas Ativas" na pagina HOME 
+const ACTIVE_STATUSES: Research["status"][] = ["PUBLISHED", "IN_FIELD"];
 
 export const createResearch = async (title: string, description: string, objective: string, startDate: string, endDate: string, targetAudience: string, recordInterview = false) => {
     const response = await apiFetch(

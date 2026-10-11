@@ -62,6 +62,7 @@ export interface UserItem {
     profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER';
     companyId: number | null;
     createdAt?: string;
+    updatedAt?: string;
 }
 
 export const getUsers = async (): Promise<UserItem[]> => {

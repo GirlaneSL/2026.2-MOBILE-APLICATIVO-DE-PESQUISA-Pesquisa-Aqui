@@ -14,6 +14,17 @@ export interface PackageOption {
     order: number;
 }
 
+// Limites cadastrados na web e entregues no pacote. Todos opcionais: sem limite, sem validação.
+// minDate/maxDate chegam como "AAAA-MM-DD".
+export interface QuestionValidations {
+    isRequired?: boolean;
+    maxLength?: number | null;
+    minValue?: number | null;
+    maxValue?: number | null;
+    minDate?: string | null;
+    maxDate?: string | null;
+}
+
 export interface PackageQuestion {
     id: number;
     statement: string;
@@ -21,6 +32,13 @@ export interface PackageQuestion {
     isRequired: boolean;
     order: number;
     options: PackageOption[];
+    // O pacote manda os limites no objeto `validations` e também nos campos planos (compatibilidade).
+    validations?: QuestionValidations;
+    maxLength?: number | null;
+    minValue?: number | null;
+    maxValue?: number | null;
+    minDate?: string | null;
+    maxDate?: string | null;
 }
 
 export interface PackageSection {

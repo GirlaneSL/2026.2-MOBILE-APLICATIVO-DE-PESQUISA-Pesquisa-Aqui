@@ -1,27 +1,28 @@
 "use client"
 
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts"
-
-const defaultChartData = [
-    { month: "January", Pesquisas: 186, },
-    { month: "February", Pesquisas: 305, },
-    { month: "March", Pesquisas: 237, },
-]
-
-const chartConfig = {
-    Pesquisas: {
-        label: "Pesquisas",
-        color: "#447762",
-    },
-} satisfies ChartConfig
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
 type ChartProps = {
     variant?: "line" | 'bar';
-    data?: { month: string; Pesquisas: number }[];
+    /** Cada ponto precisa ter `month` e um valor numérico na chave `seriesKey`. */
+    data?: ({ month: string } & Record<string, string | number>)[];
+    /** Chave do valor dentro de cada ponto de `data`. Ex.: "Pesquisas", "Empresas". */
+    seriesKey?: string;
+    /** Rótulo exibido na legenda e no tooltip. Por padrão, o próprio `seriesKey`. */
+    seriesLabel?: string;
 };
 
-export function Chart({ variant, data = defaultChartData }: ChartProps) {
+export function Chart({ variant, data = [], seriesKey = "Pesquisas", seriesLabel }: ChartProps) {
+    const chartConfig: ChartConfig = {
+        [seriesKey]: {
+            label: seriesLabel ?? seriesKey,
+            color: "#447762",
+        },
+    }
+
+    const color = `var(--color-${seriesKey})`
+
     return (
         <ChartContainer config={chartConfig} className="max-h-175 max-w-175 w-full min-w-50">
 
@@ -36,12 +37,13 @@ export function Chart({ variant, data = defaultChartData }: ChartProps) {
                         axisLine={false}
                         tickFormatter={(value) => value.slice(0, 3)}
                     />
+                    <YAxis hide allowDecimals={false} domain={[0, (max: number) => Math.max(max, 1)]} />
                     <Line
                         type="natural"
-                        dataKey="Pesquisas"
-                        stroke="var(--color-Pesquisas)"
+                        dataKey={seriesKey}
+                        stroke={color}
                         strokeWidth={2}
-                        dot={{ fill: "var(--color-Pesquisas)" }}
+                        dot={{ fill: color }}
                         activeDot={{ r: 6 }}
                     />
                     <ChartLegend content={<ChartLegendContent />} />
@@ -58,7 +60,8 @@ export function Chart({ variant, data = defaultChartData }: ChartProps) {
                         axisLine={false}
                         tickFormatter={(value) => value.slice(0, 3)}
                     />
-                    <Bar type="natural" dataKey="Pesquisas" fill="var(--color-Pesquisas)" radius={4} />
+                    <YAxis hide allowDecimals={false} domain={[0, (max: number) => Math.max(max, 1)]} />
+                    <Bar dataKey={seriesKey} fill={color} radius={4} />
                     <ChartLegend content={<ChartLegendContent />} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                 </BarChart>

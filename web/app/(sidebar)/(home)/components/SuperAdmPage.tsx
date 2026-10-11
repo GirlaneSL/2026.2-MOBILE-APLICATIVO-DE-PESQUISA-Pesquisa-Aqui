@@ -1,54 +1,70 @@
 'use client'
 
 import BannerComponent from "@/components/ui/bannerComponent";
-import { getActiveResearchesInMonth, getResearches, getResearchesByMonth, type Research } from "@/lib/research";
-import { useEffect, useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
+import { isSessionExpiredError } from "@/lib/apiFetcher";
+import { getCompanies, type CompanyItem } from "@/lib/company";
+import { buildSuperAdminActivities, countByMonth } from "@/lib/dashboard";
+import { getUsersAdmin, type UserItem } from "@/lib/user";
+import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import ExibirEditar from "../../empresas/components/ExibirExcluir";
 import EstatisticasChart from "../components/EstatisticasChart";
 import InfoCard from "../components/infoCards";
 import UltimasAtualizacoesList from "../components/UltimasAtualizacoesList";
 
-const statusLabels: Record<string, string> = {
-    DRAFT: "Rascunho",
-    PUBLISHED: "Publicada",
-    IN_FIELD: "Em Campo",
-    CLOSED: "Encerrada",
-};
-
-type ResearchDisplay = Omit<Research, "status"> & { status: string };
-
 export default function SuperAdmPage() {
 
-    const [researches, setResearches] = useState<ResearchDisplay[]>([])
-    const [rawResearches, setRawResearches] = useState<Research[]>([]);
+    const [companies, setCompanies] = useState<CompanyItem[]>([])
+    const [admins, setAdmins] = useState<UserItem[]>([])
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        getResearches()
-            .then((data) => {
-                setRawResearches(data);
-                setResearches(
-                    data.map((r) => ({
-                        ...r,
-                        status: statusLabels[r.status] ?? r.status,
-                        respostas: 0,
-                    }))
-                )
-            }
-            )
-            .catch((error) => {
-                console.log(error);
-                alert('Erro ao carregar pesquisas')
+        let cancelled = false;
+
+        Promise.all([getCompanies(), getUsersAdmin()])
+            .then(([companiesData, adminsData]) => {
+                if (cancelled) return;
+                setCompanies(companiesData ?? []);
+                setAdmins(adminsData ?? []);
             })
+            .catch((error) => {
+                if (cancelled || isSessionExpiredError(error)) return;
+                console.error(error);
+                toast.error('Erro ao carregar dados do painel');
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
     }, [])
 
-    const now = new Date();
-    const activeThisMonth = getActiveResearchesInMonth(
-        rawResearches,
-        now.getMonth() + 1,
-        now.getFullYear()
-    )
+    const [year] = useState(() => new Date().getFullYear());
 
-    const chartData = getResearchesByMonth(rawResearches, now.getFullYear());
+    const activeCompanies = useMemo(
+        () => companies.filter((c) => c.situation === 'ACTIVE'),
+        [companies]
+    );
+
+    const companiesChart = useMemo(
+        () => countByMonth(companies, (c) => c.createdAt, year, 'Empresas'),
+        [companies, year]
+    );
+
+    const adminsChart = useMemo(
+        () => countByMonth(admins, (a) => a.createdAt, year, 'Administradores'),
+        [admins, year]
+    );
+
+    const activities = useMemo(
+        () => buildSuperAdminActivities(companies, admins),
+        [companies, admins]
+    );
+
+    const statValue = (n: number) => (loading ? <Spinner className="size-8" /> : n);
 
     return (
         <section className="relative min-h-screen flex flex-col gap-5">
@@ -60,16 +76,32 @@ export default function SuperAdmPage() {
                         cardClassName=" shadow-md introduction-card"
                         animationDelayN={2}
                         isCardFooter={false}
-                        cardTitle="Empresas Ativos"
-                        cardContent={<EstatisticasChart valor={"199"} variant="bar" />}
+                        cardTitle="Empresas Ativas"
+                        cardContent={
+                            <EstatisticasChart
+                                valor={statValue(activeCompanies.length)}
+                                chartData={companiesChart}
+                                seriesKey="Empresas"
+                                seriesLabel="Empresas cadastradas"
+                                variant="bar"
+                            />
+                        }
                     />
 
                     <InfoCard
                         cardClassName="shadow-md"
                         animationDelayN={3}
                         isCardFooter={false}
-                        cardTitle="Administradores Ativas"
-                        cardContent={<EstatisticasChart valor="288" variant="bar" />}
+                        cardTitle="Administradores Ativos"
+                        cardContent={
+                            <EstatisticasChart
+                                valor={statValue(admins.length)}
+                                chartData={adminsChart}
+                                seriesKey="Administradores"
+                                seriesLabel="Administradores cadastrados"
+                                variant="bar"
+                            />
+                        }
                     />
 
                     <InfoCard
@@ -77,7 +109,7 @@ export default function SuperAdmPage() {
                         animationDelayN={4}
                         isCardFooter={false}
                         cardTitle="Ultimas Atualizações"
-                        cardContent={<UltimasAtualizacoesList />}
+                        cardContent={<UltimasAtualizacoesList items={activities} loading={loading} />}
                     />
                 </div>
 
