@@ -47,6 +47,7 @@ export class ResearchService {
             endDate: createResearchDto.endDate,
             targetAudience: createResearchDto.targetAudience,
             status: 'DRAFT',
+            recordInterview: createResearchDto.recordInterview ?? false,
             companyId: companyId,
         })
     }
@@ -77,6 +78,18 @@ export class ResearchService {
         const research = await this.findOne(id, currentUser)
 
         if (research.status === ResearchStatus.CLOSED) throw new BadRequestException('Closed research cannot be modified');
+
+        // Gravar a entrevista é decisão de estrutura (muda o que o aplicativo exige e coleta):
+        // depois de publicada, e enquanto estiver em campo, não pode ser ligada nem desligada.
+        if (
+            updateResearchDto.recordInterview !== undefined &&
+            updateResearchDto.recordInterview !== research.recordInterview &&
+            research.status !== ResearchStatus.DRAFT
+        ) {
+            throw new BadRequestException(
+                'A gravação da entrevista não pode ser ligada ou desligada depois que a pesquisa foi publicada ou está em campo.'
+            );
+        }
 
         if (updateResearchDto.startDate && updateResearchDto.endDate) {
             if (new Date(updateResearchDto.endDate) < new Date(updateResearchDto.startDate)) throw new BadRequestException('The end date cannot be earlier than the start date');
@@ -258,6 +271,8 @@ export class ResearchService {
 
         return {
             ...research,
+            // Interruptor de gravação: o app só inicia a coleta depois do consentimento quando isto é true
+            recordInterview: research.recordInterview,
             sections: sectionsWithDetails,
             displayRules,
             download: { id: copy.id, deviceId, downloadedAt: copy.createdAt },

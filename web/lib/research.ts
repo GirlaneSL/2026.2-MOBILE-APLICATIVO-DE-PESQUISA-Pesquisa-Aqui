@@ -9,6 +9,7 @@ export interface Research {
     startDate: string;
     endDate: string;
     targetAudience: string;
+    recordInterview: boolean;
     companyId: number;
 }
 
@@ -19,7 +20,7 @@ const MONTH_NAMES = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-export const createResearch = async (title: string, description: string, objective: string, startDate: string, endDate: string, targetAudience: string) => {
+export const createResearch = async (title: string, description: string, objective: string, startDate: string, endDate: string, targetAudience: string, recordInterview = false) => {
     const response = await apiFetch(
         `/research`,
         {
@@ -33,6 +34,7 @@ export const createResearch = async (title: string, description: string, objecti
                 startDate,
                 endDate,
                 targetAudience,
+                recordInterview,
             })
         }
     );

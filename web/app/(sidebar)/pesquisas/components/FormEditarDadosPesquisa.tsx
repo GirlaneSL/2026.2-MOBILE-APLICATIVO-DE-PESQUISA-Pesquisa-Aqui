@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Spinner } from '@/components/ui/spinner';
 import { Research } from './TabelaPesquisas';
 import toast from 'react-hot-toast';
@@ -23,6 +24,9 @@ export default function FormEditarDadosPesquisa({ research, onSuccess }: FormEdi
         research.endDate ? research.endDate.split('T')[0] : ''
     );
     const [targetAudience, setTargetAudience] = useState(research.targetAudience || '');
+    const [recordInterview, setRecordInterview] = useState<boolean>(!!research.recordInterview);
+    // Gravar a entrevista é decisão de estrutura: só se muda enquanto a pesquisa é rascunho.
+    const canChangeRecording = research.status === 'DRAFT';
     const [isLoading, setIsLoading] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -42,6 +46,7 @@ export default function FormEditarDadosPesquisa({ research, onSuccess }: FormEdi
             startDate: startDate ? new Date(startDate).toISOString() : undefined,
             endDate: endDate ? new Date(endDate).toISOString() : undefined,
             targetAudience,
+            ...(canChangeRecording ? { recordInterview } : {}),
         };
 
         try {
@@ -166,6 +171,25 @@ export default function FormEditarDadosPesquisa({ research, onSuccess }: FormEdi
                     value={targetAudience}
                     onChange={(e) => setTargetAudience(e.target.value)}
                     disabled={isLoading}
+                />
+            </div>
+
+            <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium" htmlFor={`record-${research.id}`}>
+                        Gravar a entrevista
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                        {canChangeRecording
+                            ? 'O aplicativo grava o áudio da coleta inteira e exige o consentimento do entrevistado antes de começar.'
+                            : 'Não pode ser alterada: a pesquisa já foi publicada e o aplicativo pode estar com ela em campo.'}
+                    </p>
+                </div>
+                <Switch
+                    id={`record-${research.id}`}
+                    checked={recordInterview}
+                    onCheckedChange={setRecordInterview}
+                    disabled={isLoading || !canChangeRecording}
                 />
             </div>
 

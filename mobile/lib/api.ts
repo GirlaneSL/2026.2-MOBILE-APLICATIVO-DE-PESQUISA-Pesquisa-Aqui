@@ -21,10 +21,13 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
     const cleanPath = path.trim().startsWith('/') ? path.trim() : `/${path.trim()}`;
     const url = `${API_BASE_URL}${cleanPath}`;
 
+    // Em upload (FormData) o Content-Type com o boundary é definido pelo próprio fetch.
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
     const response = await fetch(url, {
         ...options,
         headers: {
-            'Content-Type': 'application/json',
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...options.headers,
         },

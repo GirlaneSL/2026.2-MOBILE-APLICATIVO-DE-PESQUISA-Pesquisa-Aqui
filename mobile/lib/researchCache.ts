@@ -13,6 +13,7 @@ export interface Research {
     startDate: string;
     endDate: string;
     targetAudience: string;
+    recordInterview?: boolean;
     isDownloaded?: boolean;
 }
 

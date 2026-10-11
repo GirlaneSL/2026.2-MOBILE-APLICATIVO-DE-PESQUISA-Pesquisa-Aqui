@@ -8,6 +8,10 @@
       "model": "Answer",
       "namespace": "public"
     },
+    "collection": {
+      "model": "Collection",
+      "namespace": "public"
+    },
     "company": {
       "model": "Company",
       "namespace": "public"
@@ -157,6 +161,13 @@
         "models": {
           "Answer": {
             "fields": {
+              "collectionId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -187,6 +198,21 @@
               }
             },
             "relations": {
+              "collection": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "collectionId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Collection",
+                  "namespace": "public"
+                }
+              },
               "question": {
                 "cardinality": "N:1",
                 "on": {
@@ -205,6 +231,9 @@
             },
             "storage": {
               "fields": {
+                "collectionId": {
+                  "column": "collectionId"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -220,6 +249,228 @@
               },
               "namespaceId": "public",
               "table": "answer"
+            }
+          },
+          "Collection": {
+            "fields": {
+              "audioDurationSeconds": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "audioMimeType": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "audioPath": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "audioSizeBytes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "clientId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "consentAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "consentConfirmedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "consentGiven": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "deviceId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "finishedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "receivedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "researchId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "researcherId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "startedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "answers": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "collectionId"
+                  ]
+                },
+                "to": {
+                  "model": "Answer",
+                  "namespace": "public"
+                }
+              },
+              "consentConfirmedBy": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "consentConfirmedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "research": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "researchId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Research",
+                  "namespace": "public"
+                }
+              },
+              "researcher": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "researcherId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "audioDurationSeconds": {
+                  "column": "audioDurationSeconds"
+                },
+                "audioMimeType": {
+                  "column": "audioMimeType"
+                },
+                "audioPath": {
+                  "column": "audioPath"
+                },
+                "audioSizeBytes": {
+                  "column": "audioSizeBytes"
+                },
+                "clientId": {
+                  "column": "clientId"
+                },
+                "consentAt": {
+                  "column": "consentAt"
+                },
+                "consentConfirmedById": {
+                  "column": "consentConfirmedById"
+                },
+                "consentGiven": {
+                  "column": "consentGiven"
+                },
+                "deviceId": {
+                  "column": "deviceId"
+                },
+                "finishedAt": {
+                  "column": "finishedAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "receivedAt": {
+                  "column": "receivedAt"
+                },
+                "researchId": {
+                  "column": "researchId"
+                },
+                "researcherId": {
+                  "column": "researcherId"
+                },
+                "startedAt": {
+                  "column": "startedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "collection"
             }
           },
           "Company": {
@@ -836,6 +1087,13 @@
                   "kind": "scalar"
                 }
               },
+              "recordInterview": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "startDate": {
                 "nullable": false,
                 "type": {
@@ -879,6 +1137,21 @@
               }
             },
             "relations": {
+              "collections": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "researchId"
+                  ]
+                },
+                "to": {
+                  "model": "Collection",
+                  "namespace": "public"
+                }
+              },
               "company": {
                 "cardinality": "N:1",
                 "on": {
@@ -959,6 +1232,9 @@
                 },
                 "objective": {
                   "column": "objective"
+                },
+                "recordInterview": {
+                  "column": "recordInterview"
                 },
                 "startDate": {
                   "column": "startDate"
@@ -1317,6 +1593,21 @@
               }
             },
             "relations": {
+              "collections": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "researcherId"
+                  ]
+                },
+                "to": {
+                  "model": "Collection",
+                  "namespace": "public"
+                }
+              },
               "company": {
                 "cardinality": "N:1",
                 "on": {
@@ -1329,6 +1620,21 @@
                 },
                 "to": {
                   "model": "Company",
+                  "namespace": "public"
+                }
+              },
+              "consentsConfirmed": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "consentConfirmedById"
+                  ]
+                },
+                "to": {
+                  "model": "Collection",
                   "namespace": "public"
                 }
               },
@@ -1390,6 +1696,11 @@
           "table": {
             "answer": {
               "columns": {
+                "collectionId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -1435,15 +1746,214 @@
                     "namespaceId": "public",
                     "tableName": "question"
                   }
+                },
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "collectionId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "answer"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "collection"
+                  }
                 }
               ],
               "indexes": [
+                {
+                  "columns": [
+                    "collectionId"
+                  ],
+                  "name": "answer_collectionId_idx_b344fc1a",
+                  "prefix": "answer_collectionId_idx",
+                  "unique": false
+                },
                 {
                   "columns": [
                     "questionId"
                   ],
                   "name": "answer_questionId_idx_fdb42076",
                   "prefix": "answer_questionId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "collection": {
+              "columns": {
+                "audioDurationSeconds": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "audioMimeType": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "audioPath": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "audioSizeBytes": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "clientId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "consentAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "consentConfirmedById": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "consentGiven": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "deviceId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "finishedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "receivedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "researchId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "researcherId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "startedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "researchId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "collection"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "research"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "researcherId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "collection"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "consentConfirmedById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "collection"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "consentConfirmedById"
+                  ],
+                  "name": "collection_consentConfirmedById_idx_7ff4aaf2",
+                  "prefix": "collection_consentConfirmedById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "researchId"
+                  ],
+                  "name": "collection_researchId_idx_36f1b4c8",
+                  "prefix": "collection_researchId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "researcherId"
+                  ],
+                  "name": "collection_researcherId_idx_0654ce39",
+                  "prefix": "collection_researcherId_idx",
                   "unique": false
                 }
               ],
@@ -1926,6 +2436,15 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "recordInterview": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
                 "startDate": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -2405,7 +2924,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "6a04094716918d3357acf51a57331e1dab5dd7a7c995fce703040b1bb2cbcecb"
+    "storageHash": "2740686b1824718a89d294d86298c9aef01246fc4b0ceb7dcdb0622071494518"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",

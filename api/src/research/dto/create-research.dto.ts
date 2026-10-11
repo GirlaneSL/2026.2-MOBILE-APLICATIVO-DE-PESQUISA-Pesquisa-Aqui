@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export enum ResearchStatus {
     DRAFT = 'DRAFT',
@@ -39,4 +39,9 @@ export class CreateResearchDto {
     @IsOptional()
     @IsInt()
     companyId?: number;
+
+    // Grava a entrevista inteira (áudio) e exige o consentimento do entrevistado.
+    @IsOptional()
+    @IsBoolean()
+    recordInterview?: boolean;
 }
