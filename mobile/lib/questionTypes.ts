@@ -16,7 +16,14 @@ export interface QuestionLimits {
     minDate?: string; // AAAA-MM-DD
     maxDate?: string; // AAAA-MM-DD
     maxFiles?: number; // fotos aceitas na questão
+    maxDuration?: number; // segundos de gravação aceitos na questão de áudio
 }
+
+/**
+ * Duração máxima da resposta de áudio quando o servidor não cadastrou limite. Áudio pesa e o
+ * aparelho guarda tudo até o envio, então a questão nunca fica sem teto.
+ */
+export const DEFAULT_MAX_AUDIO_SECONDS = 600;
 
 /**
  * Quantas fotos "várias fotos" aceita quando o servidor não cadastrou limite. Foto pesa e o
@@ -43,7 +50,11 @@ export function getQuestionLimits(question: PackageQuestion): QuestionLimits {
     const minSelections = toNumber(v?.minSelections ?? question.minSelections);
     const maxSelections = toNumber(v?.maxSelections ?? question.maxSelections);
     const maxFiles = toNumber(question.recording?.maxFiles ?? question.maxFiles);
+    // O pacote manda a duração (em segundos) em `recording.maxDuration` e também no campo plano.
+    const flatMaxDuration = (question as PackageQuestion & { maxDuration?: number | null }).maxDuration;
+    const maxDuration = toNumber(question.recording?.maxDuration ?? flatMaxDuration);
     return {
+        maxDuration: maxDuration !== undefined && maxDuration > 0 ? maxDuration : undefined,
         maxFiles: maxFiles !== undefined && maxFiles > 0 ? maxFiles : undefined,
         minSelections: minSelections !== undefined && minSelections > 0 ? minSelections : undefined,
         maxSelections: maxSelections !== undefined && maxSelections > 0 ? maxSelections : undefined,
@@ -219,7 +230,52 @@ function validatePhotos(question: PackageQuestion, value: AnswerValue): string |
     return `Use no máximo ${limit} ${limit === 1 ? 'foto' : 'fotos'} (${count} tiradas). Remova ${count - limit === 1 ? 'uma' : 'as que passam do limite'}.`;
 }
 
-// Tipos que a tela de coleta sabe preencher. Áudio por questão fica para uma próxima história.
+// ---------- Áudio ----------
+
+/** Quantos segundos a resposta de áudio pode durar: o limite do servidor (ou o padrão). */
+export function getAudioMaxSeconds(question: PackageQuestion): number {
+    return getQuestionLimits(question).maxDuration ?? DEFAULT_MAX_AUDIO_SECONDS;
+}
+
+export interface AudioAnswerValue {
+    /** Endereço do arquivo no aparelho. */
+    uri: string;
+    durationSeconds: number;
+}
+
+/** A resposta de áudio guarda o endereço e a duração, serializados num texto (como o resto das respostas). */
+export function serializeAudioAnswer(value: AudioAnswerValue): string {
+    return JSON.stringify(value);
+}
+
+export function parseAudioAnswer(value: AnswerValue): AudioAnswerValue | null {
+    if (typeof value !== 'string' || value.trim() === '') return null;
+    try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed?.uri !== 'string' || parsed.uri === '') return null;
+        return { uri: parsed.uri, durationSeconds: Number(parsed.durationSeconds) || 0 };
+    } catch {
+        return null;
+    }
+}
+
+export function getAudioUris(value: AnswerValue): string[] {
+    const audio = parseAudioAnswer(value);
+    return audio ? [audio.uri] : [];
+}
+
+/** Segundos com tolerância de 1 s: a duração medida pelo gravador arredonda e pode passar por pouco. */
+function validateAudio(question: PackageQuestion, value: AnswerValue): string | null {
+    const audio = parseAudioAnswer(value);
+    if (!audio) return 'A gravação não foi encontrada. Grave a resposta novamente.';
+    const max = getAudioMaxSeconds(question);
+    if (audio.durationSeconds > max + 1) {
+        return `A gravação passa da duração máxima de ${max} s (tem ${audio.durationSeconds} s). Grave novamente.`;
+    }
+    return null;
+}
+
+// Tipos que a tela de coleta sabe preencher.
 // Uma entrada sem validador = tipo sem regra de formato.
 const QUESTION_TYPE_VALIDATORS = {
     FREE_TEXT: validateText,
@@ -233,6 +289,7 @@ const QUESTION_TYPE_VALIDATORS = {
     PHOTO: validatePhotos,
     MULTIPLE_PHOTOS: validatePhotos,
     LOCATION: undefined,
+    AUDIO: validateAudio,
 } satisfies Record<string, Validator | undefined>;
 
 export type SupportedQuestionType = keyof typeof QUESTION_TYPE_VALIDATORS;

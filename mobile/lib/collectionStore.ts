@@ -1,10 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as Location from 'expo-location';
-import type { CollectionAudio, CollectionInput, CollectionPhoto, InterviewConsent } from './collectionUpload';
+import type {
+    CollectionAudio,
+    CollectionInput,
+    CollectionPhoto,
+    CollectionQuestionAudio,
+    InterviewConsent,
+    RecordingIssue,
+} from './collectionUpload';
 import { getDeviceId } from './researchCache';
 import type { AnswerValue, Answers, PackageQuestion } from './displayRules';
-import { getPhotoUris, isQuestionTypeSupported } from './questionTypes';
+import { getPhotoUris, isQuestionTypeSupported, parseAudioAnswer } from './questionTypes';
 
 // Coletas guardadas no aparelho (AsyncStorage): tudo aqui funciona sem internet.
 // Uma chave por coleta, para que gravar uma resposta nunca reescreva as outras coletas.
@@ -35,6 +42,8 @@ export interface LocalCollection {
     currentQuestionId: number | null; // onde o pesquisador parou, para retomar do mesmo ponto
     consent?: InterviewConsent;
     audio?: CollectionAudio;
+    // Interrupções da gravação da entrevista: ficam registradas mesmo se não houver arquivo de áudio
+    recordingIssues?: RecordingIssue[];
     updatedAt: string;
 }
 
@@ -167,7 +176,7 @@ export async function startCollection(researchId: number, consent?: InterviewCon
 /** Finaliza: grava o horário de término e fecha a coleta para edição. */
 export async function finishCollection(
     collection: LocalCollection,
-    extra: { consent?: InterviewConsent; audio?: CollectionAudio } = {},
+    extra: { consent?: InterviewConsent; audio?: CollectionAudio; recordingIssues?: RecordingIssue[] } = {},
 ): Promise<LocalCollection> {
     const finished: LocalCollection = {
         ...collection,
@@ -199,6 +208,8 @@ export function getBlockingMissing(
     );
 }
 
+const isAudioQuestion = (question: PackageQuestion) => question.type === 'AUDIO';
+
 const isPhotoQuestion = (question: PackageQuestion) => question.type === 'PHOTO' || question.type === 'MULTIPLE_PHOTOS';
 
 /** Nome do arquivo de uma foto guardada no aparelho (último trecho do endereço). */
@@ -213,6 +224,12 @@ function serializeAnswer(question: PackageQuestion, answer: AnswerValue): string
         const names = getPhotoUris(answer).map(photoFileName);
         if (names.length === 0) return null;
         return question.type === 'PHOTO' ? names[0] : JSON.stringify(names);
+    }
+
+    // Áudio: como na foto, a resposta leva o nome do arquivo e o arquivo segue junto, no mesmo envio.
+    if (isAudioQuestion(question)) {
+        const audio = parseAudioAnswer(answer);
+        return audio ? photoFileName(audio.uri) : null;
     }
 
     if (question.type === 'YES_NO') return answer === true ? 'YES' : answer === false ? 'NO' : String(answer);
@@ -250,6 +267,22 @@ export async function buildCollectionInput(
         })),
     );
 
+    // Áudios das questões guardados no aparelho entram na mesma fila de envio da coleta
+    const questionAudios: CollectionQuestionAudio[] = questions.filter(isAudioQuestion).flatMap((question) => {
+        const audio = parseAudioAnswer(collection.answers[question.id]);
+        return audio
+            ? [
+                  {
+                      questionId: question.id,
+                      uri: audio.uri,
+                      name: photoFileName(audio.uri),
+                      mimeType: 'audio/mp4',
+                      durationSeconds: audio.durationSeconds,
+                  },
+              ]
+            : [];
+    });
+
     return {
         researchId: collection.researchId,
         clientId: collection.clientId,
@@ -259,6 +292,8 @@ export async function buildCollectionInput(
         answers,
         consent: collection.consent,
         audio: collection.audio,
+        recordingIssues: collection.recordingIssues,
         photos,
+        questionAudios,
     };
 }

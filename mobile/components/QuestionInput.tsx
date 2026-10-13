@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { Calendar, Check, Clock, MapPin } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AudioAnswer, { type AudioBridge } from '@/components/AudioAnswer';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import PhotoAnswer from '@/components/PhotoAnswer';
 import type { AnswerValue, PackageQuestion } from '@/lib/displayRules';
@@ -20,6 +21,8 @@ interface QuestionInputProps {
     onChange: (value: AnswerValue) => void;
     /** UUID da coleta em andamento: as fotos tiradas ficam guardadas ligadas a ela. */
     collectionId: string;
+    /** Liga a questão de áudio à gravação da entrevista e trava a navegação enquanto grava. */
+    audioBridge?: AudioBridge;
 }
 
 interface InputProps extends QuestionInputProps {
@@ -364,13 +367,14 @@ const ANSWER_COMPONENTS: Record<SupportedQuestionType, React.ComponentType<Input
     PHOTO: PhotoAnswer,
     MULTIPLE_PHOTOS: PhotoAnswer,
     LOCATION: LocationAnswer,
+    AUDIO: AudioAnswer,
 };
 
 // Tipos em que o erro só aparece depois que o pesquisador sai do campo (digitar "1" para chegar
 // em "12" não pode gritar "mínimo 10" no meio do caminho). Seletores validam na hora de escolher.
 const TYPED_TYPES = new Set<string>(['FREE_TEXT', 'NUMERIC']);
 
-export default function QuestionInput({ question, value, onChange, collectionId }: QuestionInputProps) {
+export default function QuestionInput({ question, value, onChange, collectionId, audioBridge }: QuestionInputProps) {
     const [touched, setTouched] = useState(false);
 
     if (!isQuestionTypeSupported(question.type)) {
@@ -393,6 +397,7 @@ export default function QuestionInput({ question, value, onChange, collectionId 
             value={value}
             onChange={onChange}
             collectionId={collectionId}
+            audioBridge={audioBridge}
             error={error}
             onBlur={() => setTouched(true)}
         />
