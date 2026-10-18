@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { Directory, File, Paths } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import { getQuestionAudioBytes } from './audioStorage';
 
 // Fotos da coleta: tiradas com a câmera, reduzidas e guardadas no aparelho, ao lado da coleta.
 // Nada aqui usa a internet: no momento da entrevista não há rede para subir nada.
@@ -138,6 +139,8 @@ export function getStorageUsage(collections: Array<{ clientId: string; audio?: {
     for (const collection of collections) {
         photos += photosBytes(collection.clientId);
         if (collection.audio?.uri) audio += fileBytes(collection.audio.uri);
+        // Áudios das questões "responda falando"
+        audio += getQuestionAudioBytes(collection.clientId);
     }
 
     let freeBytes: number | null = null;

@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { CheckCircle2, ChevronLeft, ChevronRight, MapPin, Save } from 'lucide-react-native';
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, MapPin, Save, Settings } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -7,6 +7,7 @@ import {
     AppState,
     BackHandler,
     KeyboardAvoidingView,
+    Linking,
     Platform,
     ScrollView,
     StyleSheet,
@@ -15,8 +16,10 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { AudioBridge } from '@/components/AudioAnswer';
 import ConsentModal from '@/components/ConsentModal';
 import QuestionInput from '@/components/QuestionInput';
+import RecordingStatusBanner from '@/components/RecordingStatusBanner';
 import { useInterviewRecording } from '@/hooks/useInterviewRecording';
 import {
     CollectionClosedError,
@@ -38,11 +41,16 @@ import {
     type Answers,
     type ResearchPackage,
 } from '@/lib/displayRules';
+import { deleteAudio, formatClock } from '@/lib/audioStorage';
 import { deletePhoto } from '@/lib/photoStorage';
-import { getPhotoUris, isQuestionTypeSupported, validateAnswer } from '@/lib/questionTypes';
+import { getAudioUris, getPhotoUris, isQuestionTypeSupported, validateAnswer } from '@/lib/questionTypes';
 import { getCachedResearchPackage } from '@/lib/researchCache';
+import { requestAutoSend } from '@/lib/syncQueue';
 
-type Phase = 'loading' | 'consent' | 'starting' | 'running' | 'finished' | 'error';
+type Phase = 'loading' | 'consent' | 'starting' | 'blocked' | 'running' | 'finished' | 'error';
+
+// Por que a coleta não começou: a pesquisa grava a entrevista, então sem microfone (ou sem espaço) ela não roda.
+type Blocked = { kind: 'mic'; canAskAgain: boolean } | { kind: 'space' };
 
 const SAVE_DELAY_MS = 400;
 
@@ -60,6 +68,36 @@ function leaveScreen() {
     else router.replace('/pesquisas');
 }
 
+type RemovedFile = { uri: string; isAudio: boolean };
+
+/** Fotos e áudios que estavam nas respostas de antes e não estão mais nas de depois. */
+function findRemovedFiles(pkg: ResearchPackage, before: Answers, after: Answers): RemovedFile[] {
+    return orderedQuestions(pkg)
+        .filter((q) => q.type === 'PHOTO' || q.type === 'MULTIPLE_PHOTOS' || q.type === 'AUDIO')
+        .flatMap((q) => {
+            const isAudio = q.type === 'AUDIO';
+            const urisOf = isAudio ? getAudioUris : getPhotoUris;
+            const kept = new Set(urisOf(after[q.id]));
+            return urisOf(before[q.id])
+                .filter((uri) => !kept.has(uri))
+                .map((uri) => ({ uri, isAudio }));
+        });
+}
+
+function deleteFiles(files: RemovedFile[]) {
+    files.forEach(({ uri, isAudio }) => (isAudio ? deleteAudio(uri) : deletePhoto(uri)));
+}
+
+/** Quantas respostas preenchidas saíram (fora a da própria questão que o pesquisador mexeu). */
+function countDiscarded(before: Answers, after: Answers, exceptQuestionId: number): number {
+    return Object.entries(before).filter(
+        ([id, value]) =>
+            Number(id) !== exceptQuestionId &&
+            !isAnswerEmpty(value) &&
+            !Object.prototype.hasOwnProperty.call(after, id),
+    ).length;
+}
+
 export default function ColetaScreen() {
     const params = useLocalSearchParams<{ researchId: string; clientId?: string }>();
     const researchId = Number(params.researchId);
@@ -71,6 +109,11 @@ export default function ColetaScreen() {
     const [collection, setCollection] = useState<LocalCollection | null>(null);
     const [validationMessage, setValidationMessage] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    const [blocked, setBlocked] = useState<Blocked | null>(null);
+    // Gravando a resposta de uma questão de áudio: não dá para avançar, voltar nem sair antes de parar
+    const [audioBusy, setAudioBusy] = useState(false);
+    // Aviso de que trocar a resposta descartou respostas do ramo abandonado (some ao mudar de questão)
+    const [discardNotice, setDiscardNotice] = useState<string | null>(null);
 
     const recording = useInterviewRecording(pkg);
 
@@ -142,19 +185,33 @@ export default function ColetaScreen() {
             // Pesquisa com gravação: libera o microfone antes de a coleta nascer
             const recordingStart = await recording.start();
             if (!recordingStart.ok) {
-                const reason =
-                    recordingStart.reason === 'permission-denied'
-                        ? 'Sem permissão do microfone não é possível coletar nesta pesquisa.'
-                        : 'É preciso o consentimento do entrevistado para iniciar.';
-                Alert.alert('Coleta não iniciada', reason);
+                if (recordingStart.reason === 'permission-denied') {
+                    // Não derruba o app nem expulsa o pesquisador: explica o que fazer e deixa tentar de novo
+                    setBlocked({ kind: 'mic', canAskAgain: recordingStart.canAskAgain });
+                    setPhase('blocked');
+                    return;
+                }
+                if (recordingStart.reason === 'no-space') {
+                    setBlocked({ kind: 'space' });
+                    setPhase('blocked');
+                    return;
+                }
+                Alert.alert('Coleta não iniciada', 'É preciso o consentimento do entrevistado para iniciar.');
                 leaveScreen();
                 return;
             }
+            setBlocked(null);
 
             let current: LocalCollection;
+            let staleFiles: RemovedFile[] = [];
             if (resumedDraft.current) {
                 current = resumedDraft.current;
                 if (consentRef.current) current = { ...current, consent: consentRef.current };
+                // Rascunho com resposta de questão que as regras do pacote escondem (ex.: pacote baixado
+                // de novo com regras diferentes): sai agora, e os arquivos dela saem do aparelho.
+                const kept = pruneHiddenAnswers(pkg, current.answers);
+                staleFiles = findRemovedFiles(pkg, current.answers, kept);
+                current = { ...current, answers: kept };
             } else {
                 // Gera o UUID, grava o início e a localização — sem o pesquisador fazer nada
                 current = await startCollection(researchId, consentRef.current ?? undefined);
@@ -172,6 +229,7 @@ export default function ColetaScreen() {
             collectionRef.current = current;
             setCollection(current);
             await saveCollection(current);
+            deleteFiles(staleFiles); // só depois de gravar o rascunho limpo
             setPhase('running');
         } catch (error) {
             setErrorMessage(error instanceof Error ? error.message : 'Não foi possível iniciar a coleta.');
@@ -272,41 +330,57 @@ export default function ColetaScreen() {
     const goToQuestion = async (questionId: number, message: string | null = null) => {
         if (!(await saveBeforeLeaving())) return;
         setValidationMessage(message);
+        setDiscardNotice(null);
         updateCollection({ currentQuestionId: questionId });
         void flush(); // grava também o ponto em que o pesquisador parou
     };
 
     const handleChange = (value: AnswerValue) => {
-        if (!pkg || !collection || !currentQuestion) return;
+        if (!pkg || !currentQuestion) return;
+        // Parte sempre da coleta mais nova (a da memória), não de uma tela que pode ter ficado para trás
+        const base = collectionRef.current ?? collection;
+        if (!base) return;
+
         setValidationMessage(null);
-        // Se a mudança esconde questões que dependiam desta, as respostas delas saem também
-        const answers = pruneHiddenAnswers(pkg, { ...collection.answers, [currentQuestion.id]: value });
+        // Se a mudança esconde questões que dependiam desta, as respostas delas saem também:
+        // trocar de "sim" para "não" não deixa o ramo abandonado seguir escondido para o servidor.
+        const answers = pruneHiddenAnswers(pkg, { ...base.answers, [currentQuestion.id]: value });
+
+        const discarded = countDiscarded(base.answers, answers, currentQuestion.id);
+        setDiscardNotice(
+            discarded > 0
+                ? `Esta mudança descartou ${discarded} ${discarded === 1 ? 'resposta que dependia' : 'respostas que dependiam'} da resposta anterior.`
+                : null,
+        );
+
         updateCollection({ answers });
-        discardRemovedPhotos(collection.answers, answers);
+        discardRemovedPhotos(base.answers, answers);
     };
 
-    // Foto removida (ou trocada, ou de questão que ficou escondida) não pode ficar ocupando espaço no aparelho.
-    // Só apaga o arquivo depois de gravar a resposta nova, para um rascunho nunca apontar para foto que sumiu.
+    // Foto ou áudio removido (ou trocado/regravado, ou de questão que ficou escondida) não pode ficar
+    // ocupando espaço no aparelho. Só apaga o arquivo depois de gravar a resposta nova, para um
+    // rascunho nunca apontar para arquivo que sumiu.
     const discardRemovedPhotos = (before: Answers, after: Answers) => {
         if (!pkg) return;
-        const removed = orderedQuestions(pkg)
-            .filter((q) => q.type === 'PHOTO' || q.type === 'MULTIPLE_PHOTOS')
-            .flatMap((q) => {
-                const kept = new Set(getPhotoUris(after[q.id]));
-                return getPhotoUris(before[q.id]).filter((uri) => !kept.has(uri));
-            });
+        const removed = findRemovedFiles(pkg, before, after);
         if (removed.length === 0) return;
         void flush().then((saved) => {
-            if (saved) removed.forEach(deletePhoto);
+            if (saved) deleteFiles(removed);
         });
     };
 
+    const warnRecordingInProgress = () => {
+        Alert.alert('Gravação em andamento', 'Pare a gravação da resposta antes de continuar.');
+    };
+
     const handleBack = () => {
+        if (audioBusy) return warnRecordingInProgress();
         if (currentIndex > 0) void goToQuestion(visibleQuestions[currentIndex - 1].id);
     };
 
     const handleNext = async () => {
         if (!collection || !currentQuestion) return;
+        if (audioBusy) return warnRecordingInProgress();
         const answer = collection.answers[currentQuestion.id];
 
         if (
@@ -360,9 +434,13 @@ export default function ColetaScreen() {
             return;
         }
 
+        const gapWarning =
+            recording.interruptions.length > 0
+                ? '\n\nAtenção: a gravação da entrevista foi interrompida e o áudio ficará incompleto.'
+                : '';
         Alert.alert(
             'Finalizar coleta',
-            'Depois de finalizada, a coleta não poderá mais ser editada. Deseja finalizar?',
+            `Depois de finalizada, a coleta não poderá mais ser editada. Deseja finalizar?${gapWarning}`,
             [
                 { text: 'Revisar', style: 'cancel' },
                 { text: 'Finalizar', onPress: () => void finish() },
@@ -371,15 +449,25 @@ export default function ColetaScreen() {
     };
 
     const finish = async () => {
-        if (!collectionRef.current) return;
+        if (!collectionRef.current || !pkg) return;
         setBusy(true);
         try {
+            // Última garantia: a coleta não fecha carregando resposta de questão escondida
+            const current = collectionRef.current;
+            const kept = pruneHiddenAnswers(pkg, current.answers);
+            if (Object.keys(kept).length !== Object.keys(current.answers).length) {
+                updateCollection({ answers: kept });
+                discardRemovedPhotos(current.answers, kept);
+            }
             await flush();
             const extra = await recording.finish(); // para a gravação e devolve aceite + áudio
             const finished = await finishCollection(collectionRef.current, extra); // grava o término e fecha
             collectionRef.current = finished;
             setCollection(finished);
             setPhase('finished');
+            // A coleta finalizada já está na fila de envio; com rede, o envio começa em segundo plano
+            // e o pesquisador segue livre para iniciar a próxima coleta.
+            void requestAutoSend();
         } catch (error) {
             Alert.alert('Erro ao finalizar', error instanceof Error ? error.message : 'Tente novamente.');
         } finally {
@@ -396,11 +484,15 @@ export default function ColetaScreen() {
     }, [flush, recording]);
 
     const askLeave = useCallback(() => {
+        if (audioBusy) {
+            Alert.alert('Gravação em andamento', 'Pare a gravação da resposta antes de sair.');
+            return;
+        }
         Alert.alert('Sair da coleta', 'As respostas já dadas ficam salvas como rascunho para você retomar depois.', [
             { text: 'Continuar coletando', style: 'cancel' },
             { text: 'Salvar rascunho e sair', onPress: () => void saveDraftAndLeave() },
         ]);
-    }, [saveDraftAndLeave]);
+    }, [saveDraftAndLeave, audioBusy]);
 
     // Botão voltar do Android também protege a entrevista em andamento
     useEffect(() => {
@@ -442,6 +534,40 @@ export default function ColetaScreen() {
         );
     }
 
+    if (phase === 'blocked' && blocked) {
+        const mic = blocked.kind === 'mic';
+        return (
+            <SafeAreaView style={styles.center}>
+                <AlertTriangle size={48} color="#92400e" />
+                <Text style={styles.errorTitle}>
+                    {mic ? 'Microfone bloqueado' : 'Sem espaço para gravar'}
+                </Text>
+                <Text style={styles.centerText}>
+                    {!mic
+                        ? 'Esta pesquisa grava a entrevista e o aparelho está sem espaço livre suficiente. Apague fotos, vídeos ou apps que não usa e tente de novo.'
+                        : blocked.canAskAgain
+                          ? 'Esta pesquisa grava a entrevista e precisa do microfone. Toque em "Tentar novamente" e permita o acesso quando o aparelho perguntar. A coleta só começa com a gravação liberada.'
+                          : 'Esta pesquisa grava a entrevista e o acesso ao microfone está desligado para o aplicativo. Abra as configurações, ative o microfone, volte ao app e toque em "Tentar novamente".'}
+                </Text>
+                {mic && !blocked.canAskAgain ? (
+                    <TouchableOpacity
+                        style={[styles.secondaryButton, styles.fixedWidth]}
+                        onPress={() => Linking.openSettings().catch(() => undefined)}
+                    >
+                        <Settings size={18} color="#447762" />
+                        <Text style={styles.secondaryButtonText}>Abrir configurações</Text>
+                    </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity style={[styles.primaryButton, styles.fixedWidth]} onPress={() => void begin()}>
+                    <Text style={styles.primaryButtonText}>Tentar novamente</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.secondaryButton, styles.fixedWidth]} onPress={leaveScreen}>
+                    <Text style={styles.secondaryButtonText}>Voltar às pesquisas</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
     if (phase === 'error') {
         return (
             <SafeAreaView style={styles.center}>
@@ -472,8 +598,25 @@ export default function ColetaScreen() {
                         Localização de início: {collection.locationStatus === 'OK' ? 'registrada' : 'não registrada'}
                     </Text>
                 </View>
+                {pkg?.recordInterview ? (
+                    <View
+                        style={[
+                            styles.summary,
+                            (!collection.audio || collection.audio.hasGaps) && styles.summaryWarning,
+                        ]}
+                    >
+                        <Text style={styles.summaryLine}>
+                            {!collection.audio
+                                ? 'Gravação da entrevista: NÃO foi gravada. A coleta segue sem áudio.'
+                                : collection.audio.hasGaps
+                                  ? `Gravação da entrevista: incompleta (${formatClock(collection.audio.durationSeconds)} gravados, com interrupções).`
+                                  : `Gravação da entrevista: salva (${formatClock(collection.audio.durationSeconds)}).`}
+                        </Text>
+                    </View>
+                ) : null}
                 <Text style={styles.centerText}>
-                    A coleta está salva no aparelho, fechada para edição, e será enviada na sincronização.
+                    A coleta está salva no aparelho, fechada para edição, e entrou na fila de envio. Com internet, ela é
+                    enviada sozinha; você acompanha na aba Sinc.
                 </Text>
                 <TouchableOpacity style={[styles.primaryButton, styles.fixedWidth]} onPress={leaveScreen}>
                     <Text style={styles.primaryButtonText}>Voltar às pesquisas</Text>
@@ -495,6 +638,13 @@ export default function ColetaScreen() {
             </SafeAreaView>
         );
     }
+
+    const audioBridge: AudioBridge = {
+        onBusyChange: setAudioBusy,
+        pauseInterview: recording.pauseForAnswer,
+        resumeInterview: recording.resumeAfterAnswer,
+        interviewActive: recording.isRecording,
+    };
 
     const total = visibleQuestions.length;
     const progress = (currentIndex + 1) / total;
@@ -539,6 +689,16 @@ export default function ColetaScreen() {
                     </View>
                 </View>
 
+                <RecordingStatusBanner
+                    isRecording={recording.isRecording}
+                    seconds={recording.elapsedSeconds}
+                    pausedForAnswer={recording.pausedForAnswer}
+                    interrupted={recording.interruption}
+                    lowSpace={recording.lowSpace}
+                    foregroundOnly={recording.isRecording && !recording.backgroundEnabled}
+                    onResume={() => void recording.resume()}
+                />
+
                 <ScrollView
                     style={styles.flex}
                     contentContainerStyle={styles.body}
@@ -556,6 +716,7 @@ export default function ColetaScreen() {
                         value={answer}
                         onChange={handleChange}
                         collectionId={collection.clientId}
+                        audioBridge={audioBridge}
                     />
 
                     {validationMessage ? (
@@ -563,19 +724,25 @@ export default function ColetaScreen() {
                             <Text style={styles.validationText}>{validationMessage}</Text>
                         </View>
                     ) : null}
+
+                    {discardNotice ? (
+                        <View style={styles.noticeBox}>
+                            <Text style={styles.noticeText}>{discardNotice}</Text>
+                        </View>
+                    ) : null}
                 </ScrollView>
 
                 <View style={styles.footer}>
                     <TouchableOpacity
-                        style={[styles.secondaryButton, currentIndex === 0 && styles.buttonDisabled]}
+                        style={[styles.secondaryButton, (currentIndex === 0 || audioBusy) && styles.buttonDisabled]}
                         onPress={handleBack}
-                        disabled={currentIndex === 0 || busy}
+                        disabled={currentIndex === 0 || busy || audioBusy}
                     >
                         <ChevronLeft size={20} color={currentIndex === 0 ? '#a1a1aa' : '#447762'} />
                         <Text style={[styles.secondaryButtonText, currentIndex === 0 && styles.textDisabled]}>Voltar</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.primaryButton, styles.flex]} onPress={handleNext} disabled={busy}>
+                    <TouchableOpacity style={[styles.primaryButton, styles.flex]} onPress={handleNext} disabled={busy || audioBusy}>
                         {busy ? (
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
@@ -599,6 +766,7 @@ const styles = StyleSheet.create({
     errorTitle: { fontSize: 18, fontWeight: 'bold', color: '#18181b', textAlign: 'center' },
     finishedTitle: { fontSize: 22, fontWeight: 'bold', color: '#18181b' },
     summary: { gap: 4, alignSelf: 'stretch', backgroundColor: '#fff', borderRadius: 8, padding: 16, borderWidth: 1, borderColor: '#00000015' },
+    summaryWarning: { backgroundColor: '#fef3c7', borderColor: '#92400e' },
     summaryLine: { fontSize: 14, color: '#3f3f46' },
     fixedWidth: { alignSelf: 'stretch', flex: 0 },
 
@@ -621,6 +789,8 @@ const styles = StyleSheet.create({
     required: { color: '#b91c1c' },
     validationBox: { backgroundColor: '#fee2e2', borderRadius: 8, padding: 12 },
     validationText: { color: '#b91c1c', fontSize: 14, fontWeight: '600' },
+    noticeBox: { backgroundColor: '#fef3c7', borderRadius: 8, padding: 12 },
+    noticeText: { color: '#92400e', fontSize: 14 },
 
     footer: { flexDirection: 'row', gap: 12, padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#00000010' },
     primaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#447762', padding: 14, borderRadius: 8 },

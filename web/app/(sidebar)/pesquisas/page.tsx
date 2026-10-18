@@ -87,7 +87,7 @@ export default function Pesquisas() {
                         animationDelayN={4}
                         cardContent={
                             <>
-                                <div className="max-h-50 overflow-auto">
+                                <div className="max-h-100 overflow-auto">
                                     <TabelaPesquisas 
                                         refreshTrigger={refreshTrigger} 
                                         allowActions={false} 

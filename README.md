@@ -279,13 +279,14 @@ Todas as rotas, exceto `POST /auth/login` e `POST /auth/logout`, exigem autentic
 | Seções | `POST /section`, `POST /section/reorder`, `GET /section`, `GET /section/:id`, `PATCH /section/:id`, `DELETE /section/:id` |
 | Questões | `POST /question`, `POST /question/reorder`, `GET /question`, `GET /question/:id`, `PATCH /question/:id`, `DELETE /question/:id`, `POST /question/:id/option`, `GET /question/:id/options`, `PATCH /question/option/:id`, `DELETE /question/option/:id` |
 | Regras | `POST /question-rule`, `GET /question-rule`, `DELETE /question-rule/:id` |
-| Coletas | `POST /collection`, `GET /collection`, `GET /collection/:id/audio` |
+| Coletas | `POST /collection`, `POST /collection/sync`, `GET /collection`, `GET /collection/:id/audio` |
 
 ## Regras de negócio importantes
 
 - **Regras de exibição**: a questão de origem precisa vir **antes** da questão afetada na ordem do questionário (seção, depois questão). Só os tipos `YES_NO`, `SINGLE_CHOICE`, `MULTIPLE_CHOICE` e `SCALE_1_5` podem ser origem de uma regra.
 - **Consentimento**: em pesquisas que gravam a entrevista, a coleta só é aceita se o consentimento tiver sido registrado de forma explícita, com data e hora, **antes** do início da coleta. Caso contrário a API responde `400` com o código `CONSENT_REQUIRED`.
 - **Idempotência das coletas**: cada coleta carrega um `clientId` único gerado no aparelho, então reenvios após falha de rede não geram duplicidade.
+- **Sincronização em lote** (`POST /collection/sync`): o aparelho envia `{ deviceId, collections: [...] }` (até 100 coletas, cada uma com `clientId` em UUID, `researchId`, `startedAt`, `finishedAt`, `consent` e `answers`). A resposta traz, **por coleta**, `ACCEPTED`, `ALREADY_EXISTS` (mesmo UUID já recebido: pode sair da fila) ou `REJECTED` com `code`, `reason` e `retryable` (`false` = recusa definitiva; `true` = falha temporária, continuar tentando). Uma recusa nunca derruba o lote: pesquisa encerrada (`RESEARCH_CLOSED`), questão que não existe na pesquisa (`QUESTION_NOT_FOUND`, com os `questionIds`), consentimento ausente (`CONSENT_REQUIRED`), datas inconsistentes (`INVALID_DATES`) e dados malformados (`INVALID_PAYLOAD`) afetam só a coleta em questão. Cada envio fica registrado em `SyncLog` (aparelho, horário e resultado por coleta). O áudio da entrevista não viaja no lote.
 - **Áudio**: limitado por `AUDIO_MAX_BYTES` (150 MB por padrão).
 - **Sessão expirada**: ao receber `401`, o web faz logout e o mobile limpa o token e volta para a tela de login.
 

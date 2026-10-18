@@ -1,4 +1,15 @@
+import { File } from 'expo-file-system';
 import { apiFetch } from "./api";
+
+// Parte de arquivo para o FormData. O fetch do Expo não aceita o formato antigo do React Native
+// ({ uri, name, type }): só texto, Blob ou um objeto com `bytes()`. Aqui o arquivo é lido do aparelho
+// no momento do envio, e nome e tipo ficam sob controle do app (o servidor valida o tipo do áudio).
+export function filePart(uri: string, name: string, type: string): Blob {
+    // O File só lê endereço com esquema (file://, content://)
+    const fileUri = /^[a-z][a-z0-9+.-]*:\/\//i.test(uri) ? uri : `file://${uri}`;
+    const file = new File(fileUri);
+    return { name, type, bytes: () => file.bytes() } as unknown as Blob;
+}
 
 export interface CollectionAnswer {
     questionId: number;
@@ -12,10 +23,29 @@ export interface InterviewConsent {
     acceptedAt: string; // ISO 8601
 }
 
+// Momento em que a gravação da entrevista parou sem o pesquisador pedir (ligação, falta de espaço...).
+export interface RecordingIssue {
+    at: string; // ISO 8601
+    reason: 'stopped' | 'error' | 'low-space';
+    resumedAt?: string; // ISO 8601, só existe se o pesquisador conseguiu retomar
+}
+
 export interface CollectionAudio {
     uri: string;
     durationSeconds: number;
     mimeType?: string;
+    // true = a gravação teve interrupções: o áudio tem lacunas e o servidor/web devem tratá-lo como incompleto
+    hasGaps?: boolean;
+}
+
+// Áudio de uma questão "responda falando". O arquivo já está guardado no aparelho.
+export interface CollectionQuestionAudio {
+    questionId: number;
+    uri: string;
+    // Nome do arquivo: é o valor que a resposta da questão guarda, para o servidor ligar arquivo e questão
+    name: string;
+    mimeType: string;
+    durationSeconds: number;
 }
 
 // Foto tirada numa questão de foto / várias fotos. O arquivo já está reduzido e guardado no aparelho.
@@ -37,7 +67,9 @@ export interface CollectionInput {
     answers: CollectionAnswer[];
     consent?: InterviewConsent;
     audio?: CollectionAudio;
+    recordingIssues?: RecordingIssue[];
     photos?: CollectionPhoto[];
+    questionAudios?: CollectionQuestionAudio[];
 }
 
 // O servidor recusou a coleta por falta do consentimento registrado (pesquisa com gravação).
@@ -75,6 +107,13 @@ export function buildCollectionFormData(input: CollectionInput): FormData {
         answers: input.answers,
         consent: input.consent,
         audioDurationSeconds: input.audio?.durationSeconds,
+        audioHasGaps: input.audio?.hasGaps,
+        recordingIssues: input.recordingIssues,
+        questionAudios: input.questionAudios?.map(({ questionId, name, durationSeconds }) => ({
+            questionId,
+            name,
+            durationSeconds,
+        })),
     };
 
     const form = new FormData();
@@ -112,12 +151,8 @@ export async function uploadCollectionFile(
         form.append('questionId', String(file.questionId));
         form.append('fileName', file.name);
     }
-    // Formato de arquivo do React Native para multipart
-    form.append('file', {
-        uri: file.uri,
-        name: file.name,
-        type: file.mimeType,
-    } as unknown as Blob);
+    // O arquivo é lido do aparelho na hora do envio (o fetch do Expo não aceita { uri, name, type })
+    form.append('file', filePart(file.uri, file.name, file.mimeType));
 
     const response = await apiFetch(`/collection/${encodeURIComponent(clientId)}/files`, {
         method: 'POST',

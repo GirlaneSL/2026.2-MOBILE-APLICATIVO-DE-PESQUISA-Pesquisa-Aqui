@@ -1,4 +1,4 @@
-import { Transform, Type } from 'class-transformer';
+import { plainToInstance, Transform, Type } from 'class-transformer';
 import {
     IsArray,
     IsBoolean,
@@ -78,7 +78,9 @@ export class CreateCollectionDto {
     @Transform(({ value }) => {
         if (typeof value !== 'string') return value;
         try {
-            return JSON.parse(value);
+            // Tem de virar instância do DTO: com um objeto comum o `whitelist` do ValidationPipe
+            // não acha nenhuma regra e apaga todos os campos (researchId, respostas, consentimento...).
+            return plainToInstance(CollectionPayloadDto, JSON.parse(value));
         } catch {
             return undefined; // vira erro de validação (payload ausente)
         }

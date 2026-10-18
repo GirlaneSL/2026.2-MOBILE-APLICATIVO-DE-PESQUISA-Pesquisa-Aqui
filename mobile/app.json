@@ -47,7 +47,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "O aplicativo registra automaticamente o local onde cada entrevista começa."
+          "locationWhenInUsePermission": "O aplicativo registra o local onde cada entrevista começa e a localização das questões de localização, para conferir a pesquisa no mapa depois."
         }
       ],
       [

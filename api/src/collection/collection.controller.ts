@@ -17,10 +17,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '../auth/auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
+import { CollectionSyncService } from './collection-sync.service.js';
 import { CollectionService } from './collection.service.js';
 import type { UploadedAudio } from './collection.service.js';
 import { CollectionFilesService } from './collection-files.service.js';
 import { CreateCollectionDto } from './dto/create-collection.dto.js';
+import { SyncCollectionsDto } from './dto/sync-collections.dto.js';
 import { UploadCollectionFileDto } from './dto/upload-collection-file.dto.js';
 import { maxAudioBytes, maxUploadBytes } from './file-limits.js';
 
@@ -28,8 +30,10 @@ import { maxAudioBytes, maxUploadBytes } from './file-limits.js';
 @Controller('collection')
 export class CollectionController {
     constructor(
+        
         private collectionService: CollectionService,
         private filesService: CollectionFilesService,
+        private collectionSyncService: CollectionSyncService,
     ) { }
 
     // multipart/form-data: campo `payload` (JSON com respostas e consentimento) + arquivo `audio` opcional
@@ -56,6 +60,14 @@ export class CollectionController {
         @CurrentUser() currentUser: UserPayLoad,
     ) {
         return this.filesService.upload(clientId, dto, file, currentUser);
+    }
+
+    // Sincronização offline: recebe um lote de coletas e responde, coleta por coleta, se foi aceita,
+    // se já existia (mesmo UUID) ou por que foi recusada. Uma recusa nunca derruba o lote inteiro.
+    @Post('sync')
+    @HttpCode(200)
+    sync(@Body() dto: SyncCollectionsDto, @CurrentUser() currentUser: UserPayLoad) {
+        return this.collectionSyncService.sync(dto, currentUser);
     }
 
     @Get()

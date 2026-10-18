@@ -59,6 +59,7 @@ model User {
   researchLinks ResearchResearcher[]
   collections  Collection[] @relation("CollectionResearcher")
   consentsConfirmed Collection[] @relation("CollectionConsentConfirmedBy")
+  syncLogs     SyncLog[]
   createdAt    TimestamptzString @default(now())
   updatedAt    temporal.updatedAtString()
 }
@@ -162,6 +163,9 @@ model Collection {
   audioDurationSeconds Int?
   answers              Answer[]
   files                CollectionFile[]
+
+  // Idempotência da sincronização: o mesmo UUID do aparelho nunca grava duas coletas do mesmo pesquisador.
+  @@unique([researcherId, clientId])
 }
 
 // Arquivo (foto ou áudio) de uma coleta. Sobe separado das respostas, depois que a coleta chegou.
@@ -179,6 +183,20 @@ model CollectionFile {
   sizeBytes    Int
   storagePath  String
   createdAt    TimestamptzString @default(now())
+}
+
+// Registro de cada envio de lote feito pelo aplicativo (aparelho, horário e resultado por coleta).
+model SyncLog {
+  id            Int      @id @default(autoincrement())
+  researcherId  Int
+  researcher    User     @relation(fields: [researcherId], references: [id])
+  deviceId      String?
+  receivedAt    TimestamptzString @default(now())
+  totalCount    Int
+  acceptedCount Int
+  existingCount Int
+  rejectedCount Int
+  details       String
 }
 
 model ResearchDownload {

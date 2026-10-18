@@ -3,8 +3,12 @@ import { Tabs } from 'expo-router';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/context/AuthContext';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { useAutoSync } from '@/hooks/useSyncQueue';
 
 export default function TabLayout() {
+    // Envia a fila de coletas sozinho quando há rede, em qualquer tela do app
+    useAutoSync();
+
     return (
         <AuthProvider>
             <SafeAreaProvider>

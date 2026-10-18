@@ -201,9 +201,10 @@ export default function EmpresaPage() {
                         animationDelayN={5}
                         cardClassName="row-span-1 max-h-100 min-h-75 overflow-auto col-span-5 md:col-span-2 lg:col-span-3"
                         isCardFooter={false}
+                        CardContentClassName={"max-h-100 overflow-auto"}
                         cardContent={
                             <>
-                                <div className="max-h-50 overflow-auto">
+                                <div className="">
                                     <ExibirEditar allowActions={false}></ExibirEditar>
                                 </div>
                             </>
@@ -234,28 +235,12 @@ export default function EmpresaPage() {
                                 <div className="max-h-100 overflow-auto grid grid-cols-12 ">
                                     <div className="col-span-1"></div>
                                     <div className="flex justify-center col-span-10 ">
-                                        <div className="w-90"><Chart variant="line" data={companiesChart} seriesKey="Empresas" seriesLabel="Empresas cadastradas" /></div>
+                                        <div className="w-90"><Chart variant="bar" data={companiesChart} seriesKey="Empresas" seriesLabel="Empresas cadastradas" /></div>
                                     </div>
                                     <div className="col-span-1"></div>
                                 </div>
                             </>
                         }
-                    />
-                </section>
-
-                <section className="grid grid-cols-1 gap-5">
-                    <InfoCard
-                        cardTitle="Últimas Atualizações"
-                        cardDescription="Cadastros e alterações recentes de empresas e administradores"
-                        animationDelayN={6}
-                        isCardFooter={false}
-                        cardAction={
-                            <Button variant="outline" size="sm" onClick={reloadData} disabled={loadingData}>
-                                <RefreshCw size={14} className={loadingData ? 'animate-spin' : ''} />
-                                Atualizar
-                            </Button>
-                        }
-                        cardContent={<UltimasAtualizacoesList items={activities} loading={loadingData} />}
                     />
                 </section>
             </section>

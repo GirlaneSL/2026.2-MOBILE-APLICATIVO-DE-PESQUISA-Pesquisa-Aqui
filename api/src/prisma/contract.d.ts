@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'71c37f4cbd49e71cbec1d0214916a73c451678950a5c8b69227f39c3015e39e8'>;
+  StorageHashBase<'c66c62be43c59e9971c659401e3bbc7934c7cdd7fdb71eed3f1aa87c46bf31c0'>;
 export type ExecutionHash =
   ExecutionHashBase<'89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09'>;
 export type ProfileHash =
@@ -369,6 +369,17 @@ export type FieldOutputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
+    readonly SyncLog: {
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly researcherId: CodecTypes['pg/int4@1']['output'];
+      readonly deviceId: CodecTypes['pg/text@1']['output'] | null;
+      readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly totalCount: CodecTypes['pg/int4@1']['output'];
+      readonly acceptedCount: CodecTypes['pg/int4@1']['output'];
+      readonly existingCount: CodecTypes['pg/int4@1']['output'];
+      readonly rejectedCount: CodecTypes['pg/int4@1']['output'];
+      readonly details: CodecTypes['pg/text@1']['output'];
+    };
     readonly User: {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
@@ -510,6 +521,17 @@ export type FieldInputTypes = {
       readonly researchId: CodecTypes['pg/int4@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly SyncLog: {
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly researcherId: CodecTypes['pg/int4@1']['input'];
+      readonly deviceId: CodecTypes['pg/text@1']['input'] | null;
+      readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly totalCount: CodecTypes['pg/int4@1']['input'];
+      readonly acceptedCount: CodecTypes['pg/int4@1']['input'];
+      readonly existingCount: CodecTypes['pg/int4@1']['input'];
+      readonly rejectedCount: CodecTypes['pg/int4@1']['input'];
+      readonly details: CodecTypes['pg/text@1']['input'];
     };
     readonly User: {
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -653,6 +675,17 @@ export type StorageColumnTypes = {
       readonly title: CodecTypes['pg/text@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
+    readonly syncLog: {
+      readonly acceptedCount: CodecTypes['pg/int4@1']['output'];
+      readonly details: CodecTypes['pg/text@1']['output'];
+      readonly deviceId: CodecTypes['pg/text@1']['output'] | null;
+      readonly existingCount: CodecTypes['pg/int4@1']['output'];
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly rejectedCount: CodecTypes['pg/int4@1']['output'];
+      readonly researcherId: CodecTypes['pg/int4@1']['output'];
+      readonly totalCount: CodecTypes['pg/int4@1']['output'];
+    };
     readonly user: {
       readonly companyId: CodecTypes['pg/int4@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -794,6 +827,17 @@ export type StorageColumnInputTypes = {
       readonly researchId: CodecTypes['pg/int4@1']['input'];
       readonly title: CodecTypes['pg/text@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly syncLog: {
+      readonly acceptedCount: CodecTypes['pg/int4@1']['input'];
+      readonly details: CodecTypes['pg/text@1']['input'];
+      readonly deviceId: CodecTypes['pg/text@1']['input'] | null;
+      readonly existingCount: CodecTypes['pg/int4@1']['input'];
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly rejectedCount: CodecTypes['pg/int4@1']['input'];
+      readonly researcherId: CodecTypes['pg/int4@1']['input'];
+      readonly totalCount: CodecTypes['pg/int4@1']['input'];
     };
     readonly user: {
       readonly companyId: CodecTypes['pg/int4@1']['input'] | null;
@@ -989,7 +1033,7 @@ type ContractBase = Omit<
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
-              uniques: readonly [];
+              uniques: readonly [{ readonly columns: readonly ['researcherId', 'clientId'] }];
               indexes: readonly [
                 {
                   readonly name: 'collection_researchId_idx_36f1b4c8';
@@ -1771,6 +1815,84 @@ type ContractBase = Omit<
                 },
               ];
             };
+            readonly syncLog: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'autoincrement()';
+                  };
+                };
+                readonly researcherId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly deviceId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly receivedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly totalCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly acceptedCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly existingCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly rejectedCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly details: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'syncLog_researcherId_idx_0654ce39';
+                  readonly prefix: 'syncLog_researcherId_idx';
+                  readonly columns: readonly ['researcherId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'syncLog';
+                    readonly columns: readonly ['researcherId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
             readonly user: {
               columns: {
                 readonly id: {
@@ -1908,6 +2030,7 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'CollectionFile';
     };
+    readonly syncLog: { readonly namespace: 'public' & NamespaceId; readonly model: 'SyncLog' };
     readonly researchDownload: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ResearchDownload';
@@ -2880,6 +3003,74 @@ type ContractBase = Omit<
               };
             };
           };
+          readonly SyncLog: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly researcherId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly deviceId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly receivedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly totalCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly acceptedCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly existingCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly rejectedCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly details: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+            };
+            readonly relations: {
+              readonly researcher: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['researcherId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'syncLog';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly researcherId: { readonly column: 'researcherId' };
+                readonly deviceId: { readonly column: 'deviceId' };
+                readonly receivedAt: { readonly column: 'receivedAt' };
+                readonly totalCount: { readonly column: 'totalCount' };
+                readonly acceptedCount: { readonly column: 'acceptedCount' };
+                readonly existingCount: { readonly column: 'existingCount' };
+                readonly rejectedCount: { readonly column: 'rejectedCount' };
+                readonly details: { readonly column: 'details' };
+              };
+            };
+          };
           readonly User: {
             readonly fields: {
               readonly id: {
@@ -2964,6 +3155,17 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['id'];
                   readonly targetFields: readonly ['userId'];
+                };
+              };
+              readonly syncLogs: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'SyncLog';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['researcherId'];
                 };
               };
             };

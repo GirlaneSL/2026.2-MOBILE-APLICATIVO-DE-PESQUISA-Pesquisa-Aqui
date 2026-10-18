@@ -1,10 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as Location from 'expo-location';
-import type { CollectionAudio, CollectionInput, CollectionPhoto, InterviewConsent } from './collectionUpload';
+import type {
+    CollectionAudio,
+    CollectionInput,
+    CollectionPhoto,
+    CollectionQuestionAudio,
+    InterviewConsent,
+    RecordingIssue,
+} from './collectionUpload';
 import { getDeviceId } from './researchCache';
-import type { AnswerValue, Answers, PackageQuestion } from './displayRules';
-import { getPhotoUris, isQuestionTypeSupported } from './questionTypes';
+import { getVisibleQuestionIdsInOrder } from './displayRules';
+import type { AnswerValue, Answers, DisplayRule, PackageQuestion } from './displayRules';
+import {
+    getPhotoUris,
+    isQuestionTypeSupported,
+    parseAudioAnswer,
+    parseLocationAnswer,
+    serializeLocationAnswer,
+} from './questionTypes';
 
 // Coletas guardadas no aparelho (AsyncStorage): tudo aqui funciona sem internet.
 // Uma chave por coleta, para que gravar uma resposta nunca reescreva as outras coletas.
@@ -22,6 +36,20 @@ export interface StartLocation {
     capturedAt: string; // ISO 8601
 }
 
+// Motivo de um envio que o servidor não confirmou.
+export interface SendFailure {
+    reason: string; // texto para o pesquisador ler
+    code?: string; // código do servidor (RESEARCH_CLOSED, CONSENT_REQUIRED...), quando houver
+    retryable: boolean; // false = recusa definitiva: o envio automático não insiste, só "tentar de novo" reenvia
+    at: string; // ISO 8601
+}
+
+// Histórico de envio da coleta finalizada. Some junto com a coleta quando o servidor confirma.
+export interface SendState {
+    attempts: number; // tentativas que falharam
+    lastFailure?: SendFailure;
+}
+
 export interface LocalCollection {
     // UUID gerado no aparelho: é ele que impede a duplicidade quando a coleta for enviada
     clientId: string;
@@ -35,6 +63,10 @@ export interface LocalCollection {
     currentQuestionId: number | null; // onde o pesquisador parou, para retomar do mesmo ponto
     consent?: InterviewConsent;
     audio?: CollectionAudio;
+    // Interrupções da gravação da entrevista: ficam registradas mesmo se não houver arquivo de áudio
+    recordingIssues?: RecordingIssue[];
+    // Só existe depois de uma tentativa de envio que falhou
+    sendState?: SendState;
     updatedAt: string;
 }
 
@@ -133,6 +165,37 @@ export async function listDrafts(researchId: number): Promise<LocalCollection[]>
     return (await listCollections(researchId)).filter((c) => c.status === 'IN_PROGRESS');
 }
 
+// ---------- Fila de envio ----------
+
+/**
+ * A fila de envio são as coletas finalizadas que o servidor ainda não confirmou, a mais antiga primeiro.
+ * Finalizar a coleta já a coloca aqui; confirmar no servidor a tira (removeCollection).
+ */
+export async function listSendQueue(): Promise<LocalCollection[]> {
+    const finished = (await listCollections()).filter((c) => c.status === 'FINISHED');
+    return finished.sort((a, b) => (a.finishedAt ?? a.startedAt).localeCompare(b.finishedAt ?? b.startedAt));
+}
+
+/**
+ * Guarda por que o envio falhou. A coleta continua finalizada e fechada: só o histórico de envio muda
+ * (por isso não passa por saveCollection, que recusa gravar coleta finalizada).
+ */
+export async function recordSendFailure(clientId: string, failure: SendFailure): Promise<void> {
+    const stored = await readCollection(clientId);
+    if (!stored || stored.status !== 'FINISHED') return;
+
+    const next: LocalCollection = {
+        ...stored,
+        sendState: { attempts: (stored.sendState?.attempts ?? 0) + 1, lastFailure: failure },
+    };
+    await AsyncStorage.setItem(keyOf(clientId), JSON.stringify(next));
+}
+
+/** Tira a coleta do aparelho. Só o envio chama isto, depois de o servidor confirmar o recebimento. */
+export async function removeCollection(clientId: string): Promise<void> {
+    await AsyncStorage.removeItem(keyOf(clientId));
+}
+
 // ---------- Ciclo de vida da coleta ----------
 
 /**
@@ -167,7 +230,7 @@ export async function startCollection(researchId: number, consent?: InterviewCon
 /** Finaliza: grava o horário de término e fecha a coleta para edição. */
 export async function finishCollection(
     collection: LocalCollection,
-    extra: { consent?: InterviewConsent; audio?: CollectionAudio } = {},
+    extra: { consent?: InterviewConsent; audio?: CollectionAudio; recordingIssues?: RecordingIssue[] } = {},
 ): Promise<LocalCollection> {
     const finished: LocalCollection = {
         ...collection,
@@ -199,6 +262,8 @@ export function getBlockingMissing(
     );
 }
 
+const isAudioQuestion = (question: PackageQuestion) => question.type === 'AUDIO';
+
 const isPhotoQuestion = (question: PackageQuestion) => question.type === 'PHOTO' || question.type === 'MULTIPLE_PHOTOS';
 
 /** Nome do arquivo de uma foto guardada no aparelho (último trecho do endereço). */
@@ -215,6 +280,19 @@ function serializeAnswer(question: PackageQuestion, answer: AnswerValue): string
         return question.type === 'PHOTO' ? names[0] : JSON.stringify(names);
     }
 
+    // Áudio: como na foto, a resposta leva o nome do arquivo e o arquivo segue junto, no mesmo envio.
+    if (isAudioQuestion(question)) {
+        const audio = parseAudioAnswer(answer);
+        return audio ? photoFileName(audio.uri) : null;
+    }
+
+    // Localização: latitude, longitude, precisão e a marcação de baixa precisão vão no valor da resposta,
+    // para o administrador ver depois quais pontos merecem conferência.
+    if (question.type === 'LOCATION') {
+        const location = parseLocationAnswer(answer);
+        return location ? serializeLocationAnswer(location) : null;
+    }
+
     if (question.type === 'YES_NO') return answer === true ? 'YES' : answer === false ? 'NO' : String(answer);
     // Número sempre com ponto decimal, mesmo que o pesquisador tenha digitado vírgula
     if (question.type === 'NUMERIC' && typeof answer === 'string') return answer.trim().replace(',', '.');
@@ -226,14 +304,24 @@ function serializeAnswer(question: PackageQuestion, answer: AnswerValue): string
     return String(answer);
 }
 
-/** Monta o que o envio (collectionUpload) espera, a partir de uma coleta finalizada. */
+/**
+ * Monta o que o envio (collectionUpload) espera, a partir de uma coleta finalizada.
+ *
+ * `allQuestions` vem na ordem do questionário (orderedQuestions do pacote) e `displayRules` são as
+ * regras de pulo do mesmo pacote. Questão escondida por elas não viaja: nem a resposta, nem a foto,
+ * nem o áudio. Sem `displayRules`, todas as questões contam como visíveis.
+ */
 export async function buildCollectionInput(
     collection: LocalCollection,
-    questions: PackageQuestion[],
+    allQuestions: PackageQuestion[],
+    displayRules: DisplayRule[] = [],
 ): Promise<CollectionInput> {
     if (collection.status !== 'FINISHED' || !collection.finishedAt) {
         throw new Error('Só coletas finalizadas podem ser enviadas.');
     }
+
+    const visibleIds = getVisibleQuestionIdsInOrder(allQuestions, displayRules, collection.answers);
+    const questions = allQuestions.filter((question) => visibleIds.has(question.id));
 
     const answers = questions.flatMap((question) => {
         const value = serializeAnswer(question, collection.answers[question.id]);
@@ -250,6 +338,22 @@ export async function buildCollectionInput(
         })),
     );
 
+    // Áudios das questões guardados no aparelho entram na mesma fila de envio da coleta
+    const questionAudios: CollectionQuestionAudio[] = questions.filter(isAudioQuestion).flatMap((question) => {
+        const audio = parseAudioAnswer(collection.answers[question.id]);
+        return audio
+            ? [
+                  {
+                      questionId: question.id,
+                      uri: audio.uri,
+                      name: photoFileName(audio.uri),
+                      mimeType: 'audio/mp4',
+                      durationSeconds: audio.durationSeconds,
+                  },
+              ]
+            : [];
+    });
+
     return {
         researchId: collection.researchId,
         clientId: collection.clientId,
@@ -259,6 +363,8 @@ export async function buildCollectionInput(
         answers,
         consent: collection.consent,
         audio: collection.audio,
+        recordingIssues: collection.recordingIssues,
         photos,
+        questionAudios,
     };
 }
