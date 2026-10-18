@@ -1,4 +1,15 @@
+import { File } from 'expo-file-system';
 import { apiFetch } from "./api";
+
+// Parte de arquivo para o FormData. O fetch do Expo não aceita o formato antigo do React Native
+// ({ uri, name, type }): só texto, Blob ou um objeto com `bytes()`. Aqui o arquivo é lido do aparelho
+// no momento do envio, e nome e tipo ficam sob controle do app (o servidor valida o tipo do áudio).
+export function filePart(uri: string, name: string, type: string): Blob {
+    // O File só lê endereço com esquema (file://, content://)
+    const fileUri = /^[a-z][a-z0-9+.-]*:\/\//i.test(uri) ? uri : `file://${uri}`;
+    const file = new File(fileUri);
+    return { name, type, bytes: () => file.bytes() } as unknown as Blob;
+}
 
 export interface CollectionAnswer {
     questionId: number;
@@ -87,30 +98,20 @@ export function buildCollectionFormData(input: CollectionInput): FormData {
     form.append('payload', JSON.stringify(payload));
 
     if (input.audio) {
-        // Formato de arquivo do React Native para multipart
-        form.append('audio', {
-            uri: input.audio.uri,
-            name: `coleta-${input.clientId}.m4a`,
-            type: input.audio.mimeType ?? 'audio/mp4',
-        } as unknown as Blob);
+        form.append(
+            'audio',
+            filePart(input.audio.uri, `coleta-${input.clientId}.m4a`, input.audio.mimeType ?? 'audio/mp4'),
+        );
     }
 
     // Fotos: um campo `photos` por arquivo, todos na mesma requisição da coleta
     for (const photo of input.photos ?? []) {
-        form.append('photos', {
-            uri: photo.uri,
-            name: photo.name,
-            type: photo.mimeType,
-        } as unknown as Blob);
+        form.append('photos', filePart(photo.uri, photo.name, photo.mimeType));
     }
 
     // Áudios das questões: um campo `questionAudios` por arquivo, todos na mesma requisição da coleta
     for (const audio of input.questionAudios ?? []) {
-        form.append('questionAudios', {
-            uri: audio.uri,
-            name: audio.name,
-            type: audio.mimeType,
-        } as unknown as Blob);
+        form.append('questionAudios', filePart(audio.uri, audio.name, audio.mimeType));
     }
 
     return form;

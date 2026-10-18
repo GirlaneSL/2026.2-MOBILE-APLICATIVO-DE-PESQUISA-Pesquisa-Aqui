@@ -1,6 +1,6 @@
 import { File } from 'expo-file-system';
 import { ApiError, apiFetch } from './api';
-import type { CollectionInput } from './collectionUpload';
+import { filePart, type CollectionInput } from './collectionUpload';
 import type { SendOutcome } from './syncEngine';
 
 // Envio de UMA coleta ao servidor. Nunca lança erro: tudo vira um SendOutcome para a fila decidir.
@@ -128,13 +128,9 @@ async function sendWithAudio(input: CollectionInput, audio: NonNullable<Collecti
             audioDurationSeconds: Math.round(audio.durationSeconds),
         }),
     );
-    // O fetch do React Native só lê arquivo de endereço com esquema (file://, content://)
-    const audioUri = /^[a-z][a-z0-9+.-]*:\/\//i.test(audio.uri) ? audio.uri : `file://${audio.uri}`;
-    form.append('audio', {
-        uri: audioUri,
-        name: `coleta-${input.clientId}.m4a`,
-        type: audio.mimeType ?? 'audio/mp4',
-    } as unknown as Blob);
+    // O fetch do Expo não aceita { uri, name, type } no FormData ("Unsupported FormDataPart implementation"):
+    // o arquivo vai como objeto com bytes(), que o filePart monta.
+    form.append('audio', filePart(audio.uri, `coleta-${input.clientId}.m4a`, audio.mimeType ?? 'audio/mp4'));
 
     const response = await post('/collection', form, UPLOAD_TIMEOUT_MS);
     if (!response.ok) return failureFromHttp(response);
