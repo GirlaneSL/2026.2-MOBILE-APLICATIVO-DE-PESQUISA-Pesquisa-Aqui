@@ -58,6 +58,13 @@ export class CollectionController {
         return this.collectionService.findAll(researchId, currentUser);
     }
 
+    // Uma coleta com todas as respostas (somente administrador da empresa da pesquisa).
+    @Get(':id')
+    @Header('Cache-Control', 'private, no-store')
+    findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+        return this.collectionService.findOne(id, currentUser);
+    }
+
     @Get(':id/audio')
     @Header('Cache-Control', 'private, no-store')
     @Header('X-Content-Type-Options', 'nosniff')

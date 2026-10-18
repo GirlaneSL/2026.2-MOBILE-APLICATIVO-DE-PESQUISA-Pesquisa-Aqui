@@ -137,6 +137,67 @@ export class CollectionService {
         );
     }
 
+    // Abre uma coleta com as respostas, na ordem do questionário (seção e pergunta).
+    // Perguntas sem resposta também voltam (answer: null): o administrador vê o que ficou em branco.
+    async findOne(id: number, currentUser: UserPayLoad) {
+        const orm = this.prisma.client.orm.public;
+
+        const collection = await orm.Collection.where({ id }).first();
+        if (!collection) throw new NotFoundException('Coleta não encontrada.');
+
+        const research = await orm.Research.where({ id: collection.researchId }).first();
+        this.assertCompanyAdmin(research, currentUser);
+
+        const researcher = await orm.User.where({ id: collection.researcherId }).first();
+        const confirmedBy =
+            collection.consentConfirmedById !== null
+                ? await orm.User.where({ id: collection.consentConfirmedById }).first()
+                : null;
+
+        // Mais de uma resposta para a mesma pergunta não deveria ocorrer; se ocorrer, vale a mais recente.
+        const answerByQuestion = new Map<number, string>();
+        const answers = (await orm.Answer.where({ collectionId: collection.id }).all()).sort((a, b) => a.id - b.id);
+        for (const answer of answers) answerByQuestion.set(answer.questionId, answer.value);
+
+        const sections = (await orm.Section.where({ researchId: collection.researchId }).all()).sort(
+            (a, b) => a.order - b.order,
+        );
+
+        const detailedSections = await Promise.all(
+            sections.map(async (section) => {
+                const questions = (await orm.Question.where({ sectionId: section.id }).all()).sort(
+                    (a, b) => a.order - b.order,
+                );
+
+                const detailedQuestions = await Promise.all(
+                    questions.map(async (question) => {
+                        const options = (await orm.QuestionOption.where({ questionId: question.id }).all())
+                            .sort((a, b) => a.order - b.order)
+                            .map((option) => ({ id: option.id, text: option.text }));
+
+                        return {
+                            id: question.id,
+                            statement: question.statement,
+                            type: question.type,
+                            isRequired: question.isRequired,
+                            scaleLeftLabel: question.scaleLeftLabel ?? null,
+                            scaleRightLabel: question.scaleRightLabel ?? null,
+                            options,
+                            answer: answerByQuestion.get(question.id) ?? null,
+                        };
+                    }),
+                );
+
+                return { id: section.id, title: section.title, questions: detailedQuestions };
+            }),
+        );
+
+        return {
+            ...this.toSummary(collection, researcher?.name ?? null, confirmedBy?.name ?? null),
+            sections: detailedSections,
+        };
+    }
+
     // Abre o áudio de uma coleta. Só administrador da empresa dona da pesquisa chega aqui.
     async getAudio(id: number, currentUser: UserPayLoad) {
         const orm = this.prisma.client.orm.public;

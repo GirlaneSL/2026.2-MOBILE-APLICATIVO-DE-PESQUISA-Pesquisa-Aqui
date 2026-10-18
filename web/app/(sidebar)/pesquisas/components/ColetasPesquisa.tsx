@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDuration, getCollectionAudio, getCollections, type CollectionSummary } from "@/lib/collection";
-import { Headphones, MicOff, ShieldAlert } from "lucide-react";
+import { FileText, Headphones, MicOff, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import RespostasColeta from "./RespostasColeta";
 
 const formatDateTime = (value: string | null) =>
     value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
@@ -37,6 +38,7 @@ type ListState =
 export default function ColetasPesquisa({ researchId, recordInterview }: ColetasPesquisaProps) {
     const [state, setState] = useState<ListState>({ status: 'loading' });
     const [loadingAudioId, setLoadingAudioId] = useState<number | null>(null);
+    const [viewing, setViewing] = useState<CollectionSummary | null>(null);
     const [player, setPlayer] = useState<{
         collectionId: number;
         url: string;
@@ -129,6 +131,7 @@ export default function ColetasPesquisa({ researchId, recordInterview }: Coletas
                                 <TableHead>Consentimento</TableHead>
                                 <TableHead>Gravação</TableHead>
                                 <TableHead>Duração</TableHead>
+                                <TableHead className="text-right">Respostas</TableHead>
                                 <TableHead className="text-right">Áudio</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -157,6 +160,11 @@ export default function ColetasPesquisa({ researchId, recordInterview }: Coletas
                                     </TableCell>
                                     <TableCell>{c.hasAudio ? formatDuration(c.audioDurationSeconds) : '-'}</TableCell>
                                     <TableCell className="text-right">
+                                        <Button size="sm" variant="outline" className="gap-1" onClick={() => setViewing(c)}>
+                                            <FileText className="h-3 w-3" />Ver respostas
+                                        </Button>
+                                    </TableCell>
+                                    <TableCell className="text-right">
                                         {c.hasAudio && (
                                             <Button
                                                 size="sm"
@@ -174,6 +182,8 @@ export default function ColetasPesquisa({ researchId, recordInterview }: Coletas
                     </Table>
                 </div>
             )}
+
+            <RespostasColeta collection={viewing} onClose={() => setViewing(null)} />
 
             {player && (
                 <div className="flex flex-col gap-2 rounded-lg border bg-card p-4">

@@ -5,7 +5,7 @@ import { CollectionService } from './collection.service';
 type Row = Record<string, any>;
 
 // Banco em memória, só o suficiente para o fluxo de coleta.
-function makeDb(seed: { research: Row; links?: Row[]; questions?: Row[] }) {
+function makeDb(seed: { research: Row; links?: Row[]; questions?: Row[]; options?: Row[] }) {
   const tables: Record<string, Row[]> = {
     User: [
       { id: 1, name: 'Paula', username: 'paula', profile: 'RESEARCHER', companyId: 10 },
@@ -13,8 +13,9 @@ function makeDb(seed: { research: Row; links?: Row[]; questions?: Row[] }) {
     ],
     Research: [seed.research],
     ResearchResearcher: seed.links ?? [{ id: 1, researchId: 5, userId: 1 }],
-    Section: [{ id: 50, researchId: 5 }],
-    Question: seed.questions ?? [{ id: 100, sectionId: 50 }],
+    Section: [{ id: 50, researchId: 5, title: 'Perfil', order: 1 }],
+    Question: seed.questions ?? [{ id: 100, sectionId: 50, statement: 'Pergunta', type: 'FREE_TEXT', order: 1, isRequired: false }],
+    QuestionOption: seed.options ?? [],
     Collection: [],
     Answer: [],
   };
@@ -201,5 +202,66 @@ describe('CollectionService — acesso ao áudio e à lista', () => {
     const without = list.find((c) => !c.hasAudio)!;
     expect(withAudio.audioDurationSeconds).toBe(600);
     expect(without.audioDurationSeconds).toBeNull();
+  });
+});
+
+describe('CollectionService.findOne — respostas da coleta', () => {
+  function setupWithQuestions() {
+    const db = makeDb({
+      research: baseResearch,
+      questions: [
+        { id: 101, sectionId: 50, statement: 'Segunda', type: 'SINGLE_CHOICE', order: 2, isRequired: true },
+        { id: 100, sectionId: 50, statement: 'Primeira', type: 'FREE_TEXT', order: 1, isRequired: false },
+        { id: 102, sectionId: 50, statement: 'Sem resposta', type: 'NUMERIC', order: 3, isRequired: false },
+      ],
+      options: [
+        { id: 2, questionId: 101, text: 'Não', order: 2 },
+        { id: 1, questionId: 101, text: 'Sim', order: 1 },
+      ],
+    });
+    const storage = { save: jest.fn(async () => '5/abc.m4a'), open: jest.fn(), remove: jest.fn() };
+    const service = new CollectionService(db.prisma, storage as unknown as AudioStorage);
+    return { db, service };
+  }
+
+  const answersPayload = () =>
+    payload({
+      answers: [
+        { questionId: 101, value: '1' },
+        { questionId: 100, value: 'texto livre' },
+      ],
+    }) as any;
+
+  it('devolve as perguntas na ordem do questionário, com as opções e a resposta de cada uma', async () => {
+    const { service } = setupWithQuestions();
+    await service.create(answersPayload(), audio, researcher);
+
+    const detail = await service.findOne(1, admin);
+    expect(detail.researcherName).toBe('Paula');
+    expect(detail.hasAudio).toBe(true);
+    expect(detail.sections).toHaveLength(1);
+
+    const questions = detail.sections[0].questions;
+    expect(questions.map((q) => q.statement)).toEqual(['Primeira', 'Segunda', 'Sem resposta']);
+    expect(questions[0].answer).toBe('texto livre');
+    expect(questions[1].answer).toBe('1');
+    expect(questions[1].options.map((o) => o.text)).toEqual(['Sim', 'Não']);
+    expect(questions[2].answer).toBeNull();
+  });
+
+  it('coleta inexistente responde 404', async () => {
+    const { service } = setupWithQuestions();
+    await expect(service.findOne(999, admin)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('quem é de outra empresa, pesquisador e superadministrador não abrem as respostas', async () => {
+    const { service } = setupWithQuestions();
+    await service.create(answersPayload(), audio, researcher);
+
+    await expect(service.findOne(1, { ...admin, companyId: 99 })).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.findOne(1, researcher)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.findOne(1, { ...admin, profile: 'SUPERADMINISTRATOR', companyId: null }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
