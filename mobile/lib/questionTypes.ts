@@ -275,6 +275,95 @@ function validateAudio(question: PackageQuestion, value: AnswerValue): string | 
     return null;
 }
 
+// ---------- Localização ----------
+
+/**
+ * Precisão (raio de incerteza, em metros) acima da qual o ponto é gravado como "de baixa precisão".
+ * Com mais que isso o ponto pode estar a dezenas ou centenas de metros de onde o pesquisador está.
+ */
+export const LOW_ACCURACY_THRESHOLD_METERS = 50;
+
+export interface LocationAnswerValue {
+    latitude: number;
+    longitude: number;
+    /** Precisão informada pelo aparelho, em metros. null = o aparelho não informou. */
+    accuracy: number | null;
+    /** true = precisão ruim (ou desconhecida): o administrador vê a marcação ao conferir a coleta. */
+    lowAccuracy: boolean;
+    /** Momento da leitura do GPS (ISO 8601), ou null em respostas antigas. */
+    capturedAt: string | null;
+}
+
+/** Sem informação de precisão não dá para garantir o ponto: conta como baixa precisão. */
+export function isLowAccuracy(accuracy: number | null | undefined): boolean {
+    if (accuracy === null || accuracy === undefined || !Number.isFinite(accuracy) || accuracy < 0) return true;
+    return accuracy > LOW_ACCURACY_THRESHOLD_METERS;
+}
+
+const isValidCoordinate = (latitude: number, longitude: number) =>
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180;
+
+/** Cria o valor da resposta a partir da leitura do GPS (a marcação de baixa precisão sai da precisão lida). */
+export function buildLocationAnswer(reading: {
+    latitude: number;
+    longitude: number;
+    accuracy: number | null | undefined;
+    capturedAt: string | null;
+}): LocationAnswerValue {
+    const accuracy =
+        typeof reading.accuracy === 'number' && Number.isFinite(reading.accuracy) && reading.accuracy >= 0
+            ? reading.accuracy
+            : null;
+    return {
+        latitude: reading.latitude,
+        longitude: reading.longitude,
+        accuracy,
+        lowAccuracy: isLowAccuracy(accuracy),
+        capturedAt: reading.capturedAt,
+    };
+}
+
+/** A resposta de localização é guardada (e enviada) como texto JSON, como as outras respostas compostas. */
+export function serializeLocationAnswer(value: LocationAnswerValue): string {
+    return JSON.stringify({
+        latitude: value.latitude,
+        longitude: value.longitude,
+        accuracy: value.accuracy,
+        lowAccuracy: value.lowAccuracy,
+        capturedAt: value.capturedAt,
+    });
+}
+
+/** Lê a resposta guardada. Aceita também o formato antigo (só latitude e longitude). */
+export function parseLocationAnswer(value: AnswerValue): LocationAnswerValue | null {
+    if (typeof value !== 'string' || value.trim() === '') return null;
+    try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed?.latitude !== 'number' || typeof parsed?.longitude !== 'number') return null;
+        if (!isValidCoordinate(parsed.latitude, parsed.longitude)) return null;
+        return buildLocationAnswer({
+            latitude: parsed.latitude,
+            longitude: parsed.longitude,
+            accuracy: typeof parsed.accuracy === 'number' ? parsed.accuracy : null,
+            capturedAt: typeof parsed.capturedAt === 'string' ? parsed.capturedAt : null,
+        });
+    } catch {
+        return null;
+    }
+}
+
+/** Baixa precisão não é erro: o pesquisador pode seguir. Só uma resposta ilegível é recusada. */
+function validateLocation(_question: PackageQuestion, value: AnswerValue): string | null {
+    return parseLocationAnswer(value)
+        ? null
+        : 'A localização guardada não é válida. Capture a localização novamente.';
+}
+
 // Tipos que a tela de coleta sabe preencher.
 // Uma entrada sem validador = tipo sem regra de formato.
 const QUESTION_TYPE_VALIDATORS = {
@@ -288,7 +377,7 @@ const QUESTION_TYPE_VALIDATORS = {
     SCALE_1_5: undefined,
     PHOTO: validatePhotos,
     MULTIPLE_PHOTOS: validatePhotos,
-    LOCATION: undefined,
+    LOCATION: validateLocation,
     AUDIO: validateAudio,
 } satisfies Record<string, Validator | undefined>;
 

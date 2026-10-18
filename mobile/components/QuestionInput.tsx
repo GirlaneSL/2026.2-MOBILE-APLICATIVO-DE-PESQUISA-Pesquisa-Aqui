@@ -1,10 +1,10 @@
 import * as Haptics from 'expo-haptics';
-import * as Location from 'expo-location';
-import { Calendar, Check, Clock, MapPin } from 'lucide-react-native';
+import { Calendar, Check, Clock } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AudioAnswer, { type AudioBridge } from '@/components/AudioAnswer';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
+import LocationAnswer from '@/components/LocationAnswer';
 import PhotoAnswer from '@/components/PhotoAnswer';
 import type { AnswerValue, PackageQuestion } from '@/lib/displayRules';
 import {
@@ -304,55 +304,6 @@ function ScaleAnswer({ question, value, onChange }: InputProps) {
     );
 }
 
-function LocationAnswer({ value, onChange }: InputProps) {
-    const [locating, setLocating] = useState(false);
-    const [locationError, setLocationError] = useState<string | null>(null);
-
-    const capture = async () => {
-        setLocating(true);
-        setLocationError(null);
-        try {
-            const permission = await Location.requestForegroundPermissionsAsync();
-            if (!permission.granted) {
-                setLocationError('Permissão de localização negada.');
-                return;
-            }
-            const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            onChange(
-                JSON.stringify({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                }),
-            );
-        } catch {
-            setLocationError('Não foi possível obter a localização. Tente novamente.');
-        } finally {
-            setLocating(false);
-        }
-    };
-
-    let label: string | null = null;
-    if (typeof value === 'string' && value) {
-        try {
-            const p = JSON.parse(value);
-            label = `${Number(p.latitude).toFixed(5)}, ${Number(p.longitude).toFixed(5)}`;
-        } catch {
-            label = value;
-        }
-    }
-
-    return (
-        <View style={styles.column}>
-            <TouchableOpacity style={[styles.choice, styles.rowCenter]} onPress={capture} disabled={locating}>
-                {locating ? <ActivityIndicator size="small" color="#447762" /> : <MapPin size={18} color="#447762" />}
-                <Text style={styles.choiceText}>{label ? 'Capturar novamente' : 'Capturar localização atual'}</Text>
-            </TouchableOpacity>
-            {label ? <Text style={styles.locationValue}>{label}</Text> : null}
-            {locationError ? <Text style={styles.errorText}>{locationError}</Text> : null}
-        </View>
-    );
-}
-
 // O tipo da questão (como veio no pacote) escolhe o desenhista. O tipo `SupportedQuestionType`
 // vem de lib/questionTypes: se um tipo for acrescentado lá e faltar aqui, o TypeScript reclama.
 const ANSWER_COMPONENTS: Record<SupportedQuestionType, React.ComponentType<InputProps>> = {
@@ -420,7 +371,6 @@ const styles = StyleSheet.create({
     pickerText: { fontSize: 16, color: '#18181b' },
     pickerPlaceholder: { color: '#a1a1aa' },
     row: { flexDirection: 'row', gap: 8 },
-    rowCenter: { flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' },
     column: { gap: 8 },
     flex: { flex: 1 },
     choice: {
@@ -469,7 +419,6 @@ const styles = StyleSheet.create({
     choiceTextSelected: { color: '#447762', fontWeight: 'bold' },
     notice: { backgroundColor: '#fef3c7', borderRadius: 8, padding: 14 },
     noticeText: { color: '#92400e', fontSize: 14 },
-    locationValue: { fontSize: 14, color: '#447762', textAlign: 'center' },
     counter: { fontSize: 13, color: '#71717a', textAlign: 'right' },
     counterLimit: { color: '#92400e', fontWeight: '600' },
     hint: { fontSize: 13, color: '#71717a' },

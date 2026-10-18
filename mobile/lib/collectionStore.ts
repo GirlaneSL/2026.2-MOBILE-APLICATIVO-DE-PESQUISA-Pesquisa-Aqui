@@ -11,7 +11,13 @@ import type {
 } from './collectionUpload';
 import { getDeviceId } from './researchCache';
 import type { AnswerValue, Answers, PackageQuestion } from './displayRules';
-import { getPhotoUris, isQuestionTypeSupported, parseAudioAnswer } from './questionTypes';
+import {
+    getPhotoUris,
+    isQuestionTypeSupported,
+    parseAudioAnswer,
+    parseLocationAnswer,
+    serializeLocationAnswer,
+} from './questionTypes';
 
 // Coletas guardadas no aparelho (AsyncStorage): tudo aqui funciona sem internet.
 // Uma chave por coleta, para que gravar uma resposta nunca reescreva as outras coletas.
@@ -230,6 +236,13 @@ function serializeAnswer(question: PackageQuestion, answer: AnswerValue): string
     if (isAudioQuestion(question)) {
         const audio = parseAudioAnswer(answer);
         return audio ? photoFileName(audio.uri) : null;
+    }
+
+    // Localização: latitude, longitude, precisão e a marcação de baixa precisão vão no valor da resposta,
+    // para o administrador ver depois quais pontos merecem conferência.
+    if (question.type === 'LOCATION') {
+        const location = parseLocationAnswer(answer);
+        return location ? serializeLocationAnswer(location) : null;
     }
 
     if (question.type === 'YES_NO') return answer === true ? 'YES' : answer === false ? 'NO' : String(answer);
