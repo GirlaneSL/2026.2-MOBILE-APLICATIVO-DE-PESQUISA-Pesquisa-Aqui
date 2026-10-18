@@ -1,5 +1,7 @@
 import {
-    RecordingPresets,
+    AudioQuality,
+    IOSOutputFormat,
+    type RecordingOptions,
     requestNotificationPermissionsAsync,
     setAudioModeAsync,
     useAudioRecorder,
@@ -18,9 +20,25 @@ import {
 } from '@/lib/audioStorage';
 import type { CollectionAudio, InterviewConsent, RecordingIssue } from '@/lib/collectionUpload';
 
-// Voz de entrevista: mono e 64 kbps bastam e mantêm o envio leve (~28 MB por hora).
+// Voz de entrevista: AAC mono a 64 kbps em contêiner MP4 (.m4a), ~28 MB por hora, e toca em qualquer navegador.
+// Opções explícitas de propósito: no Android o preset LOW_QUALITY grava 3GP com AMR-NB (.3gp), que o Chrome
+// não reproduz e que não corresponde ao 'audio/mp4' enviado ao servidor.
 // 'document' guarda o arquivo fora do cache, que o sistema pode limpar antes do envio.
-const RECORDING_OPTIONS = { ...RecordingPresets.LOW_QUALITY, numberOfChannels: 1, directory: 'document' as const };
+const RECORDING_OPTIONS: RecordingOptions = {
+    extension: '.m4a',
+    sampleRate: 44100,
+    numberOfChannels: 1,
+    bitRate: 64000,
+    directory: 'document',
+    android: { outputFormat: 'mpeg4', audioEncoder: 'aac' },
+    ios: {
+        outputFormat: IOSOutputFormat.MPEG4AAC,
+        audioQuality: AudioQuality.MEDIUM,
+        linearPCMBitDepth: 16,
+        linearPCMIsBigEndian: false,
+        linearPCMIsFloat: false,
+    },
+};
 
 /** De quanto em quanto tempo o app confere se a gravação continua rodando. */
 const WATCH_INTERVAL_MS = 2000;
