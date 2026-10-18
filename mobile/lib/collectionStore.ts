@@ -36,6 +36,20 @@ export interface StartLocation {
     capturedAt: string; // ISO 8601
 }
 
+// Motivo de um envio que o servidor não confirmou.
+export interface SendFailure {
+    reason: string; // texto para o pesquisador ler
+    code?: string; // código do servidor (RESEARCH_CLOSED, CONSENT_REQUIRED...), quando houver
+    retryable: boolean; // false = recusa definitiva: o envio automático não insiste, só "tentar de novo" reenvia
+    at: string; // ISO 8601
+}
+
+// Histórico de envio da coleta finalizada. Some junto com a coleta quando o servidor confirma.
+export interface SendState {
+    attempts: number; // tentativas que falharam
+    lastFailure?: SendFailure;
+}
+
 export interface LocalCollection {
     // UUID gerado no aparelho: é ele que impede a duplicidade quando a coleta for enviada
     clientId: string;
@@ -51,6 +65,8 @@ export interface LocalCollection {
     audio?: CollectionAudio;
     // Interrupções da gravação da entrevista: ficam registradas mesmo se não houver arquivo de áudio
     recordingIssues?: RecordingIssue[];
+    // Só existe depois de uma tentativa de envio que falhou
+    sendState?: SendState;
     updatedAt: string;
 }
 
@@ -147,6 +163,37 @@ export async function listCollections(researchId?: number): Promise<LocalCollect
 /** Rascunhos (coletas começadas e não finalizadas) de uma pesquisa, o mais recente primeiro. */
 export async function listDrafts(researchId: number): Promise<LocalCollection[]> {
     return (await listCollections(researchId)).filter((c) => c.status === 'IN_PROGRESS');
+}
+
+// ---------- Fila de envio ----------
+
+/**
+ * A fila de envio são as coletas finalizadas que o servidor ainda não confirmou, a mais antiga primeiro.
+ * Finalizar a coleta já a coloca aqui; confirmar no servidor a tira (removeCollection).
+ */
+export async function listSendQueue(): Promise<LocalCollection[]> {
+    const finished = (await listCollections()).filter((c) => c.status === 'FINISHED');
+    return finished.sort((a, b) => (a.finishedAt ?? a.startedAt).localeCompare(b.finishedAt ?? b.startedAt));
+}
+
+/**
+ * Guarda por que o envio falhou. A coleta continua finalizada e fechada: só o histórico de envio muda
+ * (por isso não passa por saveCollection, que recusa gravar coleta finalizada).
+ */
+export async function recordSendFailure(clientId: string, failure: SendFailure): Promise<void> {
+    const stored = await readCollection(clientId);
+    if (!stored || stored.status !== 'FINISHED') return;
+
+    const next: LocalCollection = {
+        ...stored,
+        sendState: { attempts: (stored.sendState?.attempts ?? 0) + 1, lastFailure: failure },
+    };
+    await AsyncStorage.setItem(keyOf(clientId), JSON.stringify(next));
+}
+
+/** Tira a coleta do aparelho. Só o envio chama isto, depois de o servidor confirmar o recebimento. */
+export async function removeCollection(clientId: string): Promise<void> {
+    await AsyncStorage.removeItem(keyOf(clientId));
 }
 
 // ---------- Ciclo de vida da coleta ----------

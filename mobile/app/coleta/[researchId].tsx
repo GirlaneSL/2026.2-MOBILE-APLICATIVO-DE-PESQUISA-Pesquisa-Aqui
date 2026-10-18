@@ -45,6 +45,7 @@ import { deleteAudio, formatClock } from '@/lib/audioStorage';
 import { deletePhoto } from '@/lib/photoStorage';
 import { getAudioUris, getPhotoUris, isQuestionTypeSupported, validateAnswer } from '@/lib/questionTypes';
 import { getCachedResearchPackage } from '@/lib/researchCache';
+import { requestAutoSend } from '@/lib/syncQueue';
 
 type Phase = 'loading' | 'consent' | 'starting' | 'blocked' | 'running' | 'finished' | 'error';
 
@@ -464,6 +465,9 @@ export default function ColetaScreen() {
             collectionRef.current = finished;
             setCollection(finished);
             setPhase('finished');
+            // A coleta finalizada já está na fila de envio; com rede, o envio começa em segundo plano
+            // e o pesquisador segue livre para iniciar a próxima coleta.
+            void requestAutoSend();
         } catch (error) {
             Alert.alert('Erro ao finalizar', error instanceof Error ? error.message : 'Tente novamente.');
         } finally {
@@ -611,7 +615,8 @@ export default function ColetaScreen() {
                     </View>
                 ) : null}
                 <Text style={styles.centerText}>
-                    A coleta está salva no aparelho, fechada para edição, e será enviada na sincronização.
+                    A coleta está salva no aparelho, fechada para edição, e entrou na fila de envio. Com internet, ela é
+                    enviada sozinha; você acompanha na aba Sinc.
                 </Text>
                 <TouchableOpacity style={[styles.primaryButton, styles.fixedWidth]} onPress={leaveScreen}>
                     <Text style={styles.primaryButtonText}>Voltar às pesquisas</Text>
