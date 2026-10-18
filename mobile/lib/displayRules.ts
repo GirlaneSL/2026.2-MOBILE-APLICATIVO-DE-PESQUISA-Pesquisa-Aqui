@@ -118,10 +118,21 @@ export function getVisibleQuestionIds(
     pkg: Pick<ResearchPackage, 'sections'> & { displayRules?: DisplayRule[] },
     answers: Answers,
 ): Set<number> {
-    const rules = pkg.displayRules ?? [];
+    return getVisibleQuestionIdsInOrder(orderedQuestions(pkg), pkg.displayRules ?? [], answers);
+}
+
+/**
+ * Mesma regra de getVisibleQuestionIds para uma lista de questões que já está na ordem do
+ * questionário (seção, depois questão). Usada no envio, que recebe só a lista de questões.
+ */
+export function getVisibleQuestionIdsInOrder(
+    questions: PackageQuestion[],
+    rules: DisplayRule[],
+    answers: Answers,
+): Set<number> {
     const visible = new Set<number>();
 
-    for (const question of orderedQuestions(pkg)) {
+    for (const question of questions) {
         const rulesForQuestion = rules.filter((rule) => rule.targetQuestionId === question.id);
         const shown =
             rulesForQuestion.length === 0 ||

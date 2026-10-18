@@ -67,6 +67,36 @@ function leaveScreen() {
     else router.replace('/pesquisas');
 }
 
+type RemovedFile = { uri: string; isAudio: boolean };
+
+/** Fotos e áudios que estavam nas respostas de antes e não estão mais nas de depois. */
+function findRemovedFiles(pkg: ResearchPackage, before: Answers, after: Answers): RemovedFile[] {
+    return orderedQuestions(pkg)
+        .filter((q) => q.type === 'PHOTO' || q.type === 'MULTIPLE_PHOTOS' || q.type === 'AUDIO')
+        .flatMap((q) => {
+            const isAudio = q.type === 'AUDIO';
+            const urisOf = isAudio ? getAudioUris : getPhotoUris;
+            const kept = new Set(urisOf(after[q.id]));
+            return urisOf(before[q.id])
+                .filter((uri) => !kept.has(uri))
+                .map((uri) => ({ uri, isAudio }));
+        });
+}
+
+function deleteFiles(files: RemovedFile[]) {
+    files.forEach(({ uri, isAudio }) => (isAudio ? deleteAudio(uri) : deletePhoto(uri)));
+}
+
+/** Quantas respostas preenchidas saíram (fora a da própria questão que o pesquisador mexeu). */
+function countDiscarded(before: Answers, after: Answers, exceptQuestionId: number): number {
+    return Object.entries(before).filter(
+        ([id, value]) =>
+            Number(id) !== exceptQuestionId &&
+            !isAnswerEmpty(value) &&
+            !Object.prototype.hasOwnProperty.call(after, id),
+    ).length;
+}
+
 export default function ColetaScreen() {
     const params = useLocalSearchParams<{ researchId: string; clientId?: string }>();
     const researchId = Number(params.researchId);
@@ -81,6 +111,8 @@ export default function ColetaScreen() {
     const [blocked, setBlocked] = useState<Blocked | null>(null);
     // Gravando a resposta de uma questão de áudio: não dá para avançar, voltar nem sair antes de parar
     const [audioBusy, setAudioBusy] = useState(false);
+    // Aviso de que trocar a resposta descartou respostas do ramo abandonado (some ao mudar de questão)
+    const [discardNotice, setDiscardNotice] = useState<string | null>(null);
 
     const recording = useInterviewRecording(pkg);
 
@@ -170,9 +202,15 @@ export default function ColetaScreen() {
             setBlocked(null);
 
             let current: LocalCollection;
+            let staleFiles: RemovedFile[] = [];
             if (resumedDraft.current) {
                 current = resumedDraft.current;
                 if (consentRef.current) current = { ...current, consent: consentRef.current };
+                // Rascunho com resposta de questão que as regras do pacote escondem (ex.: pacote baixado
+                // de novo com regras diferentes): sai agora, e os arquivos dela saem do aparelho.
+                const kept = pruneHiddenAnswers(pkg, current.answers);
+                staleFiles = findRemovedFiles(pkg, current.answers, kept);
+                current = { ...current, answers: kept };
             } else {
                 // Gera o UUID, grava o início e a localização — sem o pesquisador fazer nada
                 current = await startCollection(researchId, consentRef.current ?? undefined);
@@ -190,6 +228,7 @@ export default function ColetaScreen() {
             collectionRef.current = current;
             setCollection(current);
             await saveCollection(current);
+            deleteFiles(staleFiles); // só depois de gravar o rascunho limpo
             setPhase('running');
         } catch (error) {
             setErrorMessage(error instanceof Error ? error.message : 'Não foi possível iniciar a coleta.');
@@ -290,17 +329,31 @@ export default function ColetaScreen() {
     const goToQuestion = async (questionId: number, message: string | null = null) => {
         if (!(await saveBeforeLeaving())) return;
         setValidationMessage(message);
+        setDiscardNotice(null);
         updateCollection({ currentQuestionId: questionId });
         void flush(); // grava também o ponto em que o pesquisador parou
     };
 
     const handleChange = (value: AnswerValue) => {
-        if (!pkg || !collection || !currentQuestion) return;
+        if (!pkg || !currentQuestion) return;
+        // Parte sempre da coleta mais nova (a da memória), não de uma tela que pode ter ficado para trás
+        const base = collectionRef.current ?? collection;
+        if (!base) return;
+
         setValidationMessage(null);
-        // Se a mudança esconde questões que dependiam desta, as respostas delas saem também
-        const answers = pruneHiddenAnswers(pkg, { ...collection.answers, [currentQuestion.id]: value });
+        // Se a mudança esconde questões que dependiam desta, as respostas delas saem também:
+        // trocar de "sim" para "não" não deixa o ramo abandonado seguir escondido para o servidor.
+        const answers = pruneHiddenAnswers(pkg, { ...base.answers, [currentQuestion.id]: value });
+
+        const discarded = countDiscarded(base.answers, answers, currentQuestion.id);
+        setDiscardNotice(
+            discarded > 0
+                ? `Esta mudança descartou ${discarded} ${discarded === 1 ? 'resposta que dependia' : 'respostas que dependiam'} da resposta anterior.`
+                : null,
+        );
+
         updateCollection({ answers });
-        discardRemovedPhotos(collection.answers, answers);
+        discardRemovedPhotos(base.answers, answers);
     };
 
     // Foto ou áudio removido (ou trocado/regravado, ou de questão que ficou escondida) não pode ficar
@@ -308,19 +361,10 @@ export default function ColetaScreen() {
     // rascunho nunca apontar para arquivo que sumiu.
     const discardRemovedPhotos = (before: Answers, after: Answers) => {
         if (!pkg) return;
-        const removed = orderedQuestions(pkg)
-            .filter((q) => q.type === 'PHOTO' || q.type === 'MULTIPLE_PHOTOS' || q.type === 'AUDIO')
-            .flatMap((q) => {
-                const isAudio = q.type === 'AUDIO';
-                const urisOf = isAudio ? getAudioUris : getPhotoUris;
-                const kept = new Set(urisOf(after[q.id]));
-                return urisOf(before[q.id])
-                    .filter((uri) => !kept.has(uri))
-                    .map((uri) => ({ uri, isAudio }));
-            });
+        const removed = findRemovedFiles(pkg, before, after);
         if (removed.length === 0) return;
         void flush().then((saved) => {
-            if (saved) removed.forEach(({ uri, isAudio }) => (isAudio ? deleteAudio(uri) : deletePhoto(uri)));
+            if (saved) deleteFiles(removed);
         });
     };
 
@@ -404,9 +448,16 @@ export default function ColetaScreen() {
     };
 
     const finish = async () => {
-        if (!collectionRef.current) return;
+        if (!collectionRef.current || !pkg) return;
         setBusy(true);
         try {
+            // Última garantia: a coleta não fecha carregando resposta de questão escondida
+            const current = collectionRef.current;
+            const kept = pruneHiddenAnswers(pkg, current.answers);
+            if (Object.keys(kept).length !== Object.keys(current.answers).length) {
+                updateCollection({ answers: kept });
+                discardRemovedPhotos(current.answers, kept);
+            }
             await flush();
             const extra = await recording.finish(); // para a gravação e devolve aceite + áudio
             const finished = await finishCollection(collectionRef.current, extra); // grava o término e fecha
@@ -668,6 +719,12 @@ export default function ColetaScreen() {
                             <Text style={styles.validationText}>{validationMessage}</Text>
                         </View>
                     ) : null}
+
+                    {discardNotice ? (
+                        <View style={styles.noticeBox}>
+                            <Text style={styles.noticeText}>{discardNotice}</Text>
+                        </View>
+                    ) : null}
                 </ScrollView>
 
                 <View style={styles.footer}>
@@ -727,6 +784,8 @@ const styles = StyleSheet.create({
     required: { color: '#b91c1c' },
     validationBox: { backgroundColor: '#fee2e2', borderRadius: 8, padding: 12 },
     validationText: { color: '#b91c1c', fontSize: 14, fontWeight: '600' },
+    noticeBox: { backgroundColor: '#fef3c7', borderRadius: 8, padding: 12 },
+    noticeText: { color: '#92400e', fontSize: 14 },
 
     footer: { flexDirection: 'row', gap: 12, padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#00000010' },
     primaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#447762', padding: 14, borderRadius: 8 },

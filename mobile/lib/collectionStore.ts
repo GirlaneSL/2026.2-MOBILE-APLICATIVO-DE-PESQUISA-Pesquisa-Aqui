@@ -10,7 +10,8 @@ import type {
     RecordingIssue,
 } from './collectionUpload';
 import { getDeviceId } from './researchCache';
-import type { AnswerValue, Answers, PackageQuestion } from './displayRules';
+import { getVisibleQuestionIdsInOrder } from './displayRules';
+import type { AnswerValue, Answers, DisplayRule, PackageQuestion } from './displayRules';
 import {
     getPhotoUris,
     isQuestionTypeSupported,
@@ -256,14 +257,24 @@ function serializeAnswer(question: PackageQuestion, answer: AnswerValue): string
     return String(answer);
 }
 
-/** Monta o que o envio (collectionUpload) espera, a partir de uma coleta finalizada. */
+/**
+ * Monta o que o envio (collectionUpload) espera, a partir de uma coleta finalizada.
+ *
+ * `allQuestions` vem na ordem do questionário (orderedQuestions do pacote) e `displayRules` são as
+ * regras de pulo do mesmo pacote. Questão escondida por elas não viaja: nem a resposta, nem a foto,
+ * nem o áudio. Sem `displayRules`, todas as questões contam como visíveis.
+ */
 export async function buildCollectionInput(
     collection: LocalCollection,
-    questions: PackageQuestion[],
+    allQuestions: PackageQuestion[],
+    displayRules: DisplayRule[] = [],
 ): Promise<CollectionInput> {
     if (collection.status !== 'FINISHED' || !collection.finishedAt) {
         throw new Error('Só coletas finalizadas podem ser enviadas.');
     }
+
+    const visibleIds = getVisibleQuestionIdsInOrder(allQuestions, displayRules, collection.answers);
+    const questions = allQuestions.filter((question) => visibleIds.has(question.id));
 
     const answers = questions.flatMap((question) => {
         const value = serializeAnswer(question, collection.answers[question.id]);
