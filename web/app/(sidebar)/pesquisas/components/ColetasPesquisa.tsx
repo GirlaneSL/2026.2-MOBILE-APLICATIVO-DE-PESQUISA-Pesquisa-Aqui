@@ -12,6 +12,17 @@ import toast from "react-hot-toast";
 const formatDateTime = (value: string | null) =>
     value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
 
+const formatSize = (bytes: number) =>
+    bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+// Códigos de erro do elemento <audio> (MediaError.code)
+const AUDIO_ERRORS: Record<number, string> = {
+    1: 'O carregamento do áudio foi interrompido.',
+    2: 'Falha de rede ao carregar o áudio.',
+    3: 'O navegador não conseguiu decodificar o áudio: o arquivo pode estar incompleto ou corrompido.',
+    4: 'O navegador não reconhece o formato deste áudio.',
+};
+
 interface ColetasPesquisaProps {
     researchId: number;
     recordInterview: boolean;
@@ -26,7 +37,12 @@ type ListState =
 export default function ColetasPesquisa({ researchId, recordInterview }: ColetasPesquisaProps) {
     const [state, setState] = useState<ListState>({ status: 'loading' });
     const [loadingAudioId, setLoadingAudioId] = useState<number | null>(null);
-    const [player, setPlayer] = useState<{ collectionId: number; url: string } | null>(null);
+    const [player, setPlayer] = useState<{
+        collectionId: number;
+        url: string;
+        sizeBytes: number;
+        error: string | null;
+    } | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -54,7 +70,7 @@ export default function ColetasPesquisa({ researchId, recordInterview }: Coletas
         setLoadingAudioId(collectionId);
         try {
             const blob = await getCollectionAudio(collectionId);
-            setPlayer({ collectionId, url: URL.createObjectURL(blob) });
+            setPlayer({ collectionId, url: URL.createObjectURL(blob), sizeBytes: blob.size, error: null });
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Erro ao carregar o áudio');
         } finally {
@@ -162,7 +178,26 @@ export default function ColetasPesquisa({ researchId, recordInterview }: Coletas
             {player && (
                 <div className="flex flex-col gap-2 rounded-lg border bg-card p-4">
                     <p className="text-sm font-medium">Áudio da coleta #{player.collectionId}</p>
-                    <audio key={player.url} controls autoPlay src={player.url} className="w-full" />
+                    <audio
+                        key={player.url}
+                        controls
+                        autoPlay
+                        preload="auto"
+                        src={player.url}
+                        className="w-full"
+                        onError={(event) => {
+                            const code = event.currentTarget.error?.code;
+                            const message = (code && AUDIO_ERRORS[code]) || 'Não foi possível reproduzir o áudio.';
+                            setPlayer((current) => (current ? { ...current, error: message } : current));
+                        }}
+                    />
+                    {player.error && <p className="text-sm text-destructive">{player.error}</p>}
+                    <p className="text-xs text-muted-foreground">
+                        Arquivo de {formatSize(player.sizeBytes)} ·{' '}
+                        <a href={player.url} download={`coleta-${player.collectionId}.m4a`} className="underline">
+                            Baixar áudio
+                        </a>
+                    </p>
                 </div>
             )}
         </div>

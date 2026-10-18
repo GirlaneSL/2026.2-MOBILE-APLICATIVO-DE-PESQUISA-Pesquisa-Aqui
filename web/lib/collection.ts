@@ -47,7 +47,9 @@ export const getCollectionAudio = async (collectionId: number): Promise<Blob> =>
 
     if (!response.ok) throw await readError(response, 'Falha ao carregar o áudio da coleta');
 
-    return response.blob();
+    const blob = await response.blob();
+    // O player só toca se o arquivo tiver um tipo de áudio: se o cabeçalho vier sem ele, assume o do app (m4a).
+    return blob.type.startsWith('audio/') ? blob : new Blob([blob], { type: 'audio/mp4' });
 };
 
 // 3725 -> "1:02:05"; 65 -> "1:05"
