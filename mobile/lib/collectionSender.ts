@@ -1,6 +1,6 @@
 import { File } from 'expo-file-system';
 import { ApiError, apiFetch } from './api';
-import { filePart, type CollectionInput } from './collectionUpload';
+import { buildCollectionFormData, type CollectionInput } from './collectionUpload';
 import type { SendOutcome } from './syncEngine';
 
 // Envio de UMA coleta ao servidor. Nunca lança erro: tudo vira um SendOutcome para a fila decidir.
@@ -8,12 +8,11 @@ import type { SendOutcome } from './syncEngine';
 // Dois caminhos, porque o servidor tem dois endpoints:
 //  - POST /collection/sync  (JSON): a coleta sem arquivo. É idempotente pelo clientId (UUID do aparelho) e responde
 //    ACCEPTED, ALREADY_EXISTS ou REJECTED com motivo.
-//  - POST /collection (multipart): só quando há áudio da entrevista, o único arquivo que o servidor recebe hoje.
+//  - POST /collection (multipart): quando há algum arquivo (áudio da entrevista, fotos, áudios de questão).
 //    Também é idempotente pelo clientId: reenviar devolve a coleta já gravada.
-// Fotos e áudios de questão ainda não têm endpoint: o servidor recebe o nome do arquivo na resposta, não o arquivo.
 
 const SYNC_TIMEOUT_MS = 30_000;
-const UPLOAD_TIMEOUT_MS = 3 * 60_000; // o áudio de uma entrevista longa pesa dezenas de MB
+const UPLOAD_TIMEOUT_MS = 3 * 60_000; // áudio de entrevista longa e várias fotos pesam dezenas de MB
 
 class Unreachable extends Error {}
 
@@ -102,9 +101,9 @@ async function sendViaSync(input: CollectionInput): Promise<SendOutcome> {
     return { kind: 'failed', reason: 'Resposta do servidor não reconhecida. Tente novamente.', retryable: true };
 }
 
-// ---------- Com áudio da entrevista: POST /collection (multipart) ----------
+// ---------- Com arquivos: POST /collection (multipart) ----------
 
-function audioExists(uri: string): boolean {
+function fileExists(uri: string): boolean {
     try {
         return new File(uri).exists;
     } catch {
@@ -112,27 +111,10 @@ function audioExists(uri: string): boolean {
     }
 }
 
-async function sendWithAudio(input: CollectionInput, audio: NonNullable<CollectionInput['audio']>): Promise<SendOutcome> {
-    // Só o que o servidor aceita neste endpoint: o campo `audio` é o único arquivo permitido
-    const form = new FormData();
-    form.append(
-        'payload',
-        JSON.stringify({
-            researchId: input.researchId,
-            clientId: input.clientId,
-            deviceId: input.deviceId,
-            startedAt: input.startedAt,
-            finishedAt: input.finishedAt,
-            consent: input.consent,
-            answers: input.answers,
-            audioDurationSeconds: Math.round(audio.durationSeconds),
-        }),
-    );
+async function sendMultipart(input: CollectionInput): Promise<SendOutcome> {
     // O fetch do Expo não aceita { uri, name, type } no FormData ("Unsupported FormDataPart implementation"):
-    // o arquivo vai como objeto com bytes(), que o filePart monta.
-    form.append('audio', filePart(audio.uri, `coleta-${input.clientId}.m4a`, audio.mimeType ?? 'audio/mp4'));
-
-    const response = await post('/collection', form, UPLOAD_TIMEOUT_MS);
+    // o arquivo vai como objeto com bytes(), que o filePart (dentro do buildCollectionFormData) monta.
+    const response = await post('/collection', buildCollectionFormData(input), UPLOAD_TIMEOUT_MS);
     if (!response.ok) return failureFromHttp(response);
     return { kind: 'confirmed', alreadyExisted: false };
 }
@@ -141,10 +123,16 @@ async function sendWithAudio(input: CollectionInput, audio: NonNullable<Collecti
 
 export async function sendCollection(input: CollectionInput): Promise<SendOutcome> {
     try {
-        // Áudio que sumiu do aparelho não tem como ser reenviado: as respostas seguem sem ele,
+        // Arquivo que sumiu do aparelho não tem como ser reenviado: as respostas seguem sem ele,
         // em vez de a coleta ficar presa na fila para sempre.
-        const audio = input.audio && audioExists(input.audio.uri) ? input.audio : undefined;
-        return audio ? await sendWithAudio(input, audio) : await sendViaSync(input);
+        const audio = input.audio && fileExists(input.audio.uri) ? input.audio : undefined;
+        const photos = (input.photos ?? []).filter((photo) => fileExists(photo.uri));
+        const questionAudios = (input.questionAudios ?? []).filter((item) => fileExists(item.uri));
+
+        const hasFiles = audio !== undefined || photos.length > 0 || questionAudios.length > 0;
+        return hasFiles
+            ? await sendMultipart({ ...input, audio, photos, questionAudios })
+            : await sendViaSync(input);
     } catch (error) {
         if (error instanceof ApiError && error.status === 401) return { kind: 'auth' };
         if (error instanceof Unreachable) return { kind: 'unreachable', reason: error.message };

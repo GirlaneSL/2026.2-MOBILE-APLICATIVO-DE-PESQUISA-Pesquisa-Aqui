@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { createReadStream, type ReadStream } from 'node:fs';
-import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 
 // Tipos de áudio aceitos e a extensão com que são guardados. A extensão vem do tipo declarado,
@@ -23,7 +23,41 @@ export function audioExtensionFor(mimeType: string): string | null {
     return EXTENSIONS[mimeType.toLowerCase().split(';')[0].trim()] ?? null;
 }
 
-// Guarda o áudio das entrevistas em disco, fora de qualquer pasta pública:
+// Fotos aceitas nas respostas e a extensão com que são guardadas (também derivada do tipo declarado).
+const IMAGE_EXTENSIONS: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/heic': 'heic',
+    'image/heif': 'heif',
+};
+
+export function imageExtensionFor(mimeType: string): string | null {
+    return IMAGE_EXTENSIONS[mimeType.toLowerCase().split(';')[0].trim()] ?? null;
+}
+
+// Tipo de conteúdo de um arquivo de resposta já guardado, a partir da extensão gravada por este módulo.
+const MEDIA_TYPES: Record<string, string> = {
+    jpg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    heic: 'image/heic',
+    heif: 'image/heif',
+    m4a: 'audio/mp4',
+    aac: 'audio/aac',
+    mp3: 'audio/mpeg',
+    ogg: 'audio/ogg',
+    webm: 'audio/webm',
+    wav: 'audio/wav',
+    '3gp': 'audio/3gpp',
+};
+
+export function mediaTypeFor(fileName: string): string | null {
+    return MEDIA_TYPES[fileName.split('.').pop()?.toLowerCase() ?? ''] ?? null;
+}
+
+// Guarda o áudio das entrevistas e os arquivos das respostas (fotos e áudios de questão) em disco, fora de qualquer pasta pública:
 // o único caminho até ele é o endpoint autenticado da coleta.
 @Injectable()
 export class AudioStorage {
@@ -37,6 +71,26 @@ export class AudioStorage {
         await mkdir(dirname(target), { recursive: true });
         await writeFile(target, buffer, { flag: 'wx' });
         return relativePath;
+    }
+
+    // Arquivo de uma resposta: `<pesquisa>/answers/<coleta>/<arquivo>`. O nome é montado pelo servidor.
+    async saveAt(relativePath: string, buffer: Buffer): Promise<void> {
+        const target = this.resolveSafe(relativePath);
+        await mkdir(dirname(target), { recursive: true });
+        await writeFile(target, buffer, { flag: 'wx' });
+    }
+
+    // Nomes dos arquivos de uma pasta (vazio se ela não existe).
+    async list(relativeDir: string): Promise<string[]> {
+        try {
+            return await readdir(this.resolveSafe(relativeDir));
+        } catch {
+            return [];
+        }
+    }
+
+    async removeDir(relativeDir: string): Promise<void> {
+        await rm(this.resolveSafe(relativeDir), { recursive: true, force: true });
     }
 
     async open(relativePath: string): Promise<{ stream: ReadStream; size: number } | null> {

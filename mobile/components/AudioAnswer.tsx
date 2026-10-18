@@ -1,5 +1,4 @@
 import {
-    RecordingPresets,
     setAudioModeAsync,
     useAudioPlayer,
     useAudioPlayerStatus,
@@ -18,6 +17,7 @@ import {
 } from '@/lib/audioStorage';
 import type { AnswerValue, PackageQuestion } from '@/lib/displayRules';
 import { getAudioMaxSeconds, parseAudioAnswer, serializeAudioAnswer } from '@/lib/questionTypes';
+import { VOICE_RECORDING_OPTIONS } from '@/lib/recordingOptions';
 
 /**
  * Ligação entre a questão de áudio e a gravação da entrevista inteira (quando a pesquisa grava).
@@ -48,8 +48,8 @@ type Problem =
     | { kind: 'error'; message: string }
     | { kind: 'cut'; message: string };
 
-// Resposta falada: mono e 64 kbps bastam (mesmo padrão da gravação da entrevista).
-const ANSWER_OPTIONS = { ...RecordingPresets.LOW_QUALITY, numberOfChannels: 1 };
+// Resposta falada: AAC mono 64 kbps, o mesmo padrão da gravação da entrevista (ver recordingOptions).
+const ANSWER_OPTIONS = VOICE_RECORDING_OPTIONS;
 const START_GRACE_MS = 2500;
 
 /**

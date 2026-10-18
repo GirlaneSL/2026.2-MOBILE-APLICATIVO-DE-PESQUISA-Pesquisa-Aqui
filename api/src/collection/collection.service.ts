@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
-import { AudioStorage, audioExtensionFor } from './audio-storage.js';
+import { AudioStorage, audioExtensionFor, imageExtensionFor, mediaTypeFor } from './audio-storage.js';
 import { assertValidConsent } from './consent.js';
 import type { CollectionPayloadDto } from './dto/create-collection.dto.js';
 
@@ -12,6 +12,18 @@ export interface UploadedAudio {
     buffer: Buffer;
 }
 
+// Arquivos das respostas que chegam junto da coleta (cada lista segue a ordem de `payload.photos` / `payload.questionAudios`).
+export interface UploadedMedia {
+    photos?: UploadedAudio[];
+    questionAudios?: UploadedAudio[];
+}
+
+// Foto reduzida pelo app costuma ter poucos MB; acima disso é arquivo errado ou abuso.
+const MAX_PHOTO_BYTES = 30 * 1024 * 1024;
+
+// Nome dos arquivos de resposta guardados: montado pelo servidor (`q<questão>-<posição>.<extensão>`).
+const MEDIA_NAME = /^q(\d{1,10})-(\d{1,4})\.([a-z0-9]{2,5})$/;
+
 @Injectable()
 export class CollectionService {
     constructor(
@@ -20,7 +32,12 @@ export class CollectionService {
     ) { }
 
     // Recebe uma coleta feita no aplicativo: respostas, consentimento e (se a pesquisa grava) o áudio.
-    async create(payload: CollectionPayloadDto, audio: UploadedAudio | undefined, currentUser: UserPayLoad) {
+    async create(
+        payload: CollectionPayloadDto,
+        audio: UploadedAudio | undefined,
+        currentUser: UserPayLoad,
+        media: UploadedMedia = {},
+    ) {
         if (currentUser.profile !== 'RESEARCHER') {
             throw new ForbiddenException('Somente pesquisadores enviam coletas.');
         }
@@ -68,7 +85,9 @@ export class CollectionService {
             if (!audio.size || audio.buffer.length === 0) throw new BadRequestException('O arquivo de áudio está vazio.');
         }
 
-        await this.assertAnswersBelongToResearch(research.id, payload.answers);
+        const questionTypes = await this.loadQuestionTypes(research.id);
+        this.assertAnswersBelongToResearch(questionTypes, payload.answers);
+        const mediaFiles = this.planMedia(questionTypes, payload, media);
 
         // Tudo validado: só agora o áudio vai para o disco.
         const audioPath = audio && audioExtension
@@ -76,6 +95,7 @@ export class CollectionService {
             : null;
 
         let collection;
+        let mediaDir: string | null = null;
         try {
             collection = await orm.Collection.create({
                 researchId: research.id,
@@ -101,10 +121,16 @@ export class CollectionService {
                     collectionId: collection.id,
                 });
             }
+
+            if (mediaFiles.length > 0) {
+                mediaDir = this.mediaDir(research.id, collection.id);
+                for (const file of mediaFiles) await this.audioStorage.saveAt(`${mediaDir}/${file.fileName}`, file.buffer);
+            }
         } catch (error) {
             // Não deixa coleta pela metade nem áudio órfão.
             if (collection) await orm.Collection.where({ id: collection.id }).delete().catch(() => undefined);
             if (audioPath) await this.audioStorage.remove(audioPath).catch(() => undefined);
+            if (mediaDir) await this.audioStorage.removeDir(mediaDir).catch(() => undefined);
             throw error;
         }
 
@@ -159,6 +185,9 @@ export class CollectionService {
         const answers = (await orm.Answer.where({ collectionId: collection.id }).all()).sort((a, b) => a.id - b.id);
         for (const answer of answers) answerByQuestion.set(answer.questionId, answer.value);
 
+        const mediaNames = (await this.audioStorage.list(this.mediaDir(collection.researchId, collection.id)))
+            .filter((name) => MEDIA_NAME.test(name));
+
         const sections = (await orm.Section.where({ researchId: collection.researchId }).all()).sort(
             (a, b) => a.order - b.order,
         );
@@ -184,6 +213,7 @@ export class CollectionService {
                             scaleRightLabel: question.scaleRightLabel ?? null,
                             options,
                             answer: answerByQuestion.get(question.id) ?? null,
+                            files: this.filesOfQuestion(mediaNames, question.id),
                         };
                     }),
                 );
@@ -196,6 +226,25 @@ export class CollectionService {
             ...this.toSummary(collection, researcher?.name ?? null, confirmedBy?.name ?? null),
             sections: detailedSections,
         };
+    }
+
+    // Abre uma foto ou um áudio de resposta. Só administrador da empresa dona da pesquisa chega aqui.
+    async getMedia(id: number, name: string, currentUser: UserPayLoad) {
+        const orm = this.prisma.client.orm.public;
+
+        const mimeType = MEDIA_NAME.test(name) ? mediaTypeFor(name) : null;
+        if (!mimeType) throw new NotFoundException('Arquivo não encontrado.');
+
+        const collection = await orm.Collection.where({ id }).first();
+        if (!collection) throw new NotFoundException('Coleta não encontrada.');
+
+        const research = await orm.Research.where({ id: collection.researchId }).first();
+        this.assertCompanyAdmin(research, currentUser);
+
+        const file = await this.audioStorage.open(`${this.mediaDir(collection.researchId, collection.id)}/${name}`);
+        if (!file) throw new NotFoundException('O arquivo não foi encontrado.');
+
+        return { ...file, mimeType };
     }
 
     // Abre o áudio de uma coleta. Só administrador da empresa dona da pesquisa chega aqui.
@@ -228,20 +277,95 @@ export class CollectionService {
         }
     }
 
-    private async assertAnswersBelongToResearch(researchId: number, answers: { questionId: number }[]) {
-        if (answers.length === 0) return;
+    private mediaDir(researchId: number, collectionId: number): string {
+        return `${researchId}/answers/${collectionId}`;
+    }
 
+    // Arquivos guardados de uma questão, na ordem em que foram enviados.
+    private filesOfQuestion(mediaNames: string[], questionId: number) {
+        return mediaNames
+            .map((name) => ({ name, match: MEDIA_NAME.exec(name) }))
+            .filter((item) => item.match !== null && Number(item.match[1]) === questionId)
+            .sort((a, b) => Number(a.match![2]) - Number(b.match![2]))
+            .map((item) => ({ name: item.name, mimeType: mediaTypeFor(item.name) ?? 'application/octet-stream' }));
+    }
+
+    // Mapa questão -> tipo, de todas as questões da pesquisa.
+    private async loadQuestionTypes(researchId: number): Promise<Map<number, string>> {
         const orm = this.prisma.client.orm.public;
-        const validIds = new Set<number>();
+        const types = new Map<number, string>();
         const sections = await orm.Section.where({ researchId }).all();
         for (const section of sections) {
             for (const question of await orm.Question.where({ sectionId: section.id }).all()) {
-                validIds.add(question.id);
+                types.set(question.id, question.type);
             }
         }
+        return types;
+    }
 
-        const stray = answers.find((a) => !validIds.has(a.questionId));
+    private assertAnswersBelongToResearch(questionTypes: Map<number, string>, answers: { questionId: number }[]) {
+        const stray = answers.find((a) => !questionTypes.has(a.questionId));
         if (stray) throw new BadRequestException(`A questão ${stray.questionId} não pertence a esta pesquisa.`);
+    }
+
+    // Confere fotos e áudios de questão com a lista do payload (mesma ordem) e decide o nome de cada arquivo.
+    // Nada vai para o disco aqui: só depois de tudo validado.
+    private planMedia(
+        questionTypes: Map<number, string>,
+        payload: CollectionPayloadDto,
+        media: UploadedMedia,
+    ): { fileName: string; buffer: Buffer }[] {
+        const groups = [
+            {
+                label: 'foto',
+                refs: payload.photos ?? [],
+                files: media.photos ?? [],
+                accepts: ['PHOTO', 'MULTIPLE_PHOTOS'],
+                extensionFor: imageExtensionFor,
+                maxBytes: MAX_PHOTO_BYTES,
+            },
+            {
+                label: 'áudio',
+                refs: payload.questionAudios ?? [],
+                files: media.questionAudios ?? [],
+                accepts: ['AUDIO'],
+                extensionFor: audioExtensionFor,
+                maxBytes: Infinity,
+            },
+        ];
+
+        const planned: { fileName: string; buffer: Buffer }[] = [];
+
+        for (const group of groups) {
+            if (group.refs.length !== group.files.length) {
+                throw new BadRequestException(`Os arquivos de ${group.label} enviados não conferem com a lista da coleta.`);
+            }
+
+            const perQuestion = new Map<number, number>();
+            group.refs.forEach((ref, index) => {
+                const type = questionTypes.get(ref.questionId);
+                if (!type) throw new BadRequestException(`A questão ${ref.questionId} não pertence a esta pesquisa.`);
+                if (!group.accepts.includes(type)) {
+                    throw new BadRequestException(`A questão ${ref.questionId} não recebe arquivo de ${group.label}.`);
+                }
+
+                const file = group.files[index];
+                const extension = group.extensionFor(file.mimetype);
+                if (!extension) throw new BadRequestException(`Formato de ${group.label} não suportado.`);
+                if (!file.size || file.buffer.length === 0) {
+                    throw new BadRequestException(`Um arquivo de ${group.label} está vazio.`);
+                }
+                if (file.buffer.length > group.maxBytes) {
+                    throw new BadRequestException(`Um arquivo de ${group.label} passa do tamanho máximo permitido.`);
+                }
+
+                const position = perQuestion.get(ref.questionId) ?? 0;
+                perQuestion.set(ref.questionId, position + 1);
+                planned.push({ fileName: `q${ref.questionId}-${position}.${extension}`, buffer: file.buffer });
+            });
+        }
+
+        return planned;
     }
 
     private toSummary(

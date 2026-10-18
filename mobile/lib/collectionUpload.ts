@@ -75,7 +75,14 @@ export interface CollectionInput {
 // O servidor recusou a coleta por falta do consentimento registrado (pesquisa com gravação).
 export class ConsentRequiredError extends Error { }
 
+// Monta o multipart da coleta: o campo `payload` (JSON) e um campo por tipo de arquivo.
+// O servidor liga cada arquivo à sua questão pela POSIÇÃO: `payload.photos[i]` descreve o i-ésimo `photos`,
+// e `payload.questionAudios[i]` o i-ésimo `questionAudios`. Por isso a lista e os arquivos saem do mesmo laço,
+// na mesma ordem, e não dependem de o nome do arquivo chegar intacto ao servidor.
 export function buildCollectionFormData(input: CollectionInput): FormData {
+    const photos = input.photos ?? [];
+    const questionAudios = input.questionAudios ?? [];
+
     const payload = {
         researchId: input.researchId,
         clientId: input.clientId,
@@ -84,13 +91,12 @@ export function buildCollectionFormData(input: CollectionInput): FormData {
         finishedAt: input.finishedAt,
         answers: input.answers,
         consent: input.consent,
-        audioDurationSeconds: input.audio?.durationSeconds,
-        audioHasGaps: input.audio?.hasGaps,
-        recordingIssues: input.recordingIssues,
-        questionAudios: input.questionAudios?.map(({ questionId, name, durationSeconds }) => ({
+        audioDurationSeconds: input.audio ? Math.round(input.audio.durationSeconds) : undefined,
+        photos: photos.map(({ questionId, name }) => ({ questionId, name })),
+        questionAudios: questionAudios.map(({ questionId, name, durationSeconds }) => ({
             questionId,
             name,
-            durationSeconds,
+            durationSeconds: Math.round(durationSeconds),
         })),
     };
 
@@ -104,13 +110,11 @@ export function buildCollectionFormData(input: CollectionInput): FormData {
         );
     }
 
-    // Fotos: um campo `photos` por arquivo, todos na mesma requisição da coleta
-    for (const photo of input.photos ?? []) {
+    for (const photo of photos) {
         form.append('photos', filePart(photo.uri, photo.name, photo.mimeType));
     }
 
-    // Áudios das questões: um campo `questionAudios` por arquivo, todos na mesma requisição da coleta
-    for (const audio of input.questionAudios ?? []) {
+    for (const audio of questionAudios) {
         form.append('questionAudios', filePart(audio.uri, audio.name, audio.mimeType));
     }
 

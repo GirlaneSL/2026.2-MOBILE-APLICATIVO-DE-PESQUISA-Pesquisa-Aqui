@@ -63,6 +63,9 @@ function setup(research: Row = baseResearch) {
     save: jest.fn(async () => '5/abc.m4a'),
     open: jest.fn(async () => ({ stream: {} as any, size: 4 })),
     remove: jest.fn(async () => undefined),
+    saveAt: jest.fn(async () => undefined),
+    list: jest.fn(async () => []),
+    removeDir: jest.fn(async () => undefined),
   };
   const service = new CollectionService(db.prisma, storage as unknown as AudioStorage);
   return { db, storage, service };
@@ -219,7 +222,7 @@ describe('CollectionService.findOne — respostas da coleta', () => {
         { id: 1, questionId: 101, text: 'Sim', order: 1 },
       ],
     });
-    const storage = { save: jest.fn(async () => '5/abc.m4a'), open: jest.fn(), remove: jest.fn() };
+    const storage = { save: jest.fn(async () => '5/abc.m4a'), open: jest.fn(), remove: jest.fn(), list: jest.fn(async () => []) };
     const service = new CollectionService(db.prisma, storage as unknown as AudioStorage);
     return { db, service };
   }
@@ -263,5 +266,143 @@ describe('CollectionService.findOne — respostas da coleta', () => {
     await expect(
       service.findOne(1, { ...admin, profile: 'SUPERADMINISTRATOR', companyId: null }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+// Armazenamento em memória: guarda os arquivos por caminho relativo, como o disco faria.
+class FakeStorage {
+  files = new Map<string, Buffer>();
+  failOnSaveAt = false;
+  save = jest.fn(async () => '5/abc.m4a');
+  remove = jest.fn(async () => undefined);
+  saveAt = jest.fn(async (path: string, buffer: Buffer) => {
+    if (this.failOnSaveAt) throw new Error('disco cheio');
+    this.files.set(path, buffer);
+  });
+  list = jest.fn(async (dir: string) =>
+    [...this.files.keys()].filter((p) => p.startsWith(`${dir}/`)).map((p) => p.slice(dir.length + 1)),
+  );
+  removeDir = jest.fn(async (dir: string) => {
+    for (const key of [...this.files.keys()]) if (key.startsWith(`${dir}/`)) this.files.delete(key);
+  });
+  open = jest.fn(async (path: string) => {
+    const file = this.files.get(path);
+    return file ? { stream: {} as any, size: file.length } : null;
+  });
+}
+
+describe('CollectionService — fotos e áudios das respostas', () => {
+  const jpeg = (bytes: number[]) => ({ originalname: 'f.jpg', mimetype: 'image/jpeg', size: bytes.length, buffer: Buffer.from(bytes) });
+  const voice = (bytes: number[]) => ({ originalname: 'v.m4a', mimetype: 'audio/mp4', size: bytes.length, buffer: Buffer.from(bytes) });
+
+  function setupMedia() {
+    const db = makeDb({
+      research: { ...baseResearch, recordInterview: false },
+      questions: [
+        { id: 201, sectionId: 50, statement: 'Foto', type: 'PHOTO', order: 1, isRequired: false },
+        { id: 202, sectionId: 50, statement: 'Fotos', type: 'MULTIPLE_PHOTOS', order: 2, isRequired: false },
+        { id: 203, sectionId: 50, statement: 'Fale', type: 'AUDIO', order: 3, isRequired: false },
+        { id: 204, sectionId: 50, statement: 'Texto', type: 'FREE_TEXT', order: 4, isRequired: false },
+      ],
+    });
+    const storage = new FakeStorage();
+    const service = new CollectionService(db.prisma, storage as unknown as AudioStorage);
+    const body = (extra: Row = {}) =>
+      ({
+        ...payload({ consent: undefined, answers: [], audioDurationSeconds: undefined }),
+        photos: [{ questionId: 201 }, { questionId: 202 }, { questionId: 202 }],
+        questionAudios: [{ questionId: 203, durationSeconds: 5 }],
+        ...extra,
+      }) as any;
+    const media = () => ({
+      photos: [jpeg([1]), jpeg([2, 2]), jpeg([3, 3, 3])],
+      questionAudios: [voice([9, 9])],
+    });
+    return { db, storage, service, body, media };
+  }
+
+  it('guarda cada arquivo na pasta da coleta, com nome montado pelo servidor', async () => {
+    const { storage, service, body, media } = setupMedia();
+    await service.create(body(), undefined, researcher, media());
+
+    expect([...storage.files.keys()].sort()).toEqual([
+      '5/answers/1/q201-0.jpg',
+      '5/answers/1/q202-0.jpg',
+      '5/answers/1/q202-1.jpg',
+      '5/answers/1/q203-0.m4a',
+    ]);
+    expect(storage.files.get('5/answers/1/q202-1.jpg')).toEqual(Buffer.from([3, 3, 3]));
+  });
+
+  it('a coleta aberta lista os arquivos de cada questão, na ordem do envio', async () => {
+    const { service, body, media } = setupMedia();
+    await service.create(body(), undefined, researcher, media());
+
+    const questions = (await service.findOne(1, admin)).sections[0].questions;
+    const byId = (id: number) => questions.find((q) => q.id === id)!;
+    expect(byId(201).files).toEqual([{ name: 'q201-0.jpg', mimeType: 'image/jpeg' }]);
+    expect(byId(202).files.map((f) => f.name)).toEqual(['q202-0.jpg', 'q202-1.jpg']);
+    expect(byId(203).files).toEqual([{ name: 'q203-0.m4a', mimeType: 'audio/mp4' }]);
+    expect(byId(204).files).toEqual([]);
+  });
+
+  it('recusa quando a quantidade de arquivos não confere com a lista do payload', async () => {
+    const { storage, service, body } = setupMedia();
+    await expect(
+      service.create(body(), undefined, researcher, { photos: [jpeg([1])], questionAudios: [voice([9])] }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(storage.files.size).toBe(0);
+  });
+
+  it('recusa arquivo ligado a questão de outro tipo ou de outra pesquisa', async () => {
+    const { service, body, media } = setupMedia();
+    await expect(
+      service.create(body({ photos: [{ questionId: 204 }, { questionId: 202 }, { questionId: 202 }] }), undefined, researcher, media()),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.create(body({ photos: [{ questionId: 999 }, { questionId: 202 }, { questionId: 202 }] }), undefined, researcher, media()),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('recusa formato não suportado e arquivo vazio', async () => {
+    const { service, body } = setupMedia();
+    const pdf = { originalname: 'x.pdf', mimetype: 'application/pdf', size: 3, buffer: Buffer.from([1, 2, 3]) };
+    await expect(
+      service.create(body(), undefined, researcher, { photos: [pdf, jpeg([2]), jpeg([3])], questionAudios: [voice([9])] }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.create(body(), undefined, researcher, { photos: [jpeg([]), jpeg([2]), jpeg([3])], questionAudios: [voice([9])] }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('se gravar um arquivo falhar, não deixa coleta pela metade nem arquivo órfão', async () => {
+    const { db, storage, service, body, media } = setupMedia();
+    storage.failOnSaveAt = true;
+
+    await expect(service.create(body(), undefined, researcher, media())).rejects.toThrow('disco cheio');
+    expect(db.tables.Collection).toHaveLength(0);
+    expect(storage.removeDir).toHaveBeenCalledWith('5/answers/1');
+    expect(storage.files.size).toBe(0);
+  });
+
+  it('administrador da empresa abre o arquivo; os demais não', async () => {
+    const { service, body, media } = setupMedia();
+    await service.create(body(), undefined, researcher, media());
+
+    const file = await service.getMedia(1, 'q201-0.jpg', admin);
+    expect(file.mimeType).toBe('image/jpeg');
+    expect(file.size).toBe(1);
+
+    await expect(service.getMedia(1, 'q201-0.jpg', { ...admin, companyId: 99 })).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.getMedia(1, 'q201-0.jpg', researcher)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('nome fora do padrão, caminho com ../ e arquivo inexistente respondem 404', async () => {
+    const { service, body, media } = setupMedia();
+    await service.create(body(), undefined, researcher, media());
+
+    for (const name of ['../x.jpg', '..%2Fx.jpg', 'q201-0.php', 'qualquer.jpg', 'q201-9.jpg']) {
+      await expect(service.getMedia(1, name, admin)).rejects.toBeInstanceOf(NotFoundException);
+    }
   });
 });

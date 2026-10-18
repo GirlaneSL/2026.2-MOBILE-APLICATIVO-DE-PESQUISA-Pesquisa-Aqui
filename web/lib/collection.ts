@@ -24,6 +24,12 @@ export interface CollectionQuestionOption {
     text: string;
 }
 
+// Foto ou áudio de uma resposta guardado no servidor.
+export interface CollectionMediaFile {
+    name: string;
+    mimeType: string;
+}
+
 export interface CollectionQuestion {
     id: number;
     statement: string;
@@ -32,6 +38,8 @@ export interface CollectionQuestion {
     scaleLeftLabel: string | null;
     scaleRightLabel: string | null;
     options: CollectionQuestionOption[];
+    // Arquivos enviados pelo aplicativo para esta pergunta (fotos ou áudio); vazio nas coletas antigas e nos outros tipos.
+    files: CollectionMediaFile[];
     // Valor bruto gravado pelo aplicativo; null quando a pergunta ficou sem resposta.
     answer: string | null;
 }
@@ -75,6 +83,18 @@ export const getCollection = async (collectionId: number): Promise<CollectionDet
     if (!response.ok) throw await readError(response, 'Falha ao carregar as respostas da coleta');
 
     return response.json();
+};
+
+// Baixa uma foto ou um áudio de resposta pela API autenticada (o arquivo nunca é público).
+export const getCollectionMedia = async (collectionId: number, name: string): Promise<Blob> => {
+    const response = await apiFetch(`/collection/${collectionId}/media/${encodeURIComponent(name)}`, {
+        method: 'GET',
+        credentials: 'include',
+    });
+
+    if (!response.ok) throw await readError(response, 'Falha ao carregar o arquivo da resposta');
+
+    return response.blob();
 };
 
 // Baixa o áudio de uma coleta pela API autenticada (o arquivo nunca é público).
@@ -174,7 +194,7 @@ export const formatAnswer = (question: CollectionQuestion): FormattedAnswer => {
             };
         }
 
-        // O aplicativo só envia o nome do arquivo; as fotos e o áudio da pergunta não chegam ao servidor.
+        // A resposta guarda o nome do arquivo no aparelho; os arquivos em si vêm em `question.files`.
         case 'PHOTO':
         case 'AUDIO':
             return { kind: 'file', names: [raw] };

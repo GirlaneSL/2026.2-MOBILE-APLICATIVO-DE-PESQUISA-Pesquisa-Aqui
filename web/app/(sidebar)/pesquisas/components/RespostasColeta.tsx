@@ -6,7 +6,9 @@ import { Spinner } from "@/components/ui/spinner";
 import {
     formatAnswer,
     getCollection,
+    getCollectionMedia,
     type CollectionDetail,
+    type CollectionMediaFile,
     type CollectionQuestion,
     type CollectionSummary,
     type FormattedAnswer,
@@ -18,6 +20,14 @@ const formatDateTime = (value: string | null) =>
 
 const mapUrl = (latitude: number, longitude: number) =>
     `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;
+
+// Códigos de erro do elemento <audio> (MediaError.code)
+const AUDIO_ERRORS: Record<number, string> = {
+    1: 'O carregamento do áudio foi interrompido.',
+    2: 'Falha de rede ao carregar o áudio.',
+    3: 'O navegador não conseguiu decodificar o áudio: o arquivo pode estar incompleto ou corrompido.',
+    4: 'O navegador não reconhece o formato deste áudio (gravado antes da atualização do aplicativo?).',
+};
 
 function AnswerView({ answer }: { answer: FormattedAnswer }) {
     switch (answer.kind) {
@@ -74,21 +84,105 @@ function AnswerView({ answer }: { answer: FormattedAnswer }) {
                 <div className="flex flex-col gap-0.5 text-sm">
                     {answer.names.map((name) => <p key={name} className="break-all">{name}</p>)}
                     <p className="text-xs text-muted-foreground">
-                        Só o nome do arquivo é enviado pelo aplicativo; a mídia desta pergunta não fica disponível aqui.
+                        Arquivo não recebido pelo servidor: a coleta foi enviada antes de o aplicativo passar a enviar fotos e áudios, ou o arquivo já não estava no aparelho.
                     </p>
                 </div>
             );
     }
 }
 
-function QuestionItem({ number, question }: { number: number; question: CollectionQuestion }) {
+type MediaState =
+    | { status: 'loading' }
+    | { status: 'error'; message: string }
+    | { status: 'ready'; url: string };
+
+// Baixa o arquivo pela API autenticada e mostra como imagem ou player. O endereço temporário é liberado ao sair.
+function MediaItem({ collectionId, file }: { collectionId: number; file: CollectionMediaFile }) {
+    const [state, setState] = useState<MediaState>({ status: 'loading' });
+    const [playError, setPlayError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        let objectUrl: string | null = null;
+
+        getCollectionMedia(collectionId, file.name)
+            .then((blob) => {
+                // Sem tipo no cabeçalho o navegador não toca nem desenha: usa o que a API informou.
+                const typed = blob.type ? blob : new Blob([blob], { type: file.mimeType });
+                objectUrl = URL.createObjectURL(typed);
+                if (cancelled) URL.revokeObjectURL(objectUrl);
+                else setState({ status: 'ready', url: objectUrl });
+            })
+            .catch((err) => {
+                if (!cancelled) {
+                    setState({ status: 'error', message: err instanceof Error ? err.message : 'Erro ao carregar o arquivo' });
+                }
+            });
+
+        return () => {
+            cancelled = true;
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [collectionId, file.name, file.mimeType]);
+
+    if (state.status === 'loading') {
+        return <div className="flex items-center gap-2 text-xs text-muted-foreground"><Spinner />Carregando arquivo...</div>;
+    }
+
+    if (state.status === 'error') {
+        return <p className="text-xs text-destructive">{state.message}</p>;
+    }
+
+    if (file.mimeType.startsWith('image/')) {
+        return (
+            <a href={state.url} target="_blank" rel="noopener noreferrer" title="Abrir em tamanho original">
+                {/* Endereço temporário (blob:) de um arquivo autenticado: o next/image não otimiza esse caso. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={state.url}
+                    alt="Foto da resposta"
+                    className="max-h-64 max-w-full rounded-md border object-contain"
+                />
+            </a>
+        );
+    }
+
+    // Largura própria: dentro do contêiner flex-wrap o player encolheria ao mínimo e esconderia os controles.
+    return (
+        <div className="flex w-full max-w-md flex-col gap-1">
+            <audio
+                controls
+                preload="metadata"
+                src={state.url}
+                className="w-full min-w-64"
+                onError={(event) => {
+                    const code = event.currentTarget.error?.code;
+                    setPlayError((code && AUDIO_ERRORS[code]) || 'Não foi possível reproduzir o áudio.');
+                }}
+            />
+            {playError && <p className="text-xs text-destructive">{playError}</p>}
+            <a href={state.url} download={file.name} className="text-xs underline">Baixar áudio</a>
+        </div>
+    );
+}
+
+function QuestionItem({ number, question, collectionId }: { number: number; question: CollectionQuestion; collectionId: number }) {
+    const answer = formatAnswer(question);
+    const showFiles = answer.kind === 'file' && question.files.length > 0;
+
     return (
         <li className="flex flex-col gap-1 rounded-lg border bg-card p-3">
             <p className="text-sm font-medium">
                 {number}. {question.statement}
                 {question.isRequired && <span className="text-destructive" title="Obrigatória"> *</span>}
             </p>
-            <AnswerView answer={formatAnswer(question)} />
+            {showFiles ? (
+                <div className="flex flex-wrap gap-3">
+                    {question.files.map((file) => <MediaItem key={file.name} collectionId={collectionId} file={file} />)}
+                </div>
+            ) : (
+                <AnswerView answer={answer} />
+            )}
         </li>
     );
 }
@@ -152,7 +246,7 @@ function RespostasConteudo({ collectionId }: { collectionId: number }) {
                     <h3 className="text-base font-semibold">{section.title}</h3>
                     <ul className="flex flex-col gap-2">
                         {section.questions.map((question, index) => (
-                            <QuestionItem key={question.id} number={firstNumber + index} question={question} />
+                            <QuestionItem key={question.id} number={firstNumber + index} question={question} collectionId={state.detail.id} />
                         ))}
                     </ul>
                 </section>
