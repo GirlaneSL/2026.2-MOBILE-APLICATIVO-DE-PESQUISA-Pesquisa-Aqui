@@ -26,7 +26,8 @@ import {
 } from "@/lib/questionnaire";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
-import { ChevronsDownUp, ChevronsUpDown, FolderPlus } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, FolderPlus, Info } from "lucide-react";
+import { Contour } from "@/components/ui/contour";
 import toast from "react-hot-toast";
 
 import { SectionCard } from "./SectionCard";
@@ -455,32 +456,72 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         moveOption
     };
 
-    if (isLoading) return <div className="p-8 text-center flex gap-2 justify-center text-muted-foreground"><Spinner /> Carregando Questões...</div>;
+    if (isLoading) {
+        return (
+            <div className="space-y-4" aria-busy="true">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner /> Carregando questões...</div>
+                {[0, 1].map((i) => (
+                    <div key={i} className="animate-pulse overflow-hidden rounded-[26px] border border-border bg-white">
+                        <div className="h-[76px] bg-[var(--forest)]/90" />
+                        <div className="space-y-3 p-4">
+                            {[0, 1, 2].map((j) => (
+                                <div key={j} className="flex items-center gap-3">
+                                    <div className="size-7 rounded-full bg-muted" />
+                                    <div className="size-10 rounded-xl bg-muted" />
+                                    <div className="h-3.5 w-1/2 rounded-full bg-muted" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
 
     if (sections.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center gap-4 p-8 text-center border rounded-md">
-                <p className="text-sm text-muted-foreground">Esta pesquisa ainda não tem nenhuma seção ou questão.</p>
-                <Button variant="outline" size="sm" onClick={handleAddSection}>
-                    <FolderPlus className="w-4 h-4 mr-1.5" /> Criar Primeira Seção
-                </Button>
+            <div className="relative overflow-hidden rounded-[26px] border border-dashed border-input bg-muted/40 px-6 py-14 text-center">
+                <Contour seed={6} rings={10} cx={0.5} cy={0.5} size={1.2} style={{ opacity: 0.3 }} />
+                <div className="relative z-10 flex flex-col items-center gap-3">
+                    <div className="grid size-14 place-items-center rounded-2xl bg-white text-[var(--green-deep)] ring-1 ring-border">
+                        <FolderPlus className="size-6" />
+                    </div>
+                    <div>
+                        <p className="text-base font-semibold tracking-tight">O questionário está vazio</p>
+                        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                            Comece criando uma seção. Dentro dela você adiciona as questões que o pesquisador fará em campo.
+                        </p>
+                    </div>
+                    <Button size="sm" onClick={handleAddSection}>
+                        <FolderPlus className="mr-1.5 size-4" /> Criar primeira seção
+                    </Button>
+                </div>
             </div>
         );
     }
 
     const totalQuestions = sections.reduce((sum, sec) => sum + sec.questions.length, 0);
+    const requiredQuestions = sections.reduce((sum, sec) => sum + sec.questions.filter((q) => q.required).length, 0);
     const allOpen = totalQuestions > 0 && openQuestionIds.size >= totalQuestions;
 
+    const stats = [
+        { n: sections.length, label: sections.length === 1 ? "seção" : "seções" },
+        { n: totalQuestions, label: totalQuestions === 1 ? "questão" : "questões" },
+        { n: requiredQuestions, label: requiredQuestions === 1 ? "obrigatória" : "obrigatórias" },
+        { n: rules.length, label: rules.length === 1 ? "regra de exibição" : "regras de exibição" },
+    ];
+
     return (
-        <div className="space-y-5 normal-case">
-            <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card/95 px-4 py-3 shadow-sm backdrop-blur">
-                <div>
-                    <p className="text-sm font-semibold">
-                        {sections.length} {sections.length === 1 ? "seção" : "seções"} · {totalQuestions} {totalQuestions === 1 ? "questão" : "questões"}
-                        {rules.length > 0 && <> · {rules.length} {rules.length === 1 ? "regra" : "regras"} de exibição</>}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Os campos são salvos ao sair deles. Reordenar e excluir são imediatos.</p>
-                </div>
+        <div className="space-y-4 normal-case">
+            <div className="sticky top-2 z-10 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[24px] border border-border bg-white/90 p-3 pl-5 shadow-[0_18px_34px_-24px_rgba(10,20,16,0.5)] backdrop-blur">
+                <dl className="flex flex-1 flex-wrap items-center gap-x-6 gap-y-2">
+                    {stats.map((st, i) => (
+                        <div key={st.label} className={`flex items-baseline gap-1.5 ${i > 0 ? "sm:border-l sm:border-border sm:pl-6" : ""}`}>
+                            <dt className="order-2 text-[12.5px] text-muted-foreground">{st.label}</dt>
+                            <dd className="order-1 text-[26px] font-light leading-none tracking-tighter tabular-nums">{st.n}</dd>
+                        </div>
+                    ))}
+                </dl>
                 <div className="flex items-center gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={allOpen ? collapseAll : expandAll}>
                         {allOpen
@@ -492,6 +533,11 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                     </Button>
                 </div>
             </div>
+
+            <p className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground">
+                <Info className="size-3.5 shrink-0" />
+                Os campos são salvos ao sair deles. Reordenar e excluir são imediatos.
+            </p>
 
             {sections.map((section, sIndex) => (
                 <SectionCard

@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
     ArrowDown, ArrowUp, CalendarDays, Camera, ChevronDown, CircleDot, Clock, GitBranch, Hash,
@@ -27,7 +25,35 @@ const QUESTION_TYPE_ICONS: Record<FrontendQuestionType, LucideIcon> = {
     "photo": Camera, "multiple-photos": Images, "location": MapPin, "audio": Mic,
 };
 
-const TYPE_ITEMS = QUESTION_TYPES_LABEL.map((item) => ({ value: item.type, label: item.label }));
+/** Cor do ícone por família de resposta: escrita, escolha ou mídia. */
+const TYPE_TONE: Record<FrontendQuestionType, string> = {
+    "text": "bg-[#e4ece7] text-[#2e5546]", "number": "bg-[#e4ece7] text-[#2e5546]",
+    "date": "bg-[#e4ece7] text-[#2e5546]", "time": "bg-[#e4ece7] text-[#2e5546]",
+    "boolean": "bg-[#dfe6ef] text-[#2a3d57]", "single-choice": "bg-[#dfe6ef] text-[#2a3d57]",
+    "multiple-choice": "bg-[#dfe6ef] text-[#2a3d57]", "rating-1-5": "bg-[#e6e0cc] text-[#5b4d1c]",
+    "photo": "bg-[#f3e0d9] text-[#8a432f]", "multiple-photos": "bg-[#f3e0d9] text-[#8a432f]",
+    "location": "bg-[#f3e0d9] text-[#8a432f]", "audio": "bg-[#f3e0d9] text-[#8a432f]",
+};
+
+function MiniButton({
+    label, onClick, disabled, danger, children,
+}: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: ReactNode }) {
+    return (
+        <button
+            type="button"
+            title={label}
+            aria-label={label}
+            onClick={onClick}
+            disabled={disabled}
+            className={cn(
+                "grid size-8 place-items-center rounded-full text-muted-foreground transition-all disabled:cursor-not-allowed disabled:opacity-30 [&>svg]:size-4",
+                danger ? "hover:bg-[#f3e0d9] hover:text-[#8a432f]" : "hover:bg-[#e4ece7] hover:text-ink"
+            )}
+        >
+            {children}
+        </button>
+    );
+}
 
 export const hasOptions = (type: FrontendQuestionType) => type === "single-choice" || type === "multiple-choice";
 
@@ -71,8 +97,8 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
     return (
-        <div className="rounded-lg border bg-background p-4 space-y-3">
-            <h4 className="text-[13px] font-semibold text-muted-foreground">{title}</h4>
+        <div className="space-y-3 rounded-[18px] border border-border bg-white p-4">
+            <h4 className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[var(--green-deep)]">{title}</h4>
             {children}
         </div>
     );
@@ -95,33 +121,46 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
     const summary = [typeLabel, hasOptions(q.type) ? `${q.options?.length ?? 0} opções` : null].filter(Boolean).join(" · ");
 
     return (
-        <div className={cn("transition-colors", open && "bg-muted/10")}>
+        <div className="relative">
             {/* Linha-resumo: sempre visível */}
-            <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4 hover:bg-muted/40">
+            <div
+                className={cn(
+                    "group flex items-center gap-2 rounded-2xl border p-2 pr-2.5 transition-all",
+                    open
+                        ? "border-border bg-white shadow-[0_14px_26px_-22px_rgba(10,20,16,0.5)]"
+                        : "border-transparent hover:bg-muted/60"
+                )}
+            >
                 <button
                     type="button"
                     onClick={onToggle}
                     aria-expanded={open}
-                    className="flex flex-1 min-w-0 items-center gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
-                    <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", !open && "-rotate-90")} />
-                    <span className="w-6 shrink-0 text-xs font-semibold text-muted-foreground sm:w-8">Q{q.order}</span>
-                    <span className="hidden size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary sm:grid">
-                        <TypeIcon className="size-4" />
+                    <span
+                        className={cn(
+                            "relative z-10 grid size-7 shrink-0 place-items-center rounded-full border text-[11px] font-bold",
+                            open ? "border-ink bg-ink text-white" : "border-[#c6d0c9] bg-white text-muted-foreground"
+                        )}
+                    >
+                        {q.order}
+                    </span>
+                    <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", TYPE_TONE[q.type] ?? TYPE_TONE.text)}>
+                        <TypeIcon className="size-[18px]" />
                     </span>
                     <span className="min-w-0 flex-1">
-                        <span className={cn("line-clamp-2 text-sm font-medium sm:line-clamp-1", !q.title && "italic text-muted-foreground")}>
+                        <span className={cn("line-clamp-2 text-[14.5px] font-semibold tracking-tight sm:line-clamp-1", !q.title && "italic text-muted-foreground")}>
                             {q.title || "Questão sem enunciado"}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground">{summary}</span>
                     </span>
                     <span className="hidden shrink-0 items-center gap-1.5 md:flex">
                         {q.required && (
-                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Obrigatória</span>
+                            <span className="rounded-full bg-[#f3e0d9] px-2.5 py-0.5 text-[11px] font-semibold text-[#8a432f]">Obrigatória</span>
                         )}
                         {affectedByRules > 0 && (
                             <span
-                                className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
+                                className="inline-flex items-center gap-1 rounded-full bg-[#e6e0cc] px-2.5 py-0.5 text-[11px] font-semibold text-[#5b4d1c]"
                                 title="Só aparece quando uma regra de exibição é atendida"
                             >
                                 <GitBranch className="size-3" /> Condicional
@@ -129,34 +168,29 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
                         )}
                         {controlsRules > 0 && (
                             <span
-                                className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                                className="inline-flex items-center gap-1 rounded-full bg-[#dfe6ef] px-2.5 py-0.5 text-[11px] font-semibold text-[#2a3d57]"
                                 title="Suas respostas controlam a exibição de outras questões"
                             >
                                 <GitBranch className="size-3" /> Controla {controlsRules}
                             </span>
                         )}
                     </span>
+                    <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", !open && "-rotate-90")} />
                 </button>
 
-                <div className="flex shrink-0 items-center">
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Mover para cima" onClick={() => qActions.moveQuestion(sectionId, qIndex, "up")} disabled={qIndex === 0}>
-                        <ArrowUp className="size-4" />
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Mover para baixo" onClick={() => qActions.moveQuestion(sectionId, qIndex, "down")} disabled={qIndex === totalQuestions - 1}>
-                        <ArrowDown className="size-4" />
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" title="Excluir questão" onClick={() => qActions.handleDeleteQuestion(sectionId, q.id)}>
-                        <Trash2 className="size-4" />
-                    </Button>
+                <div className="flex shrink-0 items-center md:opacity-0 md:transition-opacity md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+                    <MiniButton label="Mover para cima" onClick={() => qActions.moveQuestion(sectionId, qIndex, "up")} disabled={qIndex === 0}><ArrowUp /></MiniButton>
+                    <MiniButton label="Mover para baixo" onClick={() => qActions.moveQuestion(sectionId, qIndex, "down")} disabled={qIndex === totalQuestions - 1}><ArrowDown /></MiniButton>
+                    <MiniButton danger label="Excluir questão" onClick={() => qActions.handleDeleteQuestion(sectionId, q.id)}><Trash2 /></MiniButton>
                 </div>
             </div>
 
             {/* Edição: aparece ao expandir */}
             {open && (
-                <div className="space-y-4 border-t px-4 py-5 sm:px-6 md:pl-16">
+                <div className="mb-3 ml-3 mt-2 space-y-5 rounded-[22px] border border-border bg-[#f6f9f7] p-4 sm:ml-10 sm:p-5">
                     <Field label="Enunciado">
                         <Input
-                            className="h-10"
+                            className="h-11 bg-white text-[15px] font-medium"
                             value={q.title || ""}
                             onChange={(e) => setLocal("title", e.target.value)}
                             onBlur={(e) => save("title", e.target.value)}
@@ -166,6 +200,7 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
 
                     <Field label="Texto de ajuda (opcional)">
                         <Input
+                            className="bg-white"
                             value={q.helpText || ""}
                             onChange={(e) => setLocal("helpText", e.target.value)}
                             onBlur={(e) => save("helpText", e.target.value)}
@@ -173,32 +208,53 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
                         />
                     </Field>
 
-                    <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
-                        <Field label="Tipo de resposta">
-                            <Select items={TYPE_ITEMS} value={q.type} onValueChange={(val) => val && qActions.handleTypeChange(sectionId, q.id, val as FrontendQuestionType)}>
-                                <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
-                                <SelectContent alignItemWithTrigger={false}>
-                                    {QUESTION_TYPES_LABEL.map((item) => (
-                                        <SelectItem key={item.type} value={item.type}>{item.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </Field>
-
-                        <div className="flex items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2">
-                            <div>
-                                <Label className="cursor-pointer text-sm font-medium">Resposta obrigatória</Label>
-                                <p className="text-[11px] text-muted-foreground">Questões escondidas por regra não são cobradas.</p>
-                            </div>
-                            <Switch
-                                checked={q.required}
-                                onCheckedChange={(c) => {
-                                    setLocal("required", c);
-                                    save("isRequired", c);
-                                }}
-                            />
+                    <Field label="Tipo de resposta">
+                        <div role="radiogroup" aria-label="Tipo de resposta" className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                            {QUESTION_TYPES_LABEL.map((item) => {
+                                const Icon = QUESTION_TYPE_ICONS[item.type];
+                                const on = item.type === q.type;
+                                return (
+                                    <button
+                                        key={item.type}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={on}
+                                        onClick={() => !on && qActions.handleTypeChange(sectionId, q.id, item.type)}
+                                        className={cn(
+                                            "flex items-center gap-2.5 rounded-xl border p-2 pr-3 text-left text-[13px] font-medium transition-all",
+                                            on
+                                                ? "border-ink bg-ink text-white shadow-sm"
+                                                : "border-border bg-white text-foreground hover:border-[#c6d0c9] hover:bg-[#e4ece7]"
+                                        )}
+                                    >
+                                        <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", on ? "bg-[var(--mint)] text-[var(--forest)]" : TYPE_TONE[item.type])}>
+                                            <Icon className="size-4" />
+                                        </span>
+                                        <span className="truncate">{item.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
-                    </div>
+                    </Field>
+
+                    <label
+                        className={cn(
+                            "flex cursor-pointer items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors",
+                            q.required ? "border-[#e8c4b8] bg-[#fbeee9]" : "border-border bg-white"
+                        )}
+                    >
+                        <span>
+                            <span className="block text-sm font-semibold">Resposta obrigatória</span>
+                            <span className="block text-[11.5px] text-muted-foreground">Questões escondidas por regra não são cobradas.</span>
+                        </span>
+                        <Switch
+                            checked={q.required}
+                            onCheckedChange={(c) => {
+                                setLocal("required", c);
+                                save("isRequired", c);
+                            }}
+                        />
+                    </label>
 
                     {/* Configurações específicas do tipo */}
                     {hasSettings && (
@@ -274,10 +330,10 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
                         <Block title="Opções de resposta">
                             <div className="space-y-2">
                                 {q.options?.map((opt, optIndex) => (
-                                    <div key={opt.id} className="flex items-center gap-2">
-                                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">{optIndex + 1}</span>
+                                    <div key={opt.id} className="flex items-center gap-2 rounded-xl bg-[#f6f9f7] p-1.5 pl-2">
+                                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#dfe6ef] text-[11px] font-bold text-[#2a3d57]">{optIndex + 1}</span>
                                         <Input
-                                            className="h-9 flex-1"
+                                            className="h-9 flex-1 bg-white"
                                             value={opt.text}
                                             onChange={(e) => optActions.handleUpdateOptionLocal(sectionId, q.id, opt.id, e.target.value)}
                                             onBlur={(e) => optActions.handleBlurOptionText(opt.id, e.target.value)}
@@ -285,16 +341,20 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
                                             required
                                         />
                                         <div className="flex items-center">
-                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Mover para cima" onClick={() => optActions.moveOption(sectionId, q.id, optIndex, "up")} disabled={optIndex === 0}><ArrowUp className="size-4" /></Button>
-                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Mover para baixo" onClick={() => optActions.moveOption(sectionId, q.id, optIndex, "down")} disabled={optIndex === (q.options?.length || 0) - 1}><ArrowDown className="size-4" /></Button>
-                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" title="Excluir opção" onClick={() => optActions.handleDeleteOption(sectionId, q.id, opt.id)}><Trash2 className="size-4" /></Button>
+                                            <MiniButton label="Mover para cima" onClick={() => optActions.moveOption(sectionId, q.id, optIndex, "up")} disabled={optIndex === 0}><ArrowUp /></MiniButton>
+                                            <MiniButton label="Mover para baixo" onClick={() => optActions.moveOption(sectionId, q.id, optIndex, "down")} disabled={optIndex === (q.options?.length || 0) - 1}><ArrowDown /></MiniButton>
+                                            <MiniButton danger label="Excluir opção" onClick={() => optActions.handleDeleteOption(sectionId, q.id, opt.id)}><Trash2 /></MiniButton>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            <Button type="button" variant="outline" size="sm" onClick={() => optActions.handleAddOption(sectionId, q.id)} className="w-full border-dashed">
-                                <Plus className="mr-1 size-4" /> Adicionar opção
-                            </Button>
+                            <button
+                                type="button"
+                                onClick={() => optActions.handleAddOption(sectionId, q.id)}
+                                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#b9c9bf] py-2 text-[13px] font-semibold text-[var(--green-deep)] transition-colors hover:bg-[#e4ece7]"
+                            >
+                                <Plus className="size-4" /> Adicionar opção
+                            </button>
                         </Block>
                     )}
 

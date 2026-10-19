@@ -84,20 +84,23 @@ export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx:
     };
 
     return (
-        <div className="rounded-lg border bg-background p-4 space-y-3">
+        <div className="relative space-y-3 overflow-hidden rounded-[18px] border border-dashed border-[#b9c9bf] bg-[#eef5f0] p-4">
             <div className="flex items-center justify-between gap-2">
-                <h4 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
-                    <GitBranch className="size-3.5" /> Regras de exibição
+                <h4 className="flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[var(--green-deep)]">
+                    <span className="grid size-6 place-items-center rounded-lg bg-[var(--forest)] text-[var(--mint)]"><GitBranch className="size-3.5" /></span>
+                    Lógica de exibição
                 </h4>
                 {!adding && (
-                    <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)} className="bg-white">
                         <Plus className="mr-1 size-4" /> Adicionar regra
                     </Button>
                 )}
             </div>
 
             {affectingRules.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sem regra: esta questão aparece sempre.</p>
+                <p className="flex items-center gap-2 rounded-xl bg-white/70 px-3 py-2 text-xs text-muted-foreground">
+                    <span className="size-1.5 rounded-full bg-[var(--green)]" /> Sem regra: esta questão aparece sempre.
+                </p>
             ) : (
                 <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -106,8 +109,9 @@ export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx:
                     {affectingRules.map((rule) => {
                         const src = findQuestion(ctx.sections, rule.sourceQuestionId)?.question;
                         return (
-                            <div key={rule.id} className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
-                                <span>
+                            <div key={rule.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-white px-3 py-2 text-xs shadow-sm">
+                                <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                                    <span className="rounded-md bg-[var(--forest)] px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-[var(--mint)]">SE</span>
                                     <strong>{labelOf(ctx.sections, rule.sourceQuestionId, rule.sourceLabel)}</strong>
                                     {" "}«{shorten(src?.title ?? rule.sourceStatement, 40)}» {" "}= <strong>{triggerText(ctx.sections, rule)}</strong>
                                 </span>
@@ -136,8 +140,8 @@ export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx:
             )}
 
             {adding && (
-                <div className="space-y-4 border rounded-lg bg-background p-3 sm:p-4 shadow-sm">
-                    <p className="text-sm font-semibold">Nova regra de exibição</p>
+                <div className="space-y-4 rounded-2xl border border-border bg-white p-3 shadow-sm sm:p-4">
+                    <p className="text-sm font-semibold tracking-tight">Nova regra de exibição</p>
 
                     {candidates.length === 0 ? (
                         <p className="text-xs text-muted-foreground">

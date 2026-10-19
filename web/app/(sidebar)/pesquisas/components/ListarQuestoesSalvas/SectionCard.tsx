@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowDown, ArrowUp, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,56 +21,92 @@ interface SectionCardProps {
     onToggleQuestion: (questionId: string) => void;
 }
 
+function RoundButton({
+    label, onClick, disabled, danger, children,
+}: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: React.ReactNode }) {
+    return (
+        <button
+            type="button"
+            title={label}
+            aria-label={label}
+            onClick={onClick}
+            disabled={disabled}
+            className={cn(
+                "grid size-9 place-items-center rounded-full border border-border bg-white text-muted-foreground transition-all disabled:cursor-not-allowed disabled:opacity-35 [&>svg]:size-4",
+                danger
+                    ? "hover:border-[#e8c4b8] hover:bg-[#f3e0d9] hover:text-[#8a432f]"
+                    : "hover:border-[#c6d0c9] hover:bg-[#e4ece7] hover:text-ink"
+            )}
+        >
+            {children}
+        </button>
+    );
+}
+
 export function SectionCard({
     section, sIndex, totalSections, onBlurTitle, onMove, onDelete, onAddQuestion,
     qActions, optActions, rulesCtx, openQuestionIds, onToggleQuestion,
 }: SectionCardProps) {
     const [collapsed, setCollapsed] = useState(false);
     const total = section.questions.length;
+    const required = section.questions.filter((q) => q.required).length;
 
     return (
-        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
-            <header className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-3 py-3 sm:flex-nowrap sm:px-4">
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    title={collapsed ? "Expandir seção" : "Recolher seção"}
-                    aria-expanded={!collapsed}
-                    onClick={() => setCollapsed((c) => !c)}
+        <section className="overflow-hidden rounded-[26px] border border-border bg-white shadow-[0_24px_40px_-34px_rgba(10,20,16,0.3)]">
+            <header className="relative flex flex-wrap items-center gap-3 overflow-hidden bg-[var(--forest)] px-4 py-4 text-[var(--fg-dark)] sm:flex-nowrap sm:px-5">
+                {/* marca d'água: número da seção */}
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-2 -top-6 select-none text-[120px] font-bold leading-none tracking-tighter text-[rgba(191,227,208,0.07)]"
                 >
-                    <ChevronDown className={cn("size-4 transition-transform", collapsed && "-rotate-90")} />
-                </Button>
+                    {String(section.order).padStart(2, "0")}
+                </span>
 
-                <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
+                <span className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-[var(--mint)] text-lg font-bold text-[var(--forest)]">
                     {section.order}
                 </span>
 
-                <Input
-                    defaultValue={section.title}
-                    onBlur={(e) => onBlurTitle(section.id, e.target.value)}
-                    placeholder="Título da seção"
-                    className="order-last h-9 basis-full border-transparent bg-transparent text-base font-semibold shadow-none hover:border-input focus-visible:bg-background sm:order-none sm:flex-1 sm:basis-0"
-                />
+                <div className="relative order-last min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-0">
+                    <p className="mb-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted-dark)]">
+                        Seção {section.order}
+                    </p>
+                    <Input
+                        defaultValue={section.title}
+                        onBlur={(e) => onBlurTitle(section.id, e.target.value)}
+                        placeholder="Título da seção"
+                        className="h-9 rounded-xl border-transparent bg-transparent px-2 -ml-2 text-lg font-semibold tracking-tight text-[var(--fg-dark)] shadow-none placeholder:text-[var(--muted-dark)] hover:border-white/20 focus-visible:border-[var(--mint)] focus-visible:bg-white/5 focus-visible:ring-[rgba(191,227,208,0.2)]"
+                    />
+                </div>
 
-                <span className="ml-auto hidden shrink-0 text-xs text-muted-foreground sm:ml-0 sm:inline">
-                    {total} {total === 1 ? "questão" : "questões"}
-                </span>
+                <div className="relative hidden shrink-0 items-center gap-1.5 md:flex">
+                    <span className="inline-flex h-7 items-center rounded-full bg-[rgba(191,227,208,0.12)] px-3 text-xs font-medium text-[var(--mint)]">
+                        {total} {total === 1 ? "questão" : "questões"}
+                    </span>
+                    {required > 0 && (
+                        <span className="inline-flex h-7 items-center rounded-full bg-[rgba(224,145,122,0.18)] px-3 text-xs font-medium text-[#f0b09c]">
+                            {required} {required === 1 ? "obrigatória" : "obrigatórias"}
+                        </span>
+                    )}
+                </div>
 
-                <div className="ml-auto flex shrink-0 items-center sm:ml-0">
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Mover seção para cima" onClick={() => onMove(sIndex, "up")} disabled={sIndex === 0}><ArrowUp className="size-4" /></Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Mover seção para baixo" onClick={() => onMove(sIndex, "down")} disabled={sIndex === totalSections - 1}><ArrowDown className="size-4" /></Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" title="Excluir seção" onClick={() => onDelete(section.id)}><Trash2 className="size-4" /></Button>
+                <div className="relative ml-auto flex shrink-0 items-center gap-1.5 sm:ml-0">
+                    <RoundButton label="Mover seção para cima" onClick={() => onMove(sIndex, "up")} disabled={sIndex === 0}><ArrowUp /></RoundButton>
+                    <RoundButton label="Mover seção para baixo" onClick={() => onMove(sIndex, "down")} disabled={sIndex === totalSections - 1}><ArrowDown /></RoundButton>
+                    <RoundButton danger label="Excluir seção" onClick={() => onDelete(section.id)}><Trash2 /></RoundButton>
+                    <RoundButton label={collapsed ? "Expandir seção" : "Recolher seção"} onClick={() => setCollapsed((c) => !c)}>
+                        <ChevronDown className={cn("transition-transform", collapsed && "-rotate-90")} />
+                    </RoundButton>
                 </div>
             </header>
 
             {!collapsed && (
-                <>
+                <div className="p-3 sm:p-4">
                     {total === 0 ? (
-                        <p className="px-4 py-6 text-center text-sm text-muted-foreground">Esta seção ainda não tem questões.</p>
+                        <p className="rounded-2xl border border-dashed border-input bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
+                            Esta seção ainda não tem questões.
+                        </p>
                     ) : (
-                        <div className="divide-y">
+                        <div className="relative space-y-1 before:absolute before:bottom-8 before:left-[22px] before:top-8 before:w-px before:border-l before:border-dashed before:border-[#c6d0c9]">
                             {section.questions.map((q, qIndex) => (
                                 <QuestionCard
                                     key={q.id}
@@ -92,11 +127,12 @@ export function SectionCard({
                     <button
                         type="button"
                         onClick={() => onAddQuestion(section.id)}
-                        className="flex w-full items-center justify-center gap-1.5 border-t px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:bg-primary/5"
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#b9c9bf] bg-[#f4f8f5] px-4 py-3.5 text-sm font-semibold text-[var(--green-deep)] transition-all hover:border-[var(--green)] hover:bg-[#e4ece7] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
                     >
-                        <Plus className="size-4" /> Adicionar questão nesta seção
+                        <span className="grid size-6 place-items-center rounded-full bg-[var(--green-deep)] text-white"><Plus className="size-3.5" /></span>
+                        Adicionar questão nesta seção
                     </button>
-                </>
+                </div>
             )}
         </section>
     );
