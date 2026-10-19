@@ -1,26 +1,30 @@
 "use client"
 
-import { BrandMark } from "@/components/ui/contour"
+import { BrandMark, Contour } from "@/components/ui/contour"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { useFieldSnapshot } from "@/hooks/useFieldSnapshot"
 import { logout } from "@/lib/auth"
+import { avatarTone, buildTeamRows } from "@/lib/fieldData"
 import { Building2, ChevronLeft, LayoutDashboard, LogIn, LogOut, NotebookPen, UsersRound, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 type NavItem = {
     href: string
     label: string
     icon: LucideIcon
     profiles: ReadonlyArray<"SUPERADMINISTRATOR" | "ADMINISTRATOR" | "RESEARCHER">
+    /** Contador mostrado ao lado do nome (só para o administrador). */
+    count?: "researches" | "researchers"
 }
 
 const NAV_ITEMS: NavItem[] = [
     { href: "/", label: "Início", icon: LayoutDashboard, profiles: ["SUPERADMINISTRATOR", "ADMINISTRATOR", "RESEARCHER"] },
     { href: "/empresas", label: "Empresas", icon: Building2, profiles: ["SUPERADMINISTRATOR"] },
     { href: "/empresa", label: "Empresa", icon: Building2, profiles: ["ADMINISTRATOR"] },
-    { href: "/pesquisadores", label: "Pesquisadores", icon: UsersRound, profiles: ["ADMINISTRATOR"] },
-    { href: "/pesquisas", label: "Pesquisas", icon: NotebookPen, profiles: ["ADMINISTRATOR", "RESEARCHER"] },
+    { href: "/pesquisadores", label: "Pesquisadores", icon: UsersRound, profiles: ["ADMINISTRATOR"], count: "researchers" },
+    { href: "/pesquisas", label: "Pesquisas", icon: NotebookPen, profiles: ["ADMINISTRATOR", "RESEARCHER"], count: "researches" },
 ]
 
 const PROFILE_LABELS: Record<string, string> = {
@@ -43,6 +47,18 @@ export function AppSidebar() {
     const [collapsed, setCollapsed] = useState(false)
 
     const items = NAV_ITEMS.filter((item) => user && item.profiles.includes(user.profile))
+
+    // Só o administrador tem a equipe e as coletas da empresa para acompanhar.
+    const isAdmin = user?.profile === "ADMINISTRATOR"
+    const { snapshot, loading: fieldLoading } = useFieldSnapshot(isAdmin)
+    const inField = useMemo(
+        () => (snapshot ? buildTeamRows(snapshot, snapshot.loadedAt).filter((row) => row.inField) : []),
+        [snapshot]
+    )
+    const counts = {
+        researches: snapshot?.researches.length,
+        researchers: snapshot?.researchers.length,
+    }
 
     const isActive = (href: string) =>
         href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
@@ -77,7 +93,7 @@ export function AppSidebar() {
                 <div className="pa-sgroup">
                     <p>Navegação</p>
                     <nav className="pa-snav" aria-label="Principal">
-                        {items.map(({ href, label, icon: Icon }) => (
+                        {items.map(({ href, label, icon: Icon, count }) => (
                             <Link
                                 key={href}
                                 href={href}
@@ -87,10 +103,32 @@ export function AppSidebar() {
                             >
                                 <span className="t"><Icon strokeWidth={1.7} /></span>
                                 <span className="l">{label}</span>
+                                {count && isAdmin && counts[count] !== undefined && (
+                                    <span className="n" aria-label={`${counts[count]} no total`}>{counts[count]}</span>
+                                )}
                             </Link>
                         ))}
                     </nav>
                 </div>
+
+                {isAdmin && (
+                    <div className="pa-live" aria-live="polite">
+                        <Contour seed={6.2} rings={8} cx={1.0} cy={0.0} size={1.3} width={240} height={190} />
+                        <div className="k"><i />Em campo agora</div>
+                        <b>{fieldLoading ? "–" : inField.length}</b>
+                        <span className="s">
+                            {inField.length === 1 ? "pesquisador coletando" : "pesquisadores coletando"}
+                        </span>
+                        {inField.length > 0 && (
+                            <div className="pa-stack" title={inField.map((row) => row.user.name).join(", ")}>
+                                {inField.slice(0, 3).map(({ user: person }) => (
+                                    <div key={person.id} className={`avatar-pa ${avatarTone(person.id)}`}>{initialsOf(person.name)}</div>
+                                ))}
+                                {inField.length > 3 && <div className="avatar-pa more">+{inField.length - 3}</div>}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {user ? (
                     <div className="pa-suser">

@@ -5,19 +5,23 @@ import { Pin } from "@/components/ui/contour";
 import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
+import { useFieldSnapshot } from "@/hooks/useFieldSnapshot";
 import { buildAdminActivities, countByMonth } from "@/lib/dashboard";
+import { buildTeamRows } from "@/lib/fieldData";
 import { getActiveResearchesInMonth, getResearches, getResearchesByMonth, type Research } from "@/lib/research";
 import { getResearchers, type UserItem } from "@/lib/user";
-import { ClipboardList, Clock, History, Target, UsersRound } from "lucide-react";
+import { CalendarClock, ClipboardList, Clock, History, Target, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import ListaPesquisadores from "../../pesquisadores/components/ListaPesquisadores";
-import TabelaPesquisas from "../../pesquisas/components/TabelaPesquisas";
 import AreaPanel from "./AreaPanel";
 import { firstName, greetingFor, monthName, PIN_SLOTS, todayLabel } from "./dashboardUtils";
+import EquipePanel from "./EquipePanel";
+import HeatmapPanel from "./HeatmapPanel";
 import HeroPanel from "./HeroPanel";
 import InfoCard from "./infoCards";
+import PesquisasEquipeTabela from "./PesquisasEquipeTabela";
 import StatusPanel from "./StatusPanel";
 import UltimasAtualizacoesList from "./UltimasAtualizacoesList";
 
@@ -50,6 +54,8 @@ export default function AdmPage({ userName }: { userName?: string }) {
             cancelled = true;
         };
     }, [])
+
+    const { snapshot, loading: fieldLoading, failed: fieldFailed } = useFieldSnapshot();
 
     const [today] = useState(() => new Date());
     const year = today.getFullYear();
@@ -93,6 +99,13 @@ export default function AdmPage({ userName }: { userName?: string }) {
         [activeThisMonth, today]
     );
 
+    const fieldNow = snapshot?.loadedAt ?? today.getTime();
+    const teamRows = useMemo(
+        () => buildTeamRows({ researchers, collections: snapshot?.collections ?? [] }, fieldNow),
+        [researchers, snapshot, fieldNow]
+    );
+    const inFieldNow = teamRows.filter((row) => row.inField).length;
+
     const diff = activeThisMonth.length - activePrevMonth.length;
     const previousMonthName = monthName(month - 2);
     const delta = loading || diff === 0
@@ -117,7 +130,7 @@ export default function AdmPage({ userName }: { userName?: string }) {
                 minis={[
                     { value: dash ?? researches.length, label: "pesquisas no total" },
                     { value: dash ?? researchers.length, label: "pesquisadores" },
-                    { value: dash ?? byStatus.inField, label: "em campo agora" },
+                    { value: dash ?? (fieldLoading || fieldFailed ? "–" : inFieldNow), label: "pesquisadores em campo" },
                 ]}
             >
                 {!loading && pins.length === 0 && (
@@ -184,6 +197,25 @@ export default function AdmPage({ userName }: { userName?: string }) {
                     currentMonth={month - 1}
                 />
 
+                <HeatmapPanel
+                    cardClassName="pa-c6"
+                    icon={<CalendarClock />}
+                    collections={snapshot?.collections ?? []}
+                    now={fieldNow}
+                    loading={fieldLoading}
+                    error={fieldFailed && !snapshot}
+                    incomplete={snapshot?.partial}
+                />
+
+                <EquipePanel
+                    cardClassName="pa-c6"
+                    icon={<UsersRound />}
+                    rows={teamRows}
+                    now={fieldNow}
+                    loading={loading || fieldLoading}
+                    error={fieldFailed && !snapshot}
+                />
+
                 <InfoCard
                     cardClassName="pa-c12"
                     icon={<Clock />}
@@ -198,7 +230,15 @@ export default function AdmPage({ userName }: { userName?: string }) {
                             </TabsList>
 
                             <TabsContent value="pesquisas" className="pt-2">
-                                <TabelaPesquisas allowActions={false} />
+                                <PesquisasEquipeTabela
+                                    researches={researches}
+                                    researchers={researchers}
+                                    links={snapshot?.links ?? {}}
+                                    collections={snapshot?.collections ?? []}
+                                    now={fieldNow}
+                                    loading={loading}
+                                    teamLoading={fieldLoading}
+                                />
                             </TabsContent>
 
                             <TabsContent value="pesquisadores" className="pt-2">
