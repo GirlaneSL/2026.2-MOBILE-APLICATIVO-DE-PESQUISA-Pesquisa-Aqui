@@ -21,8 +21,14 @@ export class CompanyController {
         return this.companyService.create(createCompanyDto, user);
     }
 
+    // A rota Patch agora recebe o Body e chama o "update" no service
     @Patch(':id')
-    deactivate(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
-        return this.companyService.deactivate(id, currentUser);
+    updateCompany(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() updateData: { legalName?: string; contactInformation?: string; situation?: 'ACTIVE' | 'INACTIVE' },
+        @CurrentUser() currentUser: UserPayLoad
+    ) {
+        // Certifique-se de que o seu companyService tem o método update que criamos anteriormente!
+        return this.companyService.update(id, updateData, currentUser);
     }
 }

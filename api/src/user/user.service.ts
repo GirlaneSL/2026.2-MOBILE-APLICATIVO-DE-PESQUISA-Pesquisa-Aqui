@@ -89,6 +89,13 @@ export class UserService {
         return userWithoutPassword;
     }
 
+    async update(id: number, updateData: { name?: string; username?: string }) {
+        return await this.prisma.client.orm.public.User.where({ id }).update({
+            ...(updateData.name && { name: updateData.name }),
+            ...(updateData.username && { username: updateData.username })
+        });
+    }
+
     async delete(username: string, currentUser: UserPayLoad) {
         if (currentUser.profile !== 'SUPERADMINISTRATOR') {
             throw new ForbiddenException('Only superadministrators can delete users');

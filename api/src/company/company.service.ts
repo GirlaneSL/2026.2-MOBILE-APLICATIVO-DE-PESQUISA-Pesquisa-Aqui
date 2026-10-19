@@ -16,11 +16,9 @@ export class CompanyService {
 
         // Filtra no banco para retornar APENAS a empresa cujo ID seja o do usuário logado
         return this.prisma.client.orm.public.Company.where({ id: currentUser.companyId }).all();
-
     }
 
     async create(createCompanyDto: CreateCompanyDto, currentUser: UserPayLoad) {
-
         if (currentUser.profile !== 'SUPERADMINISTRATOR') throw new ForbiddenException('Only super administrators can create companies.');
 
         return this.prisma.client.orm.public.Company.create({
@@ -30,12 +28,17 @@ export class CompanyService {
         })
     }
 
-    async deactivate(id: number, currentUser: UserPayLoad) {
+    // A função agora se chama "update" e recebe os dados dinamicamente
+    async update(id: number, updateData: { legalName?: string; contactInformation?: string; situation?: 'ACTIVE' | 'INACTIVE' }, currentUser: UserPayLoad) {
+        if (currentUser.profile !== 'SUPERADMINISTRATOR') {
+            throw new ForbiddenException('Only super administrators can update companies.');
+        }
 
-        if (currentUser.profile !== 'SUPERADMINISTRATOR') throw new ForbiddenException('Only super administrators can deactivate companies.');
-
-        return await this.prisma.client.orm.public.Company.where({ id }).update({ situation: 'INACTIVE' })
-
+        // Atualiza no banco apenas os campos que vieram no frontend (seja o nome/contato do formulário, ou a situação do botão)
+        return await this.prisma.client.orm.public.Company.where({ id }).update({
+            ...(updateData.legalName && { legalName: updateData.legalName }),
+            ...(updateData.contactInformation && { contactInformation: updateData.contactInformation }),
+            ...(updateData.situation && { situation: updateData.situation })
+        });
     }
-
 }

@@ -80,3 +80,22 @@ export const getResearchers = async (): Promise<UserItem[]> => {
     const users = await getUsers();
     return users.filter((u) => u.profile === 'RESEARCHER');
 }
+
+export const updateUser = async (
+    id: string | number,
+    data: { name?: string; username?: string }
+) => {
+    const response = await apiFetch(`/user/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || 'Falha ao atualizar o usuário');
+    }
+
+    return response.json();
+}

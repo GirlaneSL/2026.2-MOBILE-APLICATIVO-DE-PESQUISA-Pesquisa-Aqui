@@ -49,16 +49,16 @@ export const getCompanies = async () => {
     return response.json();
 }
 
-export const deactivate = async (id: number) => {
+// Substitua a função deactivate() por esta:
+// lib/company.ts
+export const updateCompanySituation = async (id: number, situation: 'ACTIVE' | 'INACTIVE') => {
     const response = await apiFetch(`/company/${id}`, {
         method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-    })
+        body: JSON.stringify({ situation }) // <-- Enviando o status novo no body
+    });
 
-    if (!response.ok) throw new Error('Failed to deactivate company')
-
+    if (!response.ok) throw new Error('Falha ao atualizar status da empresa');
     return response.json();
 }

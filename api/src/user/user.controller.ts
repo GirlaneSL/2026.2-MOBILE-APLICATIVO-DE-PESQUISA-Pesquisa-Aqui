@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
@@ -23,6 +23,14 @@ export class UserController {
     @Get('/admins')
     findAllAdmin(@CurrentUser() currentUser: UserPayLoad) {
         return this.userService.findAllAdmin(currentUser);
+    }
+
+    @Patch(':id')
+    updateUser(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() updateData: { name?: string; username?: string }
+    ) {
+        return this.userService.update(id, updateData);
     }
 
     @Delete(':username')
