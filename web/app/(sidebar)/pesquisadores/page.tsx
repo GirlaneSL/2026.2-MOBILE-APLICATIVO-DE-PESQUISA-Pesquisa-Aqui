@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { getCompanies } from "@/lib/company";
 import { getResearchers, UserItem } from "@/lib/user";
-import { RefreshCw } from "lucide-react";
+import { Building2, RefreshCw, UserPlus, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import InfoCard from "../(home)/components/infoCards";
@@ -79,70 +79,52 @@ export default function PesquisadoresPage() {
 
     return (
         <section className="flex flex-col gap-5">
-            <BannerComponent title="Dados dos Pesquisadores" />
+            <BannerComponent
+                title="Pesquisadores"
+                description={isSuperAdmin ? "Quem coleta em campo, em todas as empresas." : "Quem coleta em campo pela sua empresa."}
+                actions={
+                    canRegister ? (
+                        <DialogLayout
+                            triggerButtonSize="sm"
+                            dialogTrigger={<><UserPlus />Novo pesquisador</>}
+                            dialogTitle="Novo pesquisador"
+                            dialogDescription="Informe os dados de acesso do pesquisador."
+                            dialogContent={
+                                <CadastrarPesquisadorForm
+                                    isSuperAdmin={isSuperAdmin}
+                                    onSuccess={loadResearchers}
+                                />
+                            }
+                        />
+                    ) : (
+                        <Spinner className="size-6" />
+                    )
+                }
+            />
 
-            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <InfoCard
                     animationDelayN={2}
-                    cardTitle="Total de Pesquisadores"
+                    icon={<UsersRound />}
+                    cardTitle="Pesquisadores cadastrados"
                     cardDescription={isSuperAdmin ? "Em todas as empresas" : "Na sua empresa"}
-                    isCardFooter={false}
-                    cardContent={<p className="text-4xl font-bold">{statValue(stats.total)}</p>}
+                    cardContent={<p className="pa-stat">{statValue(stats.total)}</p>}
                 />
 
                 <InfoCard
                     animationDelayN={3}
-                    cardTitle={isSuperAdmin ? "Empresas com Pesquisadores" : "Novos nos Últimos 30 Dias"}
-                    cardDescription={isSuperAdmin ? "Empresas que possuem ao menos um pesquisador" : "Pesquisadores cadastrados recentemente"}
-                    isCardFooter={false}
-                    cardContent={
-                        <p className="text-4xl font-bold">
-                            {statValue(isSuperAdmin ? stats.companies : stats.recent)}
-                        </p>
-                    }
+                    tone="mint"
+                    icon={isSuperAdmin ? <Building2 /> : <UserPlus />}
+                    cardTitle={isSuperAdmin ? "Empresas com pesquisadores" : "Novos nos últimos 30 dias"}
+                    cardDescription={isSuperAdmin ? "Empresas com ao menos um pesquisador" : "Cadastrados recentemente"}
+                    cardContent={<p className="pa-stat">{statValue(isSuperAdmin ? stats.companies : stats.recent)}</p>}
                 />
-
-
-                <InfoCard
-                    isCardFooter={false}
-                    animationDelayN={4}
-                    cardTitle="Cadastrar Pesquisador"
-                    cardDescription="Cadastre um novo pesquisador"
-                    cardClassName="relative col-span-1 md:col-span-2 lg:col-span-1"
-                    cardContent={
-                        <>
-                            <br />
-                            <br />
-                            <div className="absolute bottom-5 right-5 flex justify-end">
-                                
-                                {canRegister ? (
-                                    <DialogLayout
-                                        triggerButtonVariant="outline"
-                                        dialogTrigger="Cadastrar"
-                                        dialogTitle="Cadastramento do Pesquisador"
-                                        dialogDescription="Informe os dados do pesquisador"
-                                        dialogContent={
-                                            <CadastrarPesquisadorForm
-                                                isSuperAdmin={isSuperAdmin}
-                                                onSuccess={loadResearchers}
-                                            />
-                                        }
-                                    />
-                                ): (
-                                    <Spinner className="size-6"/>
-                                )}
-                            </div>
-                        </>
-                    }
-                />
-
             </section>
 
             <InfoCard
-                animationDelayN={5}
-                cardTitle="Pesquisadores"
-                cardDescription="Busque, visualize e gerencie os pesquisadores"
-                isCardFooter={false}
+                animationDelayN={4}
+                cardTitle="Equipe de campo"
+                cardDescription="Busque, veja e gerencie os pesquisadores."
                 cardAction={
                     <Button variant="outline" size="sm" onClick={loadResearchers} disabled={loading}>
                         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />

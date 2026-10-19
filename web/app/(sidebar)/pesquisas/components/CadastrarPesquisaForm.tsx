@@ -137,7 +137,7 @@ export default function CadastrarPesquisaForm({ onSuccess }: CadastrarPesquisaFo
                     />
                 </div>
                 {!datesValid && (
-                    <p className="text-red-500 text-sm mt-1">
+                    <p className="text-destructive text-sm mt-1">
                         A data de término deve ser após a data de início
                     </p>
                 )}
@@ -173,7 +173,7 @@ export default function CadastrarPesquisaForm({ onSuccess }: CadastrarPesquisaFo
                 <div className="flex justify-end">
                     <Button
                         type="submit"
-                        className="w-fit verde"
+                        className="w-fit"
                         disabled={isSubmitLoading}
                     >
                         {isSubmitLoading ? (

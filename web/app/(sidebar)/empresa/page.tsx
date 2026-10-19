@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import BannerComponent from "@/components/ui/bannerComponent";
-import DialogLayout from "@/components/ui/dialogLayout";
 import InfoCard from "../(home)/components/infoCards";
 import { getCompanies } from "@/lib/company";
 import { Spinner } from "@/components/ui/spinner";
+import { Building2, Fingerprint, ShieldCheck, Smartphone } from "lucide-react";
 
 export interface Company {
     id?: string;
@@ -41,10 +41,10 @@ export default function EmpresaPage() {
     if (loading) {
         return (
             <section className="flex flex-col gap-6">
-                <BannerComponent title="Dados da Empresa" />
+                <BannerComponent title="Empresa" />
                 <div className="flex justify-center items-center gap-2 p-8 text-center text-sm text-muted-foreground">
                     <Spinner></Spinner>
-                    Carregando informações da empresa...
+                    Abrindo os dados da empresa...
                 </div>
             </section>
         );
@@ -53,8 +53,8 @@ export default function EmpresaPage() {
     if (error || !company) {
         return (
             <section className="flex flex-col gap-6">
-                <BannerComponent title="Dados da Empresa" />
-                <div className="p-8 text-center text-sm text-red-500">
+                <BannerComponent title="Empresa" />
+                <div className="p-8 text-center text-sm text-destructive">
                     {error || 'Nenhuma empresa encontrada para esta conta.'}
                 </div>
             </section>
@@ -64,121 +64,69 @@ export default function EmpresaPage() {
     const isActive = company.situation === 'ACTIVE';
 
     return (
-        <section className="flex flex-col gap-6">
-            <BannerComponent title="Dados da Empresa" />
+        <section className="flex flex-col gap-5">
+            <BannerComponent title={company.legalName} description="Dados da sua empresa no Pesquisa Aqui." />
 
             <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <InfoCard
-                    isCardFooter={false}
                     animationDelayN={1}
-                    cardTitle="Situação Cadastral"
-                    cardDescription="Status de autorização no sistema"
+                    tone={isActive ? "mint" : "light"}
+                    icon={<ShieldCheck />}
+                    cardTitle="Situação do cadastro"
+                    cardDescription="Define se a equipe pode coletar em campo."
                     cardContent={
-                        <div className="mt-3 flex items-center gap-2">
-                            <span
-                                className={`inline-block w-3 h-3 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-red-500'
-                                    }`}
-                            />
-                            <span className="font-semibold text-sm">
-                                {company.situation === 'ACTIVE' ?
-                                    'ATIVA' : 'INATIVA'
-                                }
-                            </span>
-                        </div>
+                        <span className={`pa-chip ${isActive ? "light" : "clay"}`}>
+                            <i />
+                            {isActive ? "Ativa" : "Inativa"}
+                        </span>
                     }
                 />
 
                 <InfoCard
-                    isCardFooter={false}
                     animationDelayN={2}
-                    cardTitle="Identificador (ID)"
-                    cardDescription="Chave única usada nas requisições da API"
+                    icon={<Fingerprint />}
+                    cardTitle="Código da empresa"
+                    cardDescription="Use este código ao falar com o suporte."
                     cardContent={
-                        <div className="mt-2">
-                            <code className="bg-muted px-2 py-1.5 rounded block truncate text-xs">
-                                {company.id || 'Não informado'}
-                            </code>
-                        </div>
+                        <code className="block truncate rounded-xl bg-muted px-3 py-2 text-xs">
+                            {company.id || "Não informado"}
+                        </code>
                     }
                 />
 
                 <InfoCard
-                    isCardFooter={false}
                     animationDelayN={3}
-                    cardTitle="Comunicação com App"
-                    cardDescription="Disponibilidade para coleta em campo"
+                    icon={<Smartphone />}
+                    cardTitle="Coleta no aplicativo"
+                    cardDescription="Disponibilidade para os pesquisadores."
                     cardContent={
-                        <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                            <p>
-                                Sincronização offline:{" "}
-                                <strong className={isActive ? "text-emerald-600" : "text-red-500"}>
-                                    {isActive ? "Liberada" : "Bloqueada"}
-                                </strong>
-                            </p>
-                            <p>Pacotes de questionário: <strong>Atualizados</strong></p>
-                        </div>
+                        <p className="text-sm">
+                            {isActive
+                                ? "Liberada. Os pesquisadores podem baixar pesquisas e enviar coletas."
+                                : "Bloqueada. Os pesquisadores não conseguem entrar no aplicativo."}
+                        </p>
                     }
                 />
             </section>
 
-            <section className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-                <InfoCard
-                    isCardFooter={true}
-                    cardClassName="lg:col-span-3"
-                    animationDelayN={4}
-                    cardTitle="Dados Institucionais"
-                    cardDescription="Informações registradas no cadastro da organização"
-                    cardContent={
-                        <div className="space-y-4 text-sm mt-4">
-                            <div>
-                                <span className="text-muted-foreground block text-xs">Razão Social (legalName)</span>
-                                <strong className="text-base font-medium">{company.legalName}</strong>
-                            </div>
-
-                            <div>
-                                <span className="text-muted-foreground block text-xs">Contato (contactInformation)</span>
-                                <p className="font-medium whitespace-pre-line text-sm mt-1">
-                                    {company.contactInformation}
-                                </p>
-                            </div>
-                        </div>
-                    }
-                    cardFooterClassName={"w-full flex justify-end"}
-                    cardFooter={
+            <InfoCard
+                animationDelayN={4}
+                icon={<Building2 />}
+                cardTitle="Dados da empresa"
+                cardDescription="Informações do cadastro da organização."
+                cardContent={
+                    <dl className="grid gap-5 text-sm md:grid-cols-2">
                         <div>
-                            <DialogLayout
-                                triggerButtonVariant="outline"
-                                dialogTrigger="Editar Dados"
-                                dialogTitle="Editar Informações da Empresa"
-                                dialogDescription="Atualize os dados institucionais ou a situação da conta."
-                                dialogContent={
-                                    <div className="text-sm text-muted-foreground py-4">
-                                        Formulário de edição com os campos `legalName` e `contactInformation`.
-                                    </div>
-                                }
-                            />
+                            <dt className="text-muted-foreground">Razão social</dt>
+                            <dd className="mt-1 text-base font-medium">{company.legalName}</dd>
                         </div>
-                    }
-                />
-
-                <InfoCard
-                    isCardFooter={false}
-                    cardClassName="lg:col-span-2"
-                    animationDelayN={5}
-                    cardTitle="Permissões & Coleta"
-                    cardDescription="Regras de segurança no app móvel"
-                    cardContent={
-                        <div className="space-y-3 mt-3 text-xs">
-                            <div className="p-3 border rounded bg-muted/40 space-y-1">
-                                <span className="font-semibold block text-foreground">Multi-tenant Enforcement</span>
-                                <p className="text-muted-foreground">
-                                    O identificador da empresa é validado pelo servidor em todas as rotas. Pesquisadores só baixam dados associados a este cadastro.
-                                </p>
-                            </div>
+                        <div>
+                            <dt className="text-muted-foreground">Contato</dt>
+                            <dd className="mt-1 whitespace-pre-line font-medium">{company.contactInformation}</dd>
                         </div>
-                    }
-                />
-            </section>
+                    </dl>
+                }
+            />
         </section>
     );
 }

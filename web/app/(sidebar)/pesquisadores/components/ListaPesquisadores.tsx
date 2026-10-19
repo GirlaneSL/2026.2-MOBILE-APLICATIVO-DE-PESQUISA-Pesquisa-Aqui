@@ -123,7 +123,7 @@ export default function ListaPesquisadores({
             ) : rows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                     {researchers.length === 0
-                        ? 'Nenhum pesquisador cadastrado.'
+                        ? 'Nenhum pesquisador cadastrado. Use "Novo pesquisador" para começar.'
                         : 'Nenhum pesquisador encontrado para a busca.'}
                 </p>
             ) : (

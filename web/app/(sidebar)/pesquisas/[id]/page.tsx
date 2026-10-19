@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getResearchById, publishResearch, type Research } from "@/lib/research";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, Bolt, Calendar, FileText, Mic, ShieldAlert, Target } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Mic, ShieldAlert, Target } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -53,7 +53,7 @@ export default function PesquisaDetalhePage() {
     if (state.status === 'loading') {
         return (
             <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-2">
-                <Spinner /><p className="text-sm">Carregando detalhes da pesquisa...</p>
+                <Spinner /><p className="text-sm">Abrindo a pesquisa...</p>
             </div>
         );
     }
@@ -62,7 +62,7 @@ export default function PesquisaDetalhePage() {
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
                 <ShieldAlert className="text-destructive w-12 h-12" />
                 <h2 className="text-xl font-semibold">Acesso negado</h2>
-                <p className="text-sm text-muted-foreground max-w-sm">Esta pesquisa pertence a outra empresa.</p>
+                <p className="text-sm text-muted-foreground max-w-sm">Esta pesquisa pertence a outra empresa. Volte e escolha uma pesquisa da sua lista.</p>
                 <Button variant="outline" size="sm" onClick={() => router.back()} className="mt-2"><ArrowLeft className="w-4 h-4 mr-2" />Voltar</Button>
             </div>
         );
@@ -77,8 +77,8 @@ export default function PesquisaDetalhePage() {
     }
     if (state.status === 'error') {
         return (
-            <div className="p-4 border border-destructive/20 bg-destructive/10 rounded-lg text-sm text-destructive">
-                <p className="font-medium">Erro ao carregar a pesquisa</p><p>{state.message}</p>
+            <div className="p-4 border border-destructive/20 bg-destructive/10 rounded-2xl text-sm text-destructive">
+                <p className="font-medium">Não foi possível abrir a pesquisa</p><p>{state.message}. Atualize a página para tentar de novo.</p>
             </div>
         );
     }
@@ -104,25 +104,23 @@ export default function PesquisaDetalhePage() {
 
             <Tabs defaultValue="details" className="w-full flex flex-col gap-6 ">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-3">
-                    <TabsList className={"relative verde-marrom px-5 shadow border-t"}>
-                        <Bolt size={13} className="absolute left-1 top-1/2 -translate-y-1/2 opacity-15" />
-                        <Bolt size={13} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-15" />
+                    <TabsList className={"relative"}>
                         <TabsTrigger value="details">Visão Geral</TabsTrigger>
-                        <TabsTrigger value="questions">Questões e Formulário</TabsTrigger>
+                        <TabsTrigger value="questions">Questões</TabsTrigger>
                         <TabsTrigger value="researchers">Pesquisadores</TabsTrigger>
                         {canSeeCollections && <TabsTrigger value="collections">Coletas</TabsTrigger>}
                     </TabsList>
 
                     <div className="flex items-center gap-3">
                         <DialogLayout
-                            dialogTrigger="Editar" dialogTitle="Editar Dados da Pesquisa" dialogDescription="Atualize os dados principais."
+                            dialogTrigger="Editar" triggerButtonVariant="outline" triggerButtonSize="sm" dialogTitle="Editar dados da pesquisa" dialogDescription="Atualize os dados principais."
                             dialogContent={<ModalEditarPesquisa isMontagem={false} research={research} onSuccess={() => toast.success('Pesquisa atualizada!')} />}
                         />
                         {research.status === 'DRAFT' && (
                             <Button size="sm" onClick={handlePublish}>Publicar</Button>
                         )}
                         <div className="flex items-center gap-2 border-l pl-3">
-                            <span className="text-xs text-muted-foreground">Situação:</span>
+                            <span className="text-xs text-muted-foreground">Situação</span>
                             <Badge variant={currentStatus.variant}>{currentStatus.label}</Badge>
                         </div>
                     </div>
@@ -138,17 +136,17 @@ export default function PesquisaDetalhePage() {
                                 cardContent={
                                     <div className="grid gap-6">
                                         <div>
-                                            <h4 className="text-xs font-semibold uppercase mb-1">Descrição</h4>
+                                            <h4 className="text-[13px] font-semibold text-muted-foreground mb-1">Descrição</h4>
                                             <p className="text-sm leading-relaxed text-foreground">{research.description || "Nenhuma descrição informada."}</p>
                                         </div>
                                         <hr />
                                         <div className="pt-4">
-                                            <h4 className="text-xs font-semibold uppercase mb-1">Objetivo</h4>
+                                            <h4 className="text-[13px] font-semibold text-muted-foreground mb-1">Objetivo</h4>
                                             <p className="text-sm leading-relaxed text-foreground">{research.objective || "Nenhum objetivo especificado."}</p>
                                         </div>
                                         <hr />
                                         <div className="pt-4">
-                                            <h4 className="text-xs font-semibold uppercase mb-1 flex items-center gap-1"><Mic className="w-3 h-3" />Gravação da entrevista</h4>
+                                            <h4 className="text-[13px] font-semibold text-muted-foreground mb-1 flex items-center gap-1.5"><Mic className="w-3.5 h-3.5" />Gravação da entrevista</h4>
                                             <p className="text-sm leading-relaxed text-foreground">
                                                 {research.recordInterview
                                                     ? "Ligada: o aplicativo grava o áudio da coleta e exige o consentimento do entrevistado antes de começar."
@@ -162,18 +160,18 @@ export default function PesquisaDetalhePage() {
                         <div className="md:col-span-1 md:row-span-1">
                             <InfoCard
                                 cardClassName="h-full" animationDelayN={3} isCardFooter={false}
-                                cardTitle={<div className="flex items-center gap-2 text-base"><Target color="#AB6049" className="w-4 h-4 text-primary" /><span>Público-Alvo</span></div>}
+                                cardTitle={<div className="flex items-center gap-2 text-base"><Target className="w-4 h-4 text-clay" /><span>Público-Alvo</span></div>}
                                 cardContent={<p className="text-sm font-medium text-foreground">{research.targetAudience || "Não especificado"}</p>}
                             />
                         </div>
                         <div className="md:col-span-1 md:row-span-1">
                             <InfoCard
                                 cardClassName="h-full" animationDelayN={4} isCardFooter={false}
-                                cardTitle={<div className="flex items-center gap-2 text-base"><Calendar color="#AB6049" className="w-4 h-4 text-primary" /><span>Vigência</span></div>}
+                                cardTitle={<div className="flex items-center gap-2 text-base"><Calendar className="w-4 h-4 text-clay" /><span>Vigência</span></div>}
                                 cardContent={
                                     <div className="grid gap-2 text-sm">
-                                        <div className="flex justify-between"><span>Início:</span><span className="font-medium">{research.startDate ? new Date(research.startDate).toLocaleDateString('pt-BR') : "-"}</span></div>
-                                        <div className="flex justify-between"><span>Término:</span><span className="font-medium">{research.endDate ? new Date(research.endDate).toLocaleDateString('pt-BR') : "-"}</span></div>
+                                        <div className="flex justify-between"><span className="text-muted-foreground">Início</span><span className="font-medium">{research.startDate ? new Date(research.startDate).toLocaleDateString('pt-BR') : "-"}</span></div>
+                                        <div className="flex justify-between"><span className="text-muted-foreground">Término</span><span className="font-medium">{research.endDate ? new Date(research.endDate).toLocaleDateString('pt-BR') : "-"}</span></div>
                                     </div>
                                 }
                             />
@@ -182,7 +180,7 @@ export default function PesquisaDetalhePage() {
                 </TabsContent>
 
                 <TabsContent value="questions" className="mt-0">
-                    <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
+                    <div className="flex flex-col gap-4 rounded-[26px] border bg-card p-5">
                         <ListarQuestoesSalvas researchId={params.id} />
                     </div>
                 </TabsContent>
@@ -193,7 +191,7 @@ export default function PesquisaDetalhePage() {
 
                 {canSeeCollections && (
                     <TabsContent value="collections" className="mt-0">
-                        <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
+                        <div className="flex flex-col gap-4 rounded-[26px] border bg-card p-5">
                             <ColetasPesquisa researchId={research.id} recordInterview={research.recordInterview} />
                         </div>
                     </TabsContent>

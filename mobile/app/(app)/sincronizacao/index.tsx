@@ -8,6 +8,9 @@ import { listCollections, type LocalCollection } from '@/lib/collectionStore';
 import { formatBytes, getStorageUsage, type StorageUsage } from '@/lib/photoStorage';
 import { getCachedResearches } from '@/lib/researchCache';
 import { syncQueue } from '@/lib/syncQueue';
+import ScreenHeader from '@/components/ScreenHeader';
+import Chip from '@/components/Chip';
+import { Brand, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useSyncState } from '@/hooks/useSyncQueue';
 
@@ -62,7 +65,7 @@ export default function Sincronizacao() {
         collections.length === 0
             ? 'Nenhuma coleta pendente'
             : `${plural(finished.length, 'coleta aguardando envio', 'coletas aguardando envio')}` +
-              (drafts > 0 ? ` · ${plural(drafts, 'rascunho', 'rascunhos')}` : '');
+              (drafts > 0 ? `, ${plural(drafts, 'rascunho', 'rascunhos')}` : '');
 
     // ---------- Envio ----------
 
@@ -84,7 +87,7 @@ export default function Sincronizacao() {
             const parts: string[] = [];
             if (lastRun.confirmed > 0) parts.push(plural(lastRun.confirmed, 'coleta enviada', 'coletas enviadas'));
             if (lastRun.failed > 0) parts.push(plural(lastRun.failed, 'com falha', 'com falha'));
-            resultNote = { text: parts.join(' · '), warning: lastRun.failed > 0 };
+            resultNote = { text: parts.join(', '), warning: lastRun.failed > 0 };
         }
     }
 
@@ -101,14 +104,16 @@ export default function Sincronizacao() {
             data={finished}
             keyExtractor={(item) => item.clientId}
             contentContainerStyle={styles.content}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Brand.green} />}
             ListHeaderComponent={
                 <View>
-                    <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Fila de Sincronização</Text>
-                        <Text style={styles.headerSubtitle}>{subtitle}</Text>
-                    </View>
-
+                    <ScreenHeader
+                        title="Envio de coletas"
+                        subtitle={subtitle}
+                        right={<Chip label={isOnline ? 'Online' : 'Offline'} tone={isOnline ? 'dark' : 'clay'} />}
+                        seed={5.3}
+                    />
+                    <View style={styles.headerBody}>
                     <TouchableOpacity
                         style={[styles.sendButton, !canSend && !sync.running && styles.sendButtonDisabled]}
                         onPress={sendNow}
@@ -137,7 +142,7 @@ export default function Sincronizacao() {
 
                     {!isOnline && finished.length > 0 ? (
                         <View style={styles.note}>
-                            <WifiOff size={16} color="#92400e" />
+                            <WifiOff size={16} color={Brand.warn} />
                             <Text style={styles.noteTextWarning}>
                                 Sem conexão. O envio começa sozinho quando o sinal voltar.
                             </Text>
@@ -150,19 +155,21 @@ export default function Sincronizacao() {
 
                     <View style={styles.storageCard} accessibilityRole="summary">
                         <View style={styles.storageTop}>
-                            <HardDrive size={20} color="#447762" />
+                            <HardDrive size={18} color={Brand.greenDeep} strokeWidth={1.8} />
                             <Text style={styles.storageLabel}>Espaço ocupado pelas coletas pendentes</Text>
                         </View>
                         <Text style={styles.storageTotal}>{formatBytes(usage.totalBytes)}</Text>
                         <Text style={styles.storageDetail}>
-                            Fotos {formatBytes(usage.photosBytes)} · Áudio {formatBytes(usage.audioBytes)}
-                            {usage.freeBytes !== null ? ` · Livre no aparelho ${formatBytes(usage.freeBytes)}` : ''}
+                            Fotos {formatBytes(usage.photosBytes)}, áudio {formatBytes(usage.audioBytes)}
+                            {usage.freeBytes !== null ? `. Livre no aparelho: ${formatBytes(usage.freeBytes)}` : ''}
                         </Text>
                         {drafts > 0 ? <Text style={styles.storageNote}>Inclui os rascunhos em andamento.</Text> : null}
+                    </View>
                     </View>
                 </View>
             }
             renderItem={({ item }) => (
+                <View style={styles.row}>
                 <SyncCard
                     identificador={`Coleta ${item.clientId.slice(0, 8)}`}
                     pesquisa={titles.get(item.researchId) ?? `Pesquisa ${item.researchId}`}
@@ -173,11 +180,12 @@ export default function Sincronizacao() {
                     onRetry={() => void syncQueue.run({ trigger: 'manual', only: item.clientId })}
                     retryDisabled={!canSend}
                 />
+                </View>
             )}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListEmptyComponent={
                 <View style={styles.emptyState}>
-                    <CloudUpload size={48} color="#d4d4d8" />
+                    <View style={styles.emptyIcon}><CloudUpload size={26} color={Brand.greenDeep} strokeWidth={1.7} /></View>
                     <Text style={styles.emptyText}>
                         {drafts > 0
                             ? 'As coletas finalizadas aparecem aqui até serem enviadas.'
@@ -190,59 +198,66 @@ export default function Sincronizacao() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fafafa' },
-    content: { paddingHorizontal: 20, paddingBottom: 24 },
-    header: { paddingTop: 20, paddingBottom: 12 },
-    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#18181b' },
-    headerSubtitle: { fontSize: 15, color: '#71717a', marginTop: 4 },
+    container: { flex: 1, backgroundColor: Brand.paper },
+    content: { paddingBottom: TAB_BAR_CLEARANCE },
+    headerBody: { padding: 18, paddingBottom: 6 },
     sendButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 10,
-        minHeight: 48,
-        borderRadius: 12,
-        backgroundColor: '#447762',
-        paddingHorizontal: 16,
+        height: 50,
+        borderRadius: 999,
+        backgroundColor: Brand.ink,
+        paddingHorizontal: 20,
     },
-    sendButtonDisabled: { backgroundColor: '#a1b8ae' },
-    sendButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+    sendButtonDisabled: { backgroundColor: '#9aa8a0' },
+    sendButtonText: { fontSize: 15, fontWeight: '500', color: '#fff' },
     progressTrack: {
         height: 6,
-        borderRadius: 3,
-        backgroundColor: '#e4e4e7',
+        borderRadius: 99,
+        backgroundColor: Brand.trackLight,
         overflow: 'hidden',
-        marginTop: 10,
+        marginTop: 12,
     },
-    progressBar: { height: 6, borderRadius: 3, backgroundColor: '#447762' },
+    progressBar: { height: 6, borderRadius: 99, backgroundColor: Brand.green },
     note: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginTop: 10,
-        padding: 12,
-        borderRadius: 8,
-        backgroundColor: '#fef3c7',
+        marginTop: 12,
+        padding: 14,
+        borderRadius: 18,
+        backgroundColor: Brand.warnLight,
     },
-    noteTextWarning: { flex: 1, fontSize: 13, color: '#92400e' },
-    resultNote: { fontSize: 13, color: '#52525b', marginTop: 10 },
-    resultNoteWarning: { color: '#92400e' },
+    noteTextWarning: { flex: 1, fontSize: 13, lineHeight: 18, color: Brand.warn },
+    resultNote: { fontSize: 13, color: Brand.muted, marginTop: 12 },
+    resultNoteWarning: { color: Brand.clayInk },
     storageCard: {
-        backgroundColor: '#fff',
+        backgroundColor: Brand.card,
         borderWidth: 1,
-        borderColor: '#e4e4e7',
-        borderRadius: 12,
-        padding: 16,
+        borderColor: Brand.line,
+        borderRadius: 24,
+        padding: 18,
         gap: 4,
         marginTop: 16,
-        marginBottom: 16,
+        marginBottom: 12,
     },
-    storageTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    storageLabel: { flex: 1, fontSize: 14, color: '#52525b' },
-    storageTotal: { fontSize: 28, fontWeight: 'bold', color: '#18181b' },
-    storageDetail: { fontSize: 13, color: '#71717a' },
-    storageNote: { fontSize: 12, color: '#a1a1aa', marginTop: 2 },
+    storageTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    storageLabel: { flex: 1, fontSize: 13.5, color: Brand.muted },
+    storageTotal: { fontSize: 34, fontWeight: '300', letterSpacing: -1.5, color: Brand.ink, marginTop: 6 },
+    storageDetail: { fontSize: 13, color: Brand.muted },
+    storageNote: { fontSize: 12, color: Brand.muted, marginTop: 2 },
+    row: { paddingHorizontal: 18 },
     separator: { height: 12 },
-    emptyState: { justifyContent: 'center', alignItems: 'center', padding: 40, gap: 16 },
-    emptyText: { fontSize: 14, color: '#71717a', textAlign: 'center' },
+    emptyState: { justifyContent: 'center', alignItems: 'center', padding: 40, gap: 12 },
+    emptyIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 18,
+        backgroundColor: Brand.chipLight,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyText: { fontSize: 14, color: Brand.muted, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
 });

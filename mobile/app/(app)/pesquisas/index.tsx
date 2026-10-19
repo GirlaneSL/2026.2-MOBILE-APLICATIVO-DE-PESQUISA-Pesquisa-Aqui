@@ -1,5 +1,9 @@
 import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, RefreshControl, Alert } from 'react-native';
+import { FileText } from 'lucide-react-native';
+import ScreenHeader from '@/components/ScreenHeader';
+import Chip from '@/components/Chip';
+import { Brand, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { router, useFocusEffect } from 'expo-router';
 import PesquisaCard from './_components/PesquisaCard';
 import DraftPickerModal from './_components/DraftPickerModal';
@@ -93,19 +97,25 @@ export default function Pesquisas() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Minhas Pesquisas</Text>
-                <Text style={styles.headerSubtitle}>
-                    {isOnline ? 'Baixe as pesquisas para coletar respostas no campo' : 'Offline — mostrando o que já está salvo no aparelho'}
-                </Text>
-            </View>
+            <ScreenHeader
+                title="Minhas pesquisas"
+                subtitle={isOnline ? 'Baixe uma pesquisa para coletar respostas no campo.' : 'Sem internet. Mostrando o que já está salvo no aparelho.'}
+                right={<Chip label={isOnline ? 'Online' : 'Offline'} tone={isOnline ? 'dark' : 'clay'} />}
+                seed={2.2}
+            />
 
             {pesquisas.length === 0 ? (
                 <View style={styles.emptyState}>
+                    <View style={styles.emptyIcon}>
+                        <FileText size={26} color={Brand.greenDeep} strokeWidth={1.7} />
+                    </View>
+                    <Text style={styles.emptyTitle}>
+                        {isOnline ? 'Nenhuma pesquisa atribuída' : 'Nenhuma pesquisa no aparelho'}
+                    </Text>
                     <Text style={styles.emptyText}>
                         {isOnline
-                            ? 'Você não possui pesquisas atribuídas no momento.'
-                            : 'Nenhuma pesquisa foi baixada neste aparelho ainda.'}
+                            ? 'Quando o administrador vincular uma pesquisa a você, ela aparece aqui.'
+                            : 'Conecte-se à internet para baixar suas pesquisas.'}
                     </Text>
                 </View>
             ) : (
@@ -130,7 +140,7 @@ export default function Pesquisas() {
                     )}
                     contentContainerStyle={styles.listContainer}
                     showsVerticalScrollIndicator={false}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Brand.green} />}
                 />
             )}
 
@@ -149,11 +159,18 @@ export default function Pesquisas() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fafafa' },
-    header: { padding: 20, paddingBottom: 10 },
-    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#18181b' },
-    headerSubtitle: { fontSize: 14, color: '#71717a', marginTop: 4 },
-    listContainer: { padding: 20, gap: 16 },
-    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-    emptyText: { fontSize: 14, color: '#71717a', textAlign: 'center' },
+    container: { flex: 1, backgroundColor: Brand.paper },
+    listContainer: { padding: 18, paddingBottom: TAB_BAR_CLEARANCE, gap: 14 },
+    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, gap: 8 },
+    emptyIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 18,
+        backgroundColor: Brand.chipLight,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 6,
+    },
+    emptyTitle: { fontSize: 17, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink },
+    emptyText: { fontSize: 14, color: Brand.muted, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
 });

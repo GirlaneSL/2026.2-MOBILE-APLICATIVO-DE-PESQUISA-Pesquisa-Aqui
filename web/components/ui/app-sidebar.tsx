@@ -1,161 +1,117 @@
 "use client"
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, } from "@/components/ui/sidebar"
-import { Bolt, Building2, Home, LogIn, LogOut, NotebookPen, User2, UsersRound } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+
+import { BrandMark } from "@/components/ui/contour"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { logout } from "@/lib/auth"
+import { Building2, ChevronLeft, LayoutDashboard, LogIn, LogOut, NotebookPen, UsersRound, type LucideIcon } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useState } from "react"
+
+type NavItem = {
+    href: string
+    label: string
+    icon: LucideIcon
+    profiles: ReadonlyArray<"SUPERADMINISTRATOR" | "ADMINISTRATOR" | "RESEARCHER">
+}
+
+const NAV_ITEMS: NavItem[] = [
+    { href: "/", label: "Início", icon: LayoutDashboard, profiles: ["SUPERADMINISTRATOR", "ADMINISTRATOR", "RESEARCHER"] },
+    { href: "/empresas", label: "Empresas", icon: Building2, profiles: ["SUPERADMINISTRATOR"] },
+    { href: "/empresa", label: "Empresa", icon: Building2, profiles: ["ADMINISTRATOR"] },
+    { href: "/pesquisadores", label: "Pesquisadores", icon: UsersRound, profiles: ["ADMINISTRATOR"] },
+    { href: "/pesquisas", label: "Pesquisas", icon: NotebookPen, profiles: ["ADMINISTRATOR", "RESEARCHER"] },
+]
+
+const PROFILE_LABELS: Record<string, string> = {
+    SUPERADMINISTRATOR: "Superadministrador",
+    ADMINISTRATOR: "Administrador",
+    RESEARCHER: "Pesquisador",
+}
+
+const initialsOf = (name?: string) =>
+    (name ?? "")
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join("") || "?"
 
 export function AppSidebar() {
-    const pathname = usePathname();
-    const { user } = useCurrentUser();
+    const pathname = usePathname()
+    const { user } = useCurrentUser()
+    const [collapsed, setCollapsed] = useState(false)
+
+    const items = NAV_ITEMS.filter((item) => user && item.profiles.includes(user.profile))
+
+    const isActive = (href: string) =>
+        href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
 
     const logoutUser = async () => {
         try {
             await logout()
         } catch (error) {
-            console.log(error);
+            console.log(error)
         }
     }
 
     return (
-        <Sidebar collapsible="icon">
-            <SidebarHeader>
-                <div className="flex gap-1 items-center group-data-[collapsible=icon]:justify-center">
-                    <img width={25} src="/logo.svg" alt="" />
-                    <span className="group-data-[collapsible=icon]:hidden truncate">Pesquisa Aqui</span>
+        <aside className={`pa-side ${collapsed ? "c" : ""}`}>
+            <div className="pa-side-in">
+                <div className="pa-side-head">
+                    <Link href="/" className="pa-brand" aria-label="Pesquisa Aqui, ir para o início">
+                        <BrandMark />
+                        <span>Pesquisa Aqui</span>
+                    </Link>
+                    <button
+                        type="button"
+                        className="pa-collapse"
+                        onClick={() => setCollapsed((value) => !value)}
+                        aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+                        aria-expanded={!collapsed}
+                    >
+                        <ChevronLeft />
+                    </button>
                 </div>
-            </SidebarHeader>
-            {/* <hr /> */}
-            <SidebarContent >
-                <SidebarGroup>
-                    <SidebarGroupLabel>Navegação</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu className="flex flex-col gap-1">
-                            <SidebarMenuItem>
-                                <Link href="/" >
-                                    <SidebarMenuButton
-                                        style={pathname === "/" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
-                                        className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
-                                        size={"lg"} variant={"outline"}
-                                        isActive={pathname === "/"}   >
-                                        <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
-                                            <div className="flex gap-2 items-center">
-                                                <Home />
-                                                <span className="group-data-[collapsible=icon]:hidden">Home</span>
-                                            </div>
-                                            <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
-                                        </div>
-                                    </SidebarMenuButton>
-                                </Link>
-                            </SidebarMenuItem>
-                            {user?.profile === 'SUPERADMINISTRATOR' && (
-                                <SidebarMenuItem>
-                                    <Link href="/empresas">
-                                        <SidebarMenuButton style={pathname === "/empresas" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
-                                            size={"lg"}
-                                            variant={"outline"}
-                                            className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/empresas" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
-                                            isActive={pathname === "/empresas"}>
-                                            <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
-                                                <div className="flex gap-2 items-center">
-                                                    <Building2 />
-                                                    <span className="group-data-[collapsible=icon]:hidden">Empresas</span>
-                                                </div>
-                                                <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
-                                            </div>
-                                        </SidebarMenuButton>
-                                    </Link>
-                                </SidebarMenuItem>
-                            )}
-                            {user?.profile === 'ADMINISTRATOR' && (
-                                <SidebarMenuItem>
-                                    <Link href="/empresa">
-                                        <SidebarMenuButton style={pathname === "/empresa" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
-                                            size={"lg"}
-                                            variant={"outline"}
-                                            className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/empresa" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
-                                            isActive={pathname === "/empresa"}>
-                                            <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
-                                                <div className="flex gap-2 items-center">
-                                                    <Building2 />
-                                                    <span className="group-data-[collapsible=icon]:hidden">Empresa</span>
-                                                </div>
-                                                <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
-                                            </div>
-                                        </SidebarMenuButton>
-                                    </Link>
-                                </SidebarMenuItem>
-                            )}
-                            {user?.profile === 'ADMINISTRATOR' && (
-                                <SidebarMenuItem>
-                                    <Link href="/pesquisadores">
-                                        <SidebarMenuButton style={pathname === "/pesquisadores" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
-                                            size={"lg"}
-                                            variant={"outline"}
-                                            isActive={pathname === "/pesquisadores"}
-                                            className={` flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisadores" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}>
-                                            <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
-                                                <div className="flex gap-2 items-center">
-                                                    <UsersRound />
-                                                    <span className="group-data-[collapsible=icon]:hidden">Pesquisadores</span>
-                                                </div>
-                                                <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
-                                            </div>
-                                        </SidebarMenuButton>
-                                    </Link>
-                                </SidebarMenuItem>
-                            )}
-                            {(user?.profile === 'ADMINISTRATOR' || user?.profile === 'RESEARCHER') && (
-                                <SidebarMenuItem>
-                                    <Link href="/pesquisas">
-                                        <SidebarMenuButton style={pathname === "/pesquisas" ? { backgroundImage: "linear-gradient(to right, rgba(23, 52, 58, 0.9), rgba(23, 52, 58, 0.2)), url('/background.jpeg')", backgroundSize: '850%' } : undefined}
-                                            className={`flex gap-2 group-data-[collapsible=icon]:justify-center ${pathname === "/pesquisas" ? "bg-[#979797]! text-white! hover:bg-[#727272]! border-transparent pl-3" : ""}`}
-                                            size={"lg"} variant={"outline"}
-                                            isActive={pathname === "/pesquisas"}>
-                                            <div className="flex gap-2 items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
-                                                <div className="flex gap-2 items-center">
-                                                    <NotebookPen />
-                                                    <span className="group-data-[collapsible=icon]:hidden">Pesquisas</span>
-                                                </div>
-                                                <Bolt size={13} color="white" className="opacity-15 group-data-[collapsible=icon]:hidden"></Bolt>
-                                            </div>
-                                        </SidebarMenuButton>
-                                    </Link>
-                                </SidebarMenuItem>
-                            )}
 
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-            </SidebarContent>
-            <hr />
-            <SidebarFooter>
-                <SidebarMenu>
-                    {user ?
-                        (
-                            <SidebarMenuItem>
-                                <Link href={"/perfil"}>
-                                    <SidebarMenuButton>
-                                        <User2 /> {user?.name} {user?.profile}
-                                    </SidebarMenuButton>
-                                </Link>
-                                <Link onClick={(e) => { e.preventDefault(); logoutUser(); }} href={"#"}>
-                                    <SidebarMenuButton>
-                                        <LogOut /> Sair
-                                    </SidebarMenuButton>
-                                </Link>
-                            </SidebarMenuItem>
-                        ) :
-                        <SidebarMenuItem>
-                            <Link href={"login"}>
-                                <SidebarMenuButton>
-                                    <LogIn /> Login
-                                </SidebarMenuButton>
+                <div className="pa-sgroup">
+                    <p>Navegação</p>
+                    <nav className="pa-snav" aria-label="Principal">
+                        {items.map(({ href, label, icon: Icon }) => (
+                            <Link
+                                key={href}
+                                href={href}
+                                className={isActive(href) ? "on" : undefined}
+                                aria-current={isActive(href) ? "page" : undefined}
+                                title={collapsed ? label : undefined}
+                            >
+                                <span className="t"><Icon strokeWidth={1.7} /></span>
+                                <span className="l">{label}</span>
                             </Link>
-                        </SidebarMenuItem>}
-                </SidebarMenu>
-            </SidebarFooter>
-        </Sidebar>
+                        ))}
+                    </nav>
+                </div>
+
+                {user ? (
+                    <div className="pa-suser">
+                        <div className="avatar-pa avatar">{initialsOf(user.name)}</div>
+                        <div className="who">
+                            <b>{user.name}</b>
+                            <span>{PROFILE_LABELS[user.profile] ?? user.profile}</span>
+                        </div>
+                        <button type="button" className="out" onClick={logoutUser} aria-label="Sair da conta">
+                            <LogOut strokeWidth={1.7} />
+                        </button>
+                    </div>
+                ) : (
+                    <div className="pa-snav" style={{ marginTop: "auto" }}>
+                        <Link href="/login">
+                            <span className="t"><LogIn strokeWidth={1.7} /></span>
+                            <span className="l">Entrar</span>
+                        </Link>
+                    </div>
+                )}
+            </div>
+        </aside>
     )
 }

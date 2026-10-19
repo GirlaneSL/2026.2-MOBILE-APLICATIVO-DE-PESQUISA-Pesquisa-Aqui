@@ -1,7 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CheckCircle2, Clock, AlertCircle, Bolt, RotateCw } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { RotateCw } from 'lucide-react-native';
+import Chip from '@/components/Chip';
+import { Brand } from '@/constants/brand';
 
 export type SyncCardStatus = 'pendente' | 'aguardando' | 'enviando' | 'falha' | 'sincronizado';
 
@@ -27,61 +28,35 @@ export default function SyncCard({
     onRetry,
     retryDisabled,
 }: SyncCardProps) {
-    const renderStatusBadge = () => {
+    const renderStatus = () => {
         switch (status) {
             case 'sincronizado':
-                return (
-                    <View style={[styles.badge, styles.badgeSuccess]}>
-                        <CheckCircle2 size={14} color="#16a34a" />
-                        <Text style={[styles.badgeText, styles.badgeTextSuccess]}>Enviado</Text>
-                    </View>
-                );
+                return <Chip label="Enviada" tone="light" />;
             case 'enviando':
                 return (
-                    <View style={[styles.badge, styles.badgeSending]}>
-                        <ActivityIndicator size="small" color="#447762" />
-                        <Text style={[styles.badgeText, styles.badgeTextSending]}>Enviando</Text>
+                    <View style={styles.sending}>
+                        <ActivityIndicator size="small" color={Brand.green} />
+                        <Text style={styles.sendingText}>Enviando</Text>
                     </View>
                 );
             case 'aguardando':
-                return (
-                    <View style={[styles.badge, styles.badgeWaiting]}>
-                        <Clock size={14} color="#52525b" />
-                        <Text style={[styles.badgeText, styles.badgeTextWaiting]}>Na vez</Text>
-                    </View>
-                );
+                return <Chip label="Na fila" tone="gray" />;
             case 'pendente':
-                return (
-                    <View style={[styles.badge, styles.badgeWarning]}>
-                        <Clock size={14} color="#B66D56" />
-                        <Text style={[styles.badgeText, styles.badgeTextWarning]}>Pendente</Text>
-                    </View>
-                );
+                return <Chip label="Pendente" tone="clay" />;
             default:
-                return (
-                    <View style={[styles.badge, styles.badgeError]}>
-                        <AlertCircle size={14} color="#dc2626" />
-                        <Text style={[styles.badgeText, styles.badgeTextError]}>Falha</Text>
-                    </View>
-                );
+                return <Chip label="Falhou" tone="clay" />;
         }
     };
 
     return (
-        <LinearGradient
-            colors={['#B66D561A', '#FFFFFF1A', '#124B521A']}
-            locations={[0, 0.5, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.card}
-        >
+        <View style={[styles.card, status === 'falha' && styles.cardFailed]}>
             <View style={styles.cardContent}>
                 <View style={styles.cardInfo}>
                     <Text style={styles.itemTitle}>{identificador}</Text>
                     <Text style={styles.itemSubtitle}>{pesquisa}</Text>
-                    <Text style={styles.itemDate}>Coletado em: {data}</Text>
+                    <Text style={styles.itemDate}>Coletada em {data}</Text>
                 </View>
-                {renderStatusBadge()}
+                {renderStatus()}
             </View>
 
             {status === 'falha' ? (
@@ -101,102 +76,61 @@ export default function SyncCard({
                             accessibilityLabel={`Tentar enviar de novo a ${identificador}`}
                             accessibilityState={{ disabled: !!retryDisabled }}
                         >
-                            <RotateCw size={14} color="#447762" />
+                            <RotateCw size={14} color={Brand.greenDeep} strokeWidth={1.8} />
                             <Text style={styles.retryText}>Tentar de novo</Text>
                         </TouchableOpacity>
                     ) : null}
                 </View>
             ) : null}
-
-            <Bolt size={10} style={styles.bolt1} />
-            <Bolt size={10} style={styles.bolt2} />
-            <Bolt size={10} style={styles.bolt3} />
-            <Bolt size={10} style={styles.bolt4} />
-        </LinearGradient>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     card: {
-        borderRadius: 8,
-        padding: 13,
+        borderRadius: 22,
+        padding: 16,
         borderWidth: 1,
-        borderColor: '#00000015',
-        position: 'relative',
-        backgroundColor: '#fff',
+        borderColor: Brand.line,
+        backgroundColor: Brand.card,
     },
-    cardContent: {
+    cardFailed: { borderColor: '#e9c5b9' },
+    cardContent: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+    cardInfo: { flex: 1, gap: 2 },
+    itemTitle: { fontSize: 16, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink },
+    itemSubtitle: { fontSize: 14, color: Brand.greenDeep, fontWeight: '500' },
+    itemDate: { fontSize: 12.5, color: Brand.muted, marginTop: 2 },
+    sending: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        zIndex: 1,
+        gap: 6,
+        height: 26,
+        paddingHorizontal: 11,
+        borderRadius: 999,
+        backgroundColor: Brand.chipLight,
     },
-    cardInfo: {
-        flex: 1,
-        marginRight: 12,
-    },
-    itemTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#18181b',
-    },
-    itemSubtitle: {
-        fontSize: 14,
-        color: '#447762',
-        fontWeight: '500',
-        marginTop: 2,
-    },
-    itemDate: {
-        fontSize: 12,
-        color: '#a1a1aa',
-        marginTop: 4,
-    },
-    badge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        gap: 4,
-    },
-    badgeSuccess: { backgroundColor: '#dcfce7' },
-    badgeSending: { backgroundColor: '#e3efe9' },
-    badgeWaiting: { backgroundColor: '#f4f4f5' },
-    badgeWarning: { backgroundColor: '#ffedd5' },
-    badgeError: { backgroundColor: '#fee2e2' },
-    badgeText: { fontSize: 12, fontWeight: '600' },
-    badgeTextSuccess: { color: '#16a34a' },
-    badgeTextSending: { color: '#447762' },
-    badgeTextWaiting: { color: '#52525b' },
-    badgeTextWarning: { color: '#B66D56' },
-    badgeTextError: { color: '#dc2626' },
+    sendingText: { fontSize: 12, fontWeight: '500', color: Brand.greenDeep },
     failure: {
-        marginTop: 10,
-        paddingTop: 10,
+        marginTop: 12,
+        paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#fecaca',
+        borderTopColor: Brand.line,
         gap: 4,
-        zIndex: 1,
     },
-    failureReason: { fontSize: 13, color: '#b91c1c', lineHeight: 18 },
-    failureAttempts: { fontSize: 12, color: '#a1a1aa' },
+    failureReason: { fontSize: 13, color: Brand.clayInk, lineHeight: 18 },
+    failureAttempts: { fontSize: 12, color: Brand.muted },
     retryButton: {
         flexDirection: 'row',
         alignItems: 'center',
         alignSelf: 'flex-start',
         gap: 6,
-        marginTop: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
+        marginTop: 8,
+        paddingHorizontal: 16,
+        height: 38,
+        borderRadius: 999,
         borderWidth: 1,
-        borderColor: '#447762',
-        backgroundColor: '#fff',
+        borderColor: '#cdd5d0',
     },
     retryButtonDisabled: { opacity: 0.45 },
-    retryText: { fontSize: 13, fontWeight: '600', color: '#447762' },
-    bolt1: { position: 'absolute', top: 4, left: 4, opacity: 0.4 },
-    bolt2: { position: 'absolute', top: 4, right: 4, opacity: 0.4 },
-    bolt3: { position: 'absolute', bottom: 4, left: 4, opacity: 0.4 },
-    bolt4: { position: 'absolute', bottom: 4, right: 4, opacity: 0.4 },
+    retryText: { fontSize: 13, fontWeight: '500', color: Brand.ink },
 });

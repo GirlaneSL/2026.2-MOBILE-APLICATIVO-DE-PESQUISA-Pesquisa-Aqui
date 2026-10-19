@@ -79,7 +79,7 @@ export default function FormEditarDadosPesquisa({ research, onSuccess }: FormEdi
 
     return (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {submitError && <p className="text-sm text-red-500">{submitError}</p>}
+            {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 
             <div>
                 <label className="text-sm font-medium" htmlFor={`title-${research.id}`}>
@@ -156,7 +156,7 @@ export default function FormEditarDadosPesquisa({ research, onSuccess }: FormEdi
             </div>
 
             {!datesValid && (
-                <p className="text-red-500 text-xs">
+                <p className="text-destructive text-xs">
                     A data de término deve ser após a data de início.
                 </p>
             )}
@@ -194,7 +194,7 @@ export default function FormEditarDadosPesquisa({ research, onSuccess }: FormEdi
             </div>
 
             <div className="flex justify-end pt-2">
-                <Button type="submit" className="verde" disabled={isLoading || !datesValid}>
+                <Button type="submit" disabled={isLoading || !datesValid}>
                     {isLoading ? (
                         <div className="flex items-center gap-2">
                             <Spinner />

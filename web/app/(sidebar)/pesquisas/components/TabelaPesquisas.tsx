@@ -199,21 +199,21 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
         title: (
             <Link
                 href={`/pesquisas/${item.id}`}
-                className="font-medium hover:underline hover:text-[#447762] transition-colors block"
+                className="font-medium hover:underline hover:text-green-deep transition-colors block"
             >
                 {item.title}
             </Link>
         ),
         createdAt: item.createdAt ? new Date(item.createdAt).toLocaleDateString('pt-BR') : '-',
         status: (
-            <Badge variant={item.status === 'IN_FIELD' || !item.status ? 'default' : 'outline'}>
-                {item.status === 'IN_FIELD' ? 'EM CAMPO'
+            <Badge variant={item.status === 'IN_FIELD' || !item.status ? 'default' : item.status === 'CLOSED' ? 'secondary' : 'outline'}>
+                {item.status === 'IN_FIELD' ? 'Em campo'
                     :
-                    item.status === 'DRAFT' ? 'RASCUNHO'
+                    item.status === 'DRAFT' ? 'Rascunho'
                         :
-                        item.status === 'PUBLISHED' ? 'PUBLICADA'
+                        item.status === 'PUBLISHED' ? 'Publicada'
                             :
-                            item.status || 'ENCERRADA'}
+                            'Encerrada'}
             </Badge>
 
         ),
@@ -264,13 +264,13 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between border-b pb-3">
-                <h2>
-                    Quantidade <Badge variant="outline">{researches.length}</Badge>
+                <h2 className="flex items-center gap-2 text-sm font-medium">
+                    Pesquisas cadastradas <Badge variant="outline">{researches.length}</Badge>
                 </h2>
             </div>
 
-            {error && <p className="text-sm text-red-500">Erro: {error}</p>}
-            {actionError && <p className="text-sm text-red-500">{actionError}</p>}
+            {error && <p className="text-sm text-destructive">Erro: {error}</p>}
+            {actionError && <p className="text-sm text-destructive">{actionError}</p>}
 
             {loading ? (
                 <p className="text-sm text-muted-foreground flex gap-2"><Spinner></Spinner>Carregando pesquisas...</p>

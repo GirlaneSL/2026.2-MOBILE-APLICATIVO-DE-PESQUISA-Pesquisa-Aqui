@@ -9,7 +9,6 @@ import {
 import {
     Button
 } from "@/components/ui/button"
-import { Bolt } from "lucide-react";
 
 type DialogLayoutProps = {
     triggerButtonVariant?: "link" | "default" | "outline" | "secondary" | "ghost" | "destructive"
@@ -18,21 +17,20 @@ type DialogLayoutProps = {
     dialogTitle?: React.ReactNode;
     dialogDescription?: React.ReactNode;
     dialogContentClassName?: React.ReactNode;
+    triggerButtonSize?: "default" | "sm" | "lg" | "xs";
 };
 
-export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dialogTitle, dialogDescription, dialogContent, dialogContentClassName }: DialogLayoutProps) {
+export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dialogTitle, dialogDescription, dialogContent, dialogContentClassName, triggerButtonSize }: DialogLayoutProps) {
     return (
         <Dialog>
-            <DialogTrigger >
-                <Button className="verde" variant={triggerButtonVariant}>
-                    {dialogTrigger}
-                </Button>
+            <DialogTrigger render={<Button variant={triggerButtonVariant} size={triggerButtonSize} />}>
+                {dialogTrigger}
             </DialogTrigger>
 
-            <DialogContent className="w-[95vw] max-w-4xl md:min-w-[50vw] max-h-[90vh] bg-linear-to-br from-[#B66D56]/10 via-white/10 to-[#124B52]/10 p-5 flex flex-col overflow-hidden">
+            <DialogContent className="w-[95vw] max-w-4xl md:min-w-[50vw] max-h-[90vh] p-6 flex flex-col overflow-hidden">
 
                 <DialogHeader className="shrink-0">
-                    <DialogTitle className="text-2xl">{dialogTitle}</DialogTitle>
+                    <DialogTitle className="text-2xl tracking-tight">{dialogTitle}</DialogTitle>
                     <DialogDescription>
                         {dialogDescription}
                     </DialogDescription>
@@ -41,11 +39,6 @@ export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dial
                 <div className={`${dialogContentClassName} max-h-200 flex-1 overflow-y-auto pr-2 custom-scrollbar`}>
                     {dialogContent}
                 </div>
-
-                <Bolt size={13} className="absolute top-2 right-2 opacity-15" />
-                <Bolt size={13} className="absolute top-2 left-2 opacity-15" />
-                <Bolt size={13} className="absolute bottom-2 right-2 opacity-15" />
-                <Bolt size={13} className="absolute bottom-2 left-2 opacity-15" />
             </DialogContent>
         </Dialog>
     )

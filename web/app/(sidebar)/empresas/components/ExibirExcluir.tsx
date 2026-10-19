@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { deleteUser, getUsersAdmin } from '@/lib/user';
-import { Bolt } from 'lucide-react';
 
 interface Company {
     id: string;
@@ -205,15 +204,13 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
 
     return (
         <Tabs defaultValue="companies" className="w-full">
-            <TabsList className="grid grid-cols-2 gap-2 w-fit sticky top-0 z-10 px-5 verde-marrom shadow border-t">
-                <Bolt size={13} className="absolute left-1 top-1/2 -translate-y-1/2 opacity-15" />
-                <Bolt size={13} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-15" />
+            <TabsList className="grid grid-cols-2 gap-2 w-fit sticky top-0 z-10">
                 <TabsTrigger value="companies">Empresas <Badge variant={"outline"}>{companies.length}</Badge></TabsTrigger>
                 <TabsTrigger value="admins">Administradores <Badge variant={"outline"}>{admins.length}</Badge></TabsTrigger>
             </TabsList>
 
-            {error && <p className="text-sm text-red-500">Erro: {error}</p>}
-            {actionError && <p className="text-sm text-red-500">{actionError}</p>}
+            {error && <p className="text-sm text-destructive">Erro: {error}</p>}
+            {actionError && <p className="text-sm text-destructive">{actionError}</p>}
 
             <TabsContent value="companies" className="mt-0">
                 {loadingCompanies ? (

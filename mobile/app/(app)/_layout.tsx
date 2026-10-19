@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/context/AuthContext';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { useAutoSync } from '@/hooks/useSyncQueue';
+import { Brand } from '@/constants/brand';
 
 export default function TabLayout() {
     // Envia a fila de coletas sozinho quando há rede, em qualquer tela do app
@@ -12,10 +13,13 @@ export default function TabLayout() {
     return (
         <AuthProvider>
             <SafeAreaProvider>
-                {/* posso mudar a cor da barra que fica na camera do celular */}
-                <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+                {/* cor da área sob a câmera do celular */}
+                <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: Brand.forest }}>
                     <OfflineBanner />
-                    <Tabs tabBar={(props: any) => <CustomTabBar {...props} />}>
+                    <Tabs
+                        tabBar={(props: any) => <CustomTabBar {...props} />}
+                        screenOptions={{ sceneStyle: { backgroundColor: Brand.paper } }}
+                    >
                         <Tabs.Screen
                             name="(home)/index"
                             options={{ title: 'Home', headerShown: false }}

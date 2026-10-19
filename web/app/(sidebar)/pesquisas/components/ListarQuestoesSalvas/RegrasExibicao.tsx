@@ -86,7 +86,7 @@ export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx:
     return (
         <div className="rounded-lg border bg-background p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
-                <h4 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <h4 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
                     <GitBranch className="size-3.5" /> Regras de exibição
                 </h4>
                 {!adding && (

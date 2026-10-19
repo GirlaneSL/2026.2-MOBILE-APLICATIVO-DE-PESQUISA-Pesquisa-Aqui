@@ -1,9 +1,11 @@
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Bolt, Building2, LogOut, Smartphone, Target, UserCircle2 } from 'lucide-react-native';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MenuCard from './_components/MenuCard';
+import { Building2, LogOut, Smartphone } from 'lucide-react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Chip from '@/components/Chip';
+import Contour from '@/components/Contour';
+import { Brand, Radius, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { useAuth } from '@/context/AuthContext';
+import MenuCard from './_components/MenuCard';
 
 const PROFILE_LABELS: Record<string, string> = {
     SUPERADMINISTRATOR: 'Superadministrador',
@@ -11,19 +13,27 @@ const PROFILE_LABELS: Record<string, string> = {
     RESEARCHER: 'Pesquisador',
 };
 
+const initialsOf = (name?: string) =>
+    (name ?? '')
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join('') || '?';
+
 export default function Usuario() {
     const router = useRouter();
     const { user, logout } = useAuth();
 
     const handleLogout = () => {
         Alert.alert(
-            "Sair da conta",
-            "Ao sair, os dados salvos neste aparelho serão apagados. Deseja continuar?",
+            'Sair da conta',
+            'Ao sair, os dados salvos neste aparelho serão apagados. Deseja continuar?',
             [
-                { text: "Cancelar", style: "cancel" },
+                { text: 'Cancelar', style: 'cancel' },
                 {
-                    text: "Sair",
-                    style: "destructive",
+                    text: 'Sair',
+                    style: 'destructive',
                     onPress: async () => {
                         await logout();
                         router.replace('/login');
@@ -34,93 +44,85 @@ export default function Usuario() {
     };
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* Cabeçalho do Perfil */}
-            <View style={styles.profileHeader}>
-                <View style={styles.avatarContainer}>
-                    <UserCircle2 size={80} color="#124B52" strokeWidth={1.5} />
+        <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+        >
+            <View style={styles.hero}>
+                <Contour seed={3.6} rings={10} cx={0.85} cy={0.35} size={1} opacity={0.8} color={Brand.green} />
+                <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{initialsOf(user?.name)}</Text>
                 </View>
                 <Text style={styles.name}>{user?.name ?? 'Usuário'}</Text>
-                <Text style={styles.email}>{user?.sub ?? ''}</Text>
-
-                {user?.companyName && (
-                    <View style={styles.companyBadge}>
-                        <Building2 size={16} color="#447762" />
-                        <Text style={styles.companyText}>{user.companyName}</Text>
-                    </View>
-                )}
-            </View>
-
-            {/* Perfil de acesso */}
-            <LinearGradient
-                colors={['#B66D561A', '#FFFFFF1A', '#124B521A']}
-                locations={[0, 0.5, 1]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.statsContainer}
-            >
-                <View style={styles.statBox}>
-                    <Text style={styles.statNumber}>
-                        {user?.profile ? PROFILE_LABELS[user.profile] ?? user.profile : '-'}
-                    </Text>
-                    <Text style={styles.statLabel}>Perfil de Acesso</Text>
+                {user?.sub ? <Text style={styles.login}>{user.sub}</Text> : null}
+                <View style={styles.chips}>
+                    <Chip label={user?.profile ? PROFILE_LABELS[user.profile] ?? user.profile : 'Sem perfil'} tone="dark" />
                 </View>
-
-                <Bolt size={10} style={styles.bolt1} />
-                <Bolt size={10} style={styles.bolt2} />
-                <Bolt size={10} style={styles.bolt3} />
-                <Bolt size={10} style={styles.bolt4} />
-            </LinearGradient>
-
-            {/* Menu de Opções */}
-            <View style={styles.menuContainer}>
-                <MenuCard
-                    label="Sobre o Aplicativo (v1.0.2)"
-                    icon={<Smartphone size={22} color="#447762" />}
-                />
             </View>
 
-            {/* Botão de Sair */}
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <LogOut size={22} color="#dc2626" />
-                <Text style={styles.logoutText}>Sair da Conta</Text>
-            </TouchableOpacity>
+            <View style={styles.body}>
+                {user?.companyName ? (
+                    <MenuCard
+                        label={user.companyName}
+                        icon={<Building2 size={18} color={Brand.greenDeep} strokeWidth={1.8} />}
+                    />
+                ) : null}
+                <MenuCard
+                    label="Sobre o aplicativo (v1.0.2)"
+                    icon={<Smartphone size={18} color={Brand.greenDeep} strokeWidth={1.8} />}
+                />
+
+                <Pressable
+                    style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
+                    onPress={handleLogout}
+                    accessibilityRole="button"
+                    accessibilityLabel="Sair da conta"
+                >
+                    <LogOut size={18} color={Brand.clayInk} strokeWidth={1.8} />
+                    <Text style={styles.logoutText}>Sair da conta</Text>
+                </Pressable>
+            </View>
         </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fafafa' },
-    profileHeader: {
-        alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20,
-        backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e4e4e7',
+    container: { flex: 1, backgroundColor: Brand.paper },
+    content: { flexGrow: 1, paddingBottom: TAB_BAR_CLEARANCE },
+    hero: {
+        backgroundColor: Brand.forest,
+        paddingHorizontal: 22,
+        paddingTop: 22,
+        paddingBottom: 28,
+        borderBottomLeftRadius: Radius.hero,
+        borderBottomRightRadius: Radius.hero,
+        overflow: 'hidden',
     },
-    avatarContainer: { marginBottom: 16 },
-    name: { fontSize: 24, fontWeight: 'bold', color: '#447762', marginBottom: 4 },
-    email: { fontSize: 16, color: '#71717a', marginBottom: 16 },
-    companyBadge: {
-        flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4f4f5',
-        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, gap: 6,
+    avatar: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: Brand.mint,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
     },
-    companyText: { fontSize: 14, fontWeight: '600', color: '#447762' },
-    statsContainer: {
-        flexDirection: 'row', backgroundColor: '#fff', marginTop: 16,
-        marginHorizontal: 20, borderRadius: 12, paddingVertical: 16,
-        borderWidth: 1, borderColor: '#00000015', position: 'relative',
+    avatarText: { color: Brand.forest, fontWeight: '700', fontSize: 22 },
+    name: { fontSize: 28, fontWeight: '600', letterSpacing: -0.8, color: '#fff' },
+    login: { fontSize: 14, color: Brand.mutedDark, marginTop: 4 },
+    chips: { flexDirection: 'row', marginTop: 14 },
+    body: { padding: 18, gap: 12 },
+    logout: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        height: 50,
+        marginTop: 8,
+        borderRadius: 999,
+        backgroundColor: Brand.clayLight,
     },
-    statBox: { flex: 1, alignItems: 'center', zIndex: 1 },
-    statNumber: { fontSize: 22, fontWeight: 'bold', color: '#447762', marginBottom: 4 },
-    statLabel: { fontSize: 13, color: '#71717a', fontWeight: '500' },
-    menuContainer: { marginTop: 24, paddingHorizontal: 20 },
-    logoutButton: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        marginTop: 12, marginHorizontal: 20, marginBottom: 40, padding: 16,
-        borderRadius: 12, borderWidth: 1, borderColor: '#fca5a5',
-        backgroundColor: '#fef2f2', gap: 10,
-    },
-    logoutText: { fontSize: 16, fontWeight: 'bold', color: '#dc2626' },
-    bolt1: { position: 'absolute', top: 4, left: 4, opacity: 0.4 },
-    bolt2: { position: 'absolute', top: 4, right: 4, opacity: 0.4 },
-    bolt3: { position: 'absolute', bottom: 4, left: 4, opacity: 0.4 },
-    bolt4: { position: 'absolute', bottom: 4, right: 4, opacity: 0.4 },
+    logoutPressed: { backgroundColor: '#ecd0c5' },
+    logoutText: { fontSize: 15, fontWeight: '500', color: Brand.clayInk },
 });

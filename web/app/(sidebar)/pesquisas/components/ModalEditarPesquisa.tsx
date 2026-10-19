@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils';
 import FormEditarDadosPesquisa from './FormEditarDadosPesquisa';
 import ListarQuestoesSalvas from './ListarQuestoesSalvas/ListarQuestoesSalvas';
 import { Research } from './TabelaPesquisas';
-import { Bolt } from 'lucide-react';
 
 interface ModalEditarPesquisaProps {
     research: Research;
@@ -21,12 +20,10 @@ export default function ModalEditarPesquisa({ research, onSuccess, isMontagem = 
         <Tabs defaultValue="info" className="w-full ">
             <TabsList
                 className={cn(
-                    "relative grid w-fit gap-2 grid-cols-2 verde-marrom px-5 shadow border-t",
+                    "relative grid w-fit gap-2 grid-cols-2",
                     (isPesquisa !== isMontagem) && "grid-cols-1"
                 )}
             >
-                <Bolt size={13} className="absolute left-1 top-1/2 -translate-y-1/2 opacity-15" />
-                <Bolt size={13} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-15" />
                 {isPesquisa && (
                     <TabsTrigger value="info">
                         Dados da Pesquisa

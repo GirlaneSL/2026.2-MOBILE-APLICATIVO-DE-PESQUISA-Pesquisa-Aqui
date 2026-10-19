@@ -155,7 +155,7 @@ export default function CadastrarPesquisadorForm({ isSuperAdmin = false, onSucce
                 )}
 
                 <div className="flex justify-end">
-                    <Button disabled={isSubmitLoading} type="submit" className="w-fit verde">
+                    <Button disabled={isSubmitLoading} type="submit" className="w-fit">
                         {isSubmitLoading ? (
                             <div className="flex gap-2">
                                 <Spinner />

@@ -2,78 +2,88 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { FileText, Home, User, CloudSync } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Brand } from '@/constants/brand';
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+    const insets = useSafeAreaInsets();
+
     return (
-        <View style={styles.container}>
-            {state.routes.map((route, index) => {
-                // 1. Ignora a renderização se a rota for de componentes ou interna
-                if (route.name.includes('_components')) {
-                    return null;
-                }
-
-                const { options } = descriptors[route.key];
-                const label = options.title !== undefined ? options.title : route.name;
-                const isFocused = state.index === index;
-
-                const onPress = () => {
-                    const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-                    if (!isFocused && !event.defaultPrevented) {
-                        navigation.navigate(route.name);
+        <View pointerEvents="box-none" style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <View style={styles.bar}>
+                {state.routes.map((route, index) => {
+                    // Ignora a renderização se a rota for de componentes ou interna
+                    if (route.name.includes('_components')) {
+                        return null;
                     }
-                };
 
-                const color = isFocused ? '#447762' : '#8E8E93';
+                    const { options } = descriptors[route.key];
+                    const label = options.title !== undefined ? options.title : route.name;
+                    const isFocused = state.index === index;
 
-                // 2. Define qual componente de ícone será renderizado
-                let IconComponent = Home; // Padrão
+                    const onPress = () => {
+                        const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                        if (!isFocused && !event.defaultPrevented) {
+                            navigation.navigate(route.name);
+                        }
+                    };
 
-                if (route.name.includes('pesquisas')) {
-                    IconComponent = FileText;
-                }
+                    const color = isFocused ? Brand.mint : Brand.mutedDark;
 
-                if (route.name.includes('usuario')) {
-                    IconComponent = User;
-                }
+                    let IconComponent = Home;
+                    if (route.name.includes('pesquisas')) IconComponent = FileText;
+                    if (route.name.includes('usuario')) IconComponent = User;
+                    if (route.name.includes('sincronizacao')) IconComponent = CloudSync;
 
-                if (route.name.includes('sincronizacao')) {
-                    IconComponent = CloudSync;
-                }
-
-                return (
-                    <TouchableOpacity key={index} onPress={onPress} style={styles.tabButton}>
-                        {/* 3. Renderiza o ícone passando o tamanho e a cor */}
-                        <IconComponent color={color} size={24} />
-
-                        <Text style={[styles.label, { color }]}>{label as string}</Text>
-                    </TouchableOpacity>
-                );
-            })}
+                    return (
+                        <TouchableOpacity
+                            key={route.key}
+                            onPress={onPress}
+                            style={[styles.tabButton, isFocused && styles.tabButtonOn]}
+                            accessibilityRole="tab"
+                            accessibilityLabel={label as string}
+                            accessibilityState={{ selected: isFocused }}
+                        >
+                            <IconComponent color={color} size={20} strokeWidth={1.8} />
+                            <Text style={[styles.label, { color }]}>{label as string}</Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    wrap: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        paddingHorizontal: 18,
+    },
+    bar: {
+        height: 62,
+        borderRadius: 999,
+        backgroundColor: Brand.forest,
         flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
-        height: 65,
-        borderTopWidth: 1,
-        borderColor: '#E5E5E5',
-        elevation: 8,
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        shadowOffset: { width: 0, height: -3 },
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        paddingHorizontal: 8,
+        elevation: 12,
+        shadowColor: '#0a1410',
+        shadowOpacity: 0.45,
+        shadowRadius: 18,
+        shadowOffset: { width: 0, height: 10 },
     },
     tabButton: {
         flex: 1,
+        height: 48,
+        borderRadius: 999,
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        gap: 3,
     },
-    label: {
-        fontSize: 12,
-        marginTop: 4,
-        fontWeight: '500'
-    },
+    tabButtonOn: { backgroundColor: 'rgba(191, 227, 208, 0.14)' },
+    label: { fontSize: 10.5, fontWeight: '500' },
 });

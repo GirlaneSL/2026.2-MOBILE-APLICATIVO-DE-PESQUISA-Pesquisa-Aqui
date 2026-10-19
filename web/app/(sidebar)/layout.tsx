@@ -1,34 +1,28 @@
 import { AppSidebar } from "@/components/ui/app-sidebar";
 import { BfcacheGuard } from "@/components/ui/BfcacheGuard";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from 'react-hot-toast';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
+    <div className="pa-app">
       <BfcacheGuard />
-      <Toaster></Toaster>
+      <Toaster
+        toastOptions={{
+          style: {
+            background: '#0a1410',
+            color: '#e9f0eb',
+            borderRadius: '999px',
+            padding: '10px 18px',
+            fontSize: '14px',
+          },
+          success: { iconTheme: { primary: '#bfe3d0', secondary: '#0a1410' } },
+          error: { iconTheme: { primary: '#e0917a', secondary: '#0a1410' } },
+        }}
+      />
       <AppSidebar />
-      <main className="w-full capitalize">
-        <SidebarTrigger className={"my-0.5"} size={"icon-lg"} />
-        <hr />
-        <section className="relative h-screen">
-          <div
-            className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: "url('/background.jpeg')",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              filter: "grayscale(100%)",
-              opacity: 0.2,
-            }}
-          />
-
-          <div className="relative z-10 p-6">
-            {children}
-          </div>
-        </section>
+      <main className="pa-shell">
+        {children}
       </main>
-    </SidebarProvider>
+    </div>
   )
 }

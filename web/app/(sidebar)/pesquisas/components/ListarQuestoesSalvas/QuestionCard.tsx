@@ -72,7 +72,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 function Block({ title, children }: { title: string; children: ReactNode }) {
     return (
         <div className="rounded-lg border bg-background p-4 space-y-3">
-            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h4>
+            <h4 className="text-[13px] font-semibold text-muted-foreground">{title}</h4>
             {children}
         </div>
     );

@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Download, PlayCircle, FileText, Bolt, RefreshCw, WifiOff } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Download, PlayCircle, RefreshCw, WifiOff } from 'lucide-react-native';
+import Chip from '@/components/Chip';
+import { Brand } from '@/constants/brand';
 
 interface PesquisaCardProps {
     titulo: string;
@@ -18,103 +19,169 @@ interface PesquisaCardProps {
     onResume?: () => void;
 }
 
-export default function PesquisaCard({ 
-    titulo, targetAudience, startDate, endDate, isDownloaded, isOnline, isDownloading, coletasCount = 0, draftCount = 0, onDownload, onStart, onResume 
+const formatDate = (iso: string) => {
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('pt-BR');
+};
+
+export default function PesquisaCard({
+    titulo,
+    targetAudience,
+    startDate,
+    endDate,
+    isDownloaded,
+    isOnline,
+    isDownloading,
+    coletasCount = 0,
+    draftCount = 0,
+    onDownload,
+    onStart,
+    onResume,
 }: PesquisaCardProps) {
-    
-    // Formatação amigável das datas
-    const formattedPeriod = `${new Date(startDate).toLocaleDateString('pt-BR')} até ${new Date(endDate).toLocaleDateString('pt-BR')}`;
+    const period = `${formatDate(startDate)} a ${formatDate(endDate)}`;
+    const canDownload = isOnline && !isDownloading;
 
     return (
-        <LinearGradient
-            colors={['#B66D561A', '#FFFFFF1A', '#124B521A']}
-            locations={[0, 0.5, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.card}
-        >
-            <View style={styles.cardHeader}>
-                <View style={styles.titleContainer}>
-                    <FileText size={20} color="#447762" />
+        <View style={styles.card}>
+            <View style={styles.top}>
+                <View style={styles.titles}>
                     <Text style={styles.title}>{titulo}</Text>
+                    <Text style={styles.info}>Vigente de {period}</Text>
+                    {targetAudience ? <Text style={styles.info}>Público: {targetAudience}</Text> : null}
                 </View>
-                <Text style={styles.infoText}>Público-alvo: {targetAudience}</Text>
-                <Text style={styles.infoText}>Período: {formattedPeriod}</Text>
-                
-                {isDownloaded && (
-                    <Text style={styles.coletasText}>
-                        {coletasCount} coleta(s) realizada(s)
-                        {draftCount > 0 ? ` · ${draftCount} rascunho(s)` : ''}
-                    </Text>
-                )}
+                <Chip label={isDownloaded ? 'No aparelho' : 'Não baixada'} tone={isDownloaded ? 'light' : 'gray'} />
             </View>
 
             {isDownloaded ? (
-                <View style={styles.downloadedActions}>
-                    {draftCount > 0 && (
-                        <TouchableOpacity style={[styles.button, styles.buttonResume]} onPress={onResume}>
-                            <Text style={styles.buttonTextResume}>Retomar</Text>
-                        </TouchableOpacity>
-                    )}
-                    <TouchableOpacity style={[styles.button, styles.buttonStart]} onPress={onStart}>
-                        <PlayCircle size={20} color="#fff" />
-                        <Text style={styles.buttonTextStart}>Iniciar Coleta</Text>
-                    </TouchableOpacity>
+                <>
+                    <View style={styles.counts}>
+                        <View style={styles.count}>
+                            <Text style={styles.countValue}>{coletasCount}</Text>
+                            <Text style={styles.countLabel}>{coletasCount === 1 ? 'coleta feita' : 'coletas feitas'}</Text>
+                        </View>
+                        <View style={[styles.count, styles.countDivider]}>
+                            <Text style={styles.countValue}>{draftCount}</Text>
+                            <Text style={styles.countLabel}>{draftCount === 1 ? 'rascunho' : 'rascunhos'}</Text>
+                        </View>
+                    </View>
 
-                    {/* Opção explícita de atualização se estiver online */}
-                    {isOnline && (
-                        <TouchableOpacity style={styles.buttonUpdate} onPress={onDownload} disabled={isDownloading}>
-                            {isDownloading ? <ActivityIndicator size="small" color="#447762" /> : <RefreshCw size={20} color="#447762" />}
-                        </TouchableOpacity>
-                    )}
-                </View>
+                    <View style={styles.actions}>
+                        {draftCount > 0 ? (
+                            <Pressable
+                                style={({ pressed }) => [styles.button, styles.buttonGhost, pressed && styles.pressed]}
+                                onPress={onResume}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Retomar rascunho de ${titulo}`}
+                            >
+                                <Text style={styles.buttonGhostText}>Retomar</Text>
+                            </Pressable>
+                        ) : null}
+                        <Pressable
+                            style={({ pressed }) => [styles.button, styles.buttonPrimary, pressed && styles.pressedDark]}
+                            onPress={onStart}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Iniciar coleta de ${titulo}`}
+                        >
+                            <PlayCircle size={18} color="#fff" strokeWidth={1.8} />
+                            <Text style={styles.buttonPrimaryText}>Iniciar coleta</Text>
+                        </Pressable>
+                        {isOnline ? (
+                            <Pressable
+                                style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+                                onPress={onDownload}
+                                disabled={isDownloading}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Atualizar a pesquisa ${titulo}`}
+                            >
+                                {isDownloading ? (
+                                    <ActivityIndicator size="small" color={Brand.green} />
+                                ) : (
+                                    <RefreshCw size={18} color={Brand.greenDeep} strokeWidth={1.8} />
+                                )}
+                            </Pressable>
+                        ) : null}
+                    </View>
+                </>
             ) : (
-                <TouchableOpacity 
-                    style={[styles.button, styles.buttonDownload, (!isOnline || isDownloading) && styles.buttonDisabled]}
+                <Pressable
+                    style={({ pressed }) => [
+                        styles.button,
+                        styles.buttonMint,
+                        !canDownload && styles.buttonDisabled,
+                        pressed && canDownload && styles.pressed,
+                    ]}
                     onPress={onDownload}
-                    disabled={!isOnline || isDownloading}
+                    disabled={!canDownload}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: !canDownload, busy: isDownloading }}
+                    accessibilityLabel={`Baixar a pesquisa ${titulo}`}
                 >
                     {isDownloading ? (
-                        <ActivityIndicator size="small" color="#B66D56" />
+                        <ActivityIndicator size="small" color={Brand.forest} />
                     ) : (
                         <>
-                            {!isOnline ? <WifiOff size={20} color="#9a9a9a" /> : <Download size={20} color="#B66D56" />}
-                            <Text style={[styles.buttonTextDownload, !isOnline && styles.buttonTextDisabled]}>
-                                {!isOnline ? 'Internet necessária' : 'Baixar Pesquisa'}
+                            {!isOnline ? (
+                                <WifiOff size={18} color={Brand.muted} strokeWidth={1.8} />
+                            ) : (
+                                <Download size={18} color={Brand.forest} strokeWidth={1.8} />
+                            )}
+                            <Text style={[styles.buttonMintText, !isOnline && styles.buttonDisabledText]}>
+                                {!isOnline ? 'Precisa de internet para baixar' : 'Baixar pesquisa'}
                             </Text>
                         </>
                     )}
-                </TouchableOpacity>
+                </Pressable>
             )}
-
-            <Bolt size={10} style={styles.bolt1} />
-            <Bolt size={10} style={styles.bolt2} />
-            <Bolt size={10} style={styles.bolt3} />
-            <Bolt size={10} style={styles.bolt4} />
-        </LinearGradient>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    card: { backgroundColor: '#fff', borderRadius: 8, padding: 16, borderWidth: 1, borderColor: '#00000015', position: 'relative' },
-    cardHeader: { marginBottom: 16, zIndex: 1 },
-    titleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
-    title: { fontSize: 18, fontWeight: 'bold', color: '#18181b', flex: 1 },
-    infoText: { fontSize: 14, color: '#71717a', marginBottom: 4 },
-    coletasText: { fontSize: 14, color: '#447762', fontWeight: 'bold', marginTop: 8 },
-    downloadedActions: { flexDirection: 'row', gap: 8, zIndex: 1 },
-    button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 8, gap: 8, flex: 1, zIndex: 1 },
-    buttonStart: { backgroundColor: '#447762' },
-    buttonResume: { borderWidth: 1, borderColor: '#447762', backgroundColor: '#fff' },
-    buttonTextResume: { color: '#447762', fontWeight: 'bold', fontSize: 16 },
-    buttonUpdate: { padding: 14, borderRadius: 8, borderWidth: 1, borderColor: '#447762', alignItems: 'center', justifyContent: 'center' },
-    buttonDownload: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#B66D56' },
-    buttonDisabled: { borderColor: '#d4d4d8', backgroundColor: '#f4f4f5' },
-    buttonTextStart: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    buttonTextDownload: { color: '#B66D56', fontWeight: 'bold', fontSize: 16 },
-    buttonTextDisabled: { color: '#9a9a9a' },
-    bolt1: { position: 'absolute', top: 4, left: 4, opacity: 0.4 },
-    bolt2: { position: 'absolute', top: 4, right: 4, opacity: 0.4 },
-    bolt3: { position: 'absolute', bottom: 4, left: 4, opacity: 0.4 },
-    bolt4: { position: 'absolute', bottom: 4, right: 4, opacity: 0.4 },
+    card: {
+        backgroundColor: Brand.card,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: Brand.line,
+        padding: 18,
+        gap: 16,
+    },
+    top: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    titles: { flex: 1, gap: 3 },
+    title: { fontSize: 18, fontWeight: '600', letterSpacing: -0.4, color: Brand.ink, marginBottom: 2 },
+    info: { fontSize: 13, color: Brand.muted },
+    counts: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: Brand.line, paddingTop: 14 },
+    count: { flex: 1 },
+    countDivider: { borderLeftWidth: 1, borderLeftColor: Brand.line, paddingLeft: 16 },
+    countValue: { fontSize: 26, fontWeight: '300', letterSpacing: -1, color: Brand.ink, fontVariant: ['tabular-nums'] },
+    countLabel: { fontSize: 12.5, color: Brand.muted },
+    actions: { flexDirection: 'row', gap: 8 },
+    button: {
+        flex: 1,
+        height: 46,
+        borderRadius: 999,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingHorizontal: 18,
+    },
+    buttonPrimary: { backgroundColor: Brand.ink },
+    buttonPrimaryText: { color: '#fff', fontWeight: '500', fontSize: 15 },
+    buttonGhost: { borderWidth: 1, borderColor: '#cdd5d0', backgroundColor: 'transparent' },
+    buttonGhostText: { color: Brand.ink, fontWeight: '500', fontSize: 15 },
+    buttonMint: { backgroundColor: Brand.mint },
+    buttonMintText: { color: Brand.forest, fontWeight: '500', fontSize: 15 },
+    buttonDisabled: { backgroundColor: Brand.chipGray },
+    buttonDisabledText: { color: Brand.muted },
+    iconButton: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        borderWidth: 1,
+        borderColor: '#cdd5d0',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pressed: { backgroundColor: '#e9ede9' },
+    pressedDark: { backgroundColor: '#26332c' },
 });

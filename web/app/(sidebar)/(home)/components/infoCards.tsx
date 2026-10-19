@@ -1,58 +1,74 @@
-import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bolt } from "lucide-react";
+import type { ReactNode } from "react";
+import { Contour } from "@/components/ui/contour";
 
-type InfoCardProps = {
-    cardTitle?: React.ReactNode;
-    cardDescription?: React.ReactNode;
-    cardAction?: React.ReactNode;
-    cardContent?: React.ReactNode;
-    isCardFooter?: boolean;
-    cardFooter?: React.ReactNode;
-    cardClassName?: React.ReactNode;
-    animationDelayN?: number;
-    CardContentClassName?: React.ReactNode;
-    cardFooterClassName?: React.ReactNode;
+type ContourConfig = {
+    seed: number;
+    rings: number;
+    cx: number;
+    cy: number;
+    size?: number;
+    width?: number;
+    height?: number;
 };
 
+type InfoCardProps = {
+    cardTitle?: ReactNode;
+    cardDescription?: ReactNode;
+    /** Controle alinhado à direita do título (botão, seletor, chip). */
+    cardAction?: ReactNode;
+    cardContent?: ReactNode;
+    /** Ícone ao lado do título. */
+    icon?: ReactNode;
+    /** Claro (padrão), menta ou escuro (floresta). */
+    tone?: "light" | "mint" | "dark";
+    /** Curvas de nível ao fundo do painel. */
+    contour?: ContourConfig;
+    /** Classes do painel, por exemplo "pa-c8" ou "pa-c4" para ocupar colunas da grade. */
+    cardClassName?: string;
+    CardContentClassName?: string;
+    animationDelayN?: number;
+    /** Mostra o rodapé (precisa de cardFooter). */
+    isCardFooter?: boolean;
+    cardFooter?: ReactNode;
+    cardFooterClassName?: string;
+};
+
+/** Painel do dashboard: cantos amplos, ícone, título e conteúdo. */
 export default function InfoCard({
     cardTitle,
     cardDescription,
     cardAction,
     cardContent,
-    isCardFooter = true,
-    cardFooter,
-    cardClassName,
+    icon,
+    tone = "light",
+    contour,
+    cardClassName = "",
+    CardContentClassName = "",
     animationDelayN = 1,
-    CardContentClassName,
-    cardFooterClassName,
+    isCardFooter = false,
+    cardFooter,
+    cardFooterClassName = "",
 }: InfoCardProps) {
+    const toneClass = tone === "light" ? "" : tone;
+
     return (
-        <>
-            <Card
-                style={{ animationDelay: `${animationDelayN * 150}ms` }}
-                className={`${cardClassName} introduction-card relative bg-linear-to-br from-[#B66D56]/10 via-white/10 to-[#124B52]/10 shadow-md`}
-            >
-                <Bolt size={13} className="absolute top-2 right-2 opacity-15"></Bolt>
-                <Bolt size={13} className="absolute top-2 left-2 opacity-15"></Bolt>
-                <Bolt size={13} className="absolute bottom-2 right-2 opacity-15"></Bolt>
-                <Bolt size={13} className="absolute bottom-2 left-2 opacity-15"></Bolt>
-
-                <CardHeader>
-                    <CardTitle className="text-xl">{cardTitle}</CardTitle>
-                    <CardDescription>{cardDescription}</CardDescription>
-                    <CardAction>{cardAction}</CardAction>
-                </CardHeader>
-                <CardContent className={`${CardContentClassName}`}>
-                    {cardContent}
-                </CardContent>
-                {isCardFooter ?
-                    <CardFooter className={`${cardFooterClassName}`}>
-                        <p>{cardFooter}</p>
-                    </CardFooter> :
-                    ""
-                }
-
-            </Card>
-        </>
+        <article
+            style={{ animationDelay: `${animationDelayN * 120}ms` }}
+            className={`pa-card introduction-card ${toneClass} ${cardClassName}`}
+        >
+            {contour && <Contour {...contour} style={tone === "mint" ? { opacity: 0.5 } : undefined} />}
+            <header className="pa-card-h">
+                {icon && <div className="pa-ic">{icon}</div>}
+                <div className="grow">
+                    <h3>{cardTitle}</h3>
+                    {cardDescription && <p className="desc">{cardDescription}</p>}
+                </div>
+                {cardAction}
+            </header>
+            <div className={`mt-4 ${CardContentClassName}`}>{cardContent}</div>
+            {isCardFooter && cardFooter && (
+                <footer className={`mt-5 border-t border-border pt-4 ${cardFooterClassName}`}>{cardFooter}</footer>
+            )}
+        </article>
     );
 }

@@ -1,10 +1,9 @@
 'use client'
 
-import { Button } from "@/components/ui/button";
+import { BrandMark, Contour, Pin } from "@/components/ui/contour";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { login } from "@/lib/auth";
-import { LockKeyhole, MapPin, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { SubmitEventHandler, useState } from "react";
@@ -14,7 +13,6 @@ export default function Login() {
     const [password, setPassword] = useState('')
     const [error, setError] = useState<string | null>(null)
     const router = useRouter();
-
 
     const [isLoadingLogin, setIsLoadingLogin] = useState(false)
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
@@ -26,133 +24,86 @@ export default function Login() {
         try {
             await login(username, password);
             router.push('/');
-        } catch (error) {
-            setError('Nome de usuário ou senha incorretos/Empresa inativa');
+        } catch {
+            setError('Nome de usuário ou senha incorretos, ou empresa inativa.')
         } finally {
             setIsLoadingLogin(false)
         }
     }
 
     return (
-        <main className="relative flex items-center justify-center min-h-screen w-full p-4 bg-cover bg-center overflow-hidden">
-            <div
-                className="absolute -inset-8 bg-cover bg-center blur-[8px]"
-                style={{
-                    backgroundImage:
-                        "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/backgroundGreen.jpeg')",
-                }}
-            />
+        <main className="pa-login">
+            <Contour seed={2.4} rings={16} cx={0.62} cy={0.55} size={1.15} width={1400} height={800} />
+            <Pin label="Recife" left="45%" top="15%" delay="0s" />
+            <Pin label="Caruaru" left="44%" top="78%" tone="clay" delay="1.1s" />
 
-            <div className="relative flex flex-col md:flex-row w-full max-w-225 min-h-125 bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <section className="pa-login-copy">
+                <Link href="/" className="pa-brand">
+                    <BrandMark color="#bfe3d0" />
+                    Pesquisa Aqui
+                </Link>
+                <div>
+                    <h1>Cada resposta no lugar certo.</h1>
+                    <p className="lead">
+                        Monte questionários, acompanhe as coletas em campo e consulte os resultados em um só painel.
+                    </p>
+                </div>
+                <span aria-hidden="true" />
+            </section>
 
-                <div
-                    className="bg-[#124B52] hidden md:flex md:w-1/2 bg-cover bg-center flex-col items-center justify-center p-8 text-center relative bg-linear-to-br from-white/20 to-[#133135]"
-                >
-                    <MapPin
-                        className="absolute left-1 top-2 opacity-10"
-                        color="white"
-                        size={30}
-                    />
+            <section className="pa-login-card">
+                <form onSubmit={handleSubmit} noValidate>
+                    <h2>Entrar</h2>
+                    <p className="sub">Use o usuário e a senha fornecidos pela sua empresa.</p>
 
-                    <div className="absolute inset-0 bg-black/30"></div>
-
-                    <div className="relative z-10 text-white">
-                        <Link
-                            className="text-4xl font-bold mb-2 block hover:scale-105 transition-transform"
-                            href="/"
-                        >
-                            Pesquise Aqui
-                        </Link>
-
-                        <h2 className="text-lg font-medium opacity-90">
-                            Bem-Vindo de Volta!
-                        </h2>
+                    <div className="pa-field">
+                        <label htmlFor="username">Usuário</label>
+                        <Input
+                            id="username"
+                            type="text"
+                            autoComplete="username"
+                            placeholder="nome.sobrenome"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                        />
                     </div>
-                </div>
 
-                <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-8 lg:p-12 bg-white z-10 max-md:rounded-2xl">
-                    <h1 className="text-3xl font-bold mb-8">
-                        Login
-                    </h1>
+                    <div className="pa-field">
+                        <label htmlFor="password">Senha</label>
+                        <Input
+                            id="password"
+                            type="password"
+                            autoComplete="current-password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
+                    </div>
 
-                    <form
-                        onSubmit={handleSubmit}
-                        className="flex flex-col gap-5 w-full max-w-[320px]"
+                    <div style={{ textAlign: 'right', margin: '-4px 0 18px' }}>
+                        <Link className="pa-link" href="#">Esqueceu a senha?</Link>
+                    </div>
+
+                    {error && (
+                        <p role="alert" className="mb-4 rounded-xl bg-[#f3e0d9] px-3.5 py-2.5 text-[13px] font-medium text-[#8a432f]">
+                            {error}
+                        </p>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={isLoadingLogin}
+                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-ink text-[15px] font-medium text-white transition-colors hover:bg-[#26332c] active:translate-y-px disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
                     >
-                        <div className="relative w-full">
-                            <User
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                size={20}
-                            />
+                        {isLoadingLogin ? (<><Spinner />Entrando...</>) : 'Entrar'}
+                    </button>
 
-                            <Input
-                                type="text"
-                                placeholder="Nome do Usuário"
-                                className="w-full pl-10 h-11"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5 w-full">
-                            <div className="relative w-full">
-                                <LockKeyhole
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                    size={20}
-                                />
-
-                                <Input
-                                    type="password"
-                                    placeholder="Senha"
-                                    className="w-full pl-10 h-11"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="flex justify-end">
-                                <Link
-                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                                    href="#"
-                                >
-                                    Esqueceu a senha?
-                                </Link>
-                            </div>
-                        </div>
-
-                        {error && (
-                            <span className="text-sm text-red-500 font-medium text-center">
-                                {error}
-                            </span>
-                        )}
-
-                        <Button
-                            type="submit"
-                            variant="default"
-                            className="w-full h-11 text-base font-semibold mt-2 bg-[#133135] hover:bg-[#124b52f5]"
-                            disabled={isLoadingLogin}
-                        >
-                            {!isLoadingLogin ? (<div>Entrar</div>) : (<div className="flex gap-2 items-center"><Spinner></Spinner>Entrando...</div>)}
-
-                        </Button>
-
-                        <hr className="w-full border-gray-200 my-2" />
-
-                        <div className="flex flex-col gap-1 text-center text-sm">
-                            <span className="text-gray-500">
-                                Ainda Não Tem Acesso?
-                            </span>
-
-                            <Link
-                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                                href="#"
-                            >
-                                Entre em Contato Com o Administrador
-                            </Link>
-                        </div>
-                    </form>
-                </div>
-            </div>
+                    <p className="mt-5 text-center text-[13px] text-muted-foreground">
+                        Ainda não tem acesso?{' '}
+                        <Link className="pa-link" href="#">Fale com o administrador</Link>
+                    </p>
+                </form>
+            </section>
         </main>
     );
 }

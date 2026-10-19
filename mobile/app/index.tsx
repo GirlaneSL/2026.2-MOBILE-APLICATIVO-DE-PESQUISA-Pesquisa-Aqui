@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { syncResearches } from '@/lib/researchCache';
+import BrandMark from '@/components/BrandMark';
+import Contour from '@/components/Contour';
+import { Brand } from '@/constants/brand';
 
 export default function Splash() {
     const router = useRouter();
@@ -37,13 +41,22 @@ export default function Splash() {
 
     return (
         <View style={styles.container}>
-            <ActivityIndicator size="large" color="#447762" />
-            <Text style={styles.text}>{statusText}</Text>
+            <StatusBar style="light" />
+            <Contour seed={1.2} rings={13} cx={0.5} cy={0.5} size={1.1} width={390} height={844} opacity={0.8} />
+            <View style={styles.center}>
+                <BrandMark size={44} color={Brand.mint} />
+                <Text style={styles.name}>Pesquisa Aqui</Text>
+                <ActivityIndicator size="small" color={Brand.mint} style={styles.spinner} />
+                <Text style={styles.text}>{statusText}</Text>
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#fff' },
-    text: { fontSize: 14, color: '#666' },
+    container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Brand.forest },
+    center: { alignItems: 'center', gap: 10 },
+    name: { color: '#fff', fontSize: 24, fontWeight: '600', letterSpacing: -0.5 },
+    spinner: { marginTop: 14 },
+    text: { fontSize: 14, color: Brand.mutedDark },
 });

@@ -1,64 +1,38 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatRelativeTime, type ActivityItem, type ActivityKind } from "@/lib/dashboard";
+import { formatRelativeTime, type ActivityItem } from "@/lib/dashboard";
 import { useState } from "react";
-import { Building2, ClipboardList, UserCog, UserPlus, type LucideIcon } from "lucide-react";
-
-const ICONS: Record<ActivityKind, LucideIcon> = {
-    company: Building2,
-    admin: UserCog,
-    research: ClipboardList,
-    researcher: UserPlus,
-};
 
 type UltimasAtualizacoesListProps = {
     items: ActivityItem[];
     loading?: boolean;
 };
 
+/** Linha do tempo sobre fundo escuro. Pessoas novas ganham o ponto em argila. */
 export default function UltimasAtualizacoesList({ items, loading = false }: UltimasAtualizacoesListProps) {
     const [now] = useState(() => Date.now());
 
     if (loading) {
         return (
-            <div className="flex flex-col gap-2 overflow-y-auto h-55" aria-busy="true">
-                {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="w-full h-10 min-h-10" />
+            <div className="mt-5 flex flex-col gap-3" aria-busy="true">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full bg-white/10" />
                 ))}
             </div>
         );
     }
 
     if (items.length === 0) {
-        return (
-            <div className="flex items-center justify-center h-55 text-sm text-muted-foreground">
-                Nenhuma atualização recente.
-            </div>
-        );
+        return <div className="pa-empty">Nada mudou por aqui ainda.</div>;
     }
 
     return (
-        <ul className="flex flex-col gap-2 overflow-y-auto">
-            {items.map((item) => {
-                const Icon = ICONS[item.kind];
-
-                return (
-                    <li
-                        key={item.id}
-                        className="flex items-center gap-2 px-3 min-h-10 rounded-md border bg-background/60"
-                    >
-                        <Icon className="shrink-0 size-4" />
-                        <span className="truncate flex-1 text-sm" title={item.message}>
-                            {item.message}
-                        </span>
-                        <span
-                            className="shrink-0 text-xs text-muted-foreground"
-                            title={item.date.toLocaleString("pt-BR")}
-                        >
-                            {formatRelativeTime(item.date, now)}
-                        </span>
-                    </li>
-                );
-            })}
+        <ul className="pa-timeline">
+            {items.slice(0, 6).map((item) => (
+                <li key={item.id} className={item.kind === "researcher" || item.kind === "admin" ? "clay" : undefined}>
+                    <b title={item.message}>{item.message}</b>
+                    <span title={item.date.toLocaleString("pt-BR")}>{formatRelativeTime(item.date, now)}</span>
+                </li>
+            ))}
         </ul>
     );
 }

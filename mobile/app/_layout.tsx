@@ -3,14 +3,15 @@ import { View, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Brand } from '@/constants/brand';
 
 function RootLayoutNav() {
     const { isAuthenticated, isLoading } = useAuth();
 
     if (isLoading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-                <ActivityIndicator size="large" color="#447762" />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Brand.forest }}>
+                <ActivityIndicator size="large" color={Brand.mint} />
             </View>
         );
     }

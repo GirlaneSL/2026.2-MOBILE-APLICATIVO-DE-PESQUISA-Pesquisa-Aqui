@@ -97,7 +97,7 @@ export default function CadastrarEmpresaForm() {
                 <div className="flex justify-end">
                     <Button
                         type="submit"
-                        className="w-fit verde"
+                        className="w-fit"
                         disabled={isSubmitLoading}
                     >
                         {isSubmitLoading ? (

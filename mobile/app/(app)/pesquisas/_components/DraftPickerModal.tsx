@@ -3,6 +3,7 @@ import React from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { LocalCollection } from '@/lib/collectionStore';
 import { isAnswerEmpty } from '@/lib/displayRules';
+import { Brand } from '@/constants/brand';
 
 interface DraftPickerModalProps {
     visible: boolean;
@@ -34,7 +35,7 @@ export default function DraftPickerModal({ visible, title, drafts, onSelect, onC
                 <Pressable style={styles.sheet} onPress={() => undefined}>
                     <Text style={styles.title}>Escolha o rascunho</Text>
                     <Text style={styles.subtitle} numberOfLines={2}>
-                        {title} · {drafts.length} rascunhos
+                        {title}: {drafts.length} rascunhos
                     </Text>
 
                     <FlatList
@@ -64,7 +65,7 @@ export default function DraftPickerModal({ visible, title, drafts, onSelect, onC
                                             {count} {count === 1 ? 'questão respondida' : 'questões respondidas'}
                                         </Text>
                                     </View>
-                                    <ChevronRight size={20} color="#447762" />
+                                    <ChevronRight size={20} color={Brand.green} />
                                 </TouchableOpacity>
                             );
                         }}
@@ -80,16 +81,16 @@ export default function DraftPickerModal({ visible, title, drafts, onSelect, onC
 }
 
 const styles = StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+    backdrop: { flex: 1, backgroundColor: 'rgba(10,20,16,0.55)', justifyContent: 'flex-end' },
     sheet: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-        padding: 20,
+        backgroundColor: Brand.card,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        padding: 22,
         maxHeight: '80%',
     },
-    title: { fontSize: 20, fontWeight: 'bold', color: '#18181b' },
-    subtitle: { fontSize: 14, color: '#71717a', marginTop: 4, marginBottom: 12 },
+    title: { fontSize: 22, fontWeight: '600', letterSpacing: -0.6, color: Brand.ink },
+    subtitle: { fontSize: 14, color: Brand.muted, marginTop: 4, marginBottom: 14 },
     list: { flexGrow: 0 },
     listContent: { gap: 10, paddingBottom: 4 },
     item: {
@@ -97,16 +98,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
         borderWidth: 1,
-        borderColor: '#d4d4d8',
-        borderRadius: 8,
-        padding: 14,
-        backgroundColor: '#fafafa',
+        borderColor: Brand.line,
+        borderRadius: 20,
+        padding: 15,
+        backgroundColor: Brand.paper,
     },
     itemInfo: { flex: 1, gap: 2 },
-    itemTitle: { fontSize: 16, fontWeight: 'bold', color: '#18181b' },
-    itemRecent: { fontSize: 12, color: '#B66D56', fontWeight: '600' },
-    itemText: { fontSize: 13, color: '#71717a' },
-    itemCount: { fontSize: 14, color: '#447762', fontWeight: '600', marginTop: 2 },
-    cancel: { alignItems: 'center', padding: 14, marginTop: 8 },
-    cancelText: { fontSize: 16, color: '#52525b', fontWeight: '600' },
+    itemTitle: { fontSize: 15, fontWeight: '600', color: Brand.ink },
+    itemRecent: { fontSize: 12, color: Brand.clayInk, fontWeight: '600' },
+    itemText: { fontSize: 13, color: Brand.muted },
+    itemCount: { fontSize: 13.5, color: Brand.greenDeep, fontWeight: '600', marginTop: 2 },
+    cancel: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 46,
+        marginTop: 12,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#cdd5d0',
+    },
+    cancelText: { fontSize: 15, color: Brand.ink, fontWeight: '500' },
 });
