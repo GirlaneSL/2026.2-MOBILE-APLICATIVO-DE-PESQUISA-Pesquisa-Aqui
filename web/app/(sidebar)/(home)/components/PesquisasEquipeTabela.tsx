@@ -1,5 +1,17 @@
 import type { Research } from "@/lib/research";
-import { LoadingState } from "@/components/ui/loadingState";
+import {
+    CellTitle,
+    DataTable,
+    DataTableHeader,
+    DataTableToolbar,
+    Muted,
+    RowActions,
+    RowLink,
+    TableChip,
+    TableEmpty,
+    TableSearch,
+    type DataColumn,
+} from "@/components/ui/data-table";
 import {
     avatarTone,
     daysUntilEnd,
@@ -9,8 +21,9 @@ import {
     type FieldCollection,
 } from "@/lib/fieldData";
 import type { UserItem } from "@/lib/user";
-import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+
+const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 type PesquisasEquipeTabelaProps = {
     researches: Research[];
@@ -30,6 +43,9 @@ const ORDER: Record<Research["status"], number> = { IN_FIELD: 0, PUBLISHED: 1, D
 
 type Situation = { label: string; tone: "light" | "clay" | "gray"; endingSoon: boolean };
 
+/** Cor do selo na tabela padrão para cada tom de situação. */
+const CHIP_TONE = { light: "live", clay: "soon", gray: "done" } as const;
+
 export function situationOf(research: Research, now: number): Situation {
     if (research.status === "DRAFT") return { label: "Rascunho", tone: "gray", endingSoon: false };
     if (research.status === "CLOSED") return { label: "Encerrada", tone: "gray", endingSoon: false };
@@ -43,8 +59,9 @@ export function situationOf(research: Research, now: number): Situation {
     return { label: research.status === "IN_FIELD" ? "Em campo" : "Publicada", tone: "light", endingSoon: false };
 }
 
-/** Tabela do painel: período, equipe, situação e andamento de cada pesquisa. */
+/** Tabela de pesquisas do painel: período, equipe, situação e andamento de cada pesquisa. */
 export default function PesquisasEquipeTabela({ researches, researchers, links, collections, now, loading = false, teamLoading = false }: PesquisasEquipeTabelaProps) {
+    const [search, setSearch] = useState("");
     const byId = useMemo(() => new Map(researchers.map((r) => [r.id, r])), [researchers]);
 
     const collectionsByResearch = useMemo(() => {
@@ -53,7 +70,7 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
         return map;
     }, [collections]);
 
-    const rows = useMemo(
+    const sorted = useMemo(
         () =>
             [...researches].sort(
                 (a, b) =>
@@ -63,84 +80,116 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
         [researches]
     );
 
+    const term = normalize(search.trim());
+    const rows = useMemo(
+        () => (term ? sorted.filter((r) => normalize(`${r.title} ${r.objective ?? ""} ${r.targetAudience ?? ""}`).includes(term)) : sorted),
+        [sorted, term]
+    );
+
+    const columns: DataColumn<Research>[] = [
+        {
+            id: "title",
+            header: "Pesquisa",
+            minWidth: "14rem",
+            cell: (research) => {
+                const done = collectionsByResearch.get(research.id) ?? 0;
+                return (
+                    <CellTitle
+                        title={research.title}
+                        href={`/pesquisas/${research.id}`}
+                        sub={
+                            <>
+                                {formatPeriod(research.startDate, research.endDate, new Date(now))}
+                                {research.status !== "DRAFT" && !teamLoading && ` · ${done} ${done === 1 ? "coleta" : "coletas"}`}
+                            </>
+                        }
+                    />
+                );
+            },
+        },
+        {
+            id: "team",
+            header: "Equipe",
+            cell: (research) => {
+                if (teamLoading) return <Muted>–</Muted>;
+                const team = (links[research.id] ?? []).map((id) => byId.get(id)).filter((u): u is UserItem => !!u);
+                if (team.length === 0) return <span title="Nenhum pesquisador vinculado"><Muted>Sem equipe</Muted></span>;
+                return (
+                    <div className="pa-stack" title={team.map((u) => u.name).join(", ")}>
+                        {team.slice(0, MAX_AVATARS).map((u) => (
+                            <div key={u.id} className={`avatar-pa ${avatarTone(u.id)}`}>{initialsOf(u.name)}</div>
+                        ))}
+                        {team.length > MAX_AVATARS && <div className="avatar-pa more">+{team.length - MAX_AVATARS}</div>}
+                    </div>
+                );
+            },
+        },
+        {
+            id: "status",
+            header: "Situação",
+            cell: (research) => {
+                const situation = situationOf(research, now);
+                return <TableChip tone={CHIP_TONE[situation.tone]}>{situation.label}</TableChip>;
+            },
+        },
+        {
+            id: "progress",
+            header: "Período decorrido",
+            cell: (research) => {
+                const situation = situationOf(research, now);
+                const progress = periodProgress(research, now);
+                const filled = Math.round(progress * SEGMENTS);
+                const pct = Math.round(progress * 100);
+                return (
+                    <div className="pa-seg-wrap" role="img" aria-label={`${pct}% do período decorrido`}>
+                        <div className="pa-seg" aria-hidden="true">
+                            {Array.from({ length: SEGMENTS }).map((_, i) => (
+                                <i key={i} className={i < filled ? (situation.endingSoon ? "c" : "f") : ""} />
+                            ))}
+                        </div>
+                        <span className="pct">{pct}%</span>
+                    </div>
+                );
+            },
+        },
+        {
+            id: "actions",
+            header: "Ações",
+            hideHeader: true,
+            align: "right",
+            cell: (research) => (
+                <RowActions>
+                    <RowLink href={`/pesquisas/${research.id}`}>Abrir</RowLink>
+                </RowActions>
+            ),
+        },
+    ];
+
     return (
         <div>
-            <div className="pa-table-head">
-                <h4>Pesquisas cadastradas</h4>
-                <span className="pa-chip gray">{rows.length}</span>
-            </div>
+            <DataTableHeader title="Pesquisas cadastradas" count={term ? `${rows.length} de ${researches.length}` : researches.length} />
 
-            {loading ? (
-                <LoadingState label="Carregando pesquisas..." shape="table" columns={5} count={3} />
-            ) : rows.length === 0 ? (
-                <p className="pa-empty">Nenhuma pesquisa cadastrada. Use &quot;Nova pesquisa&quot; para começar.</p>
-            ) : (
-                <div className="pa-table-wrap">
-                    <table className="pa-table">
-                        <thead>
-                            <tr>
-                                <th>Pesquisa</th>
-                                <th>Equipe</th>
-                                <th>Situação</th>
-                                <th>Período decorrido</th>
-                                <th><span className="sr-only">Ações</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((research) => {
-                                const team = (links[research.id] ?? []).map((id) => byId.get(id)).filter((u): u is UserItem => !!u);
-                                const situation = situationOf(research, now);
-                                const progress = periodProgress(research, now);
-                                const filled = Math.round(progress * SEGMENTS);
-                                const pct = Math.round(progress * 100);
-                                const done = collectionsByResearch.get(research.id) ?? 0;
-
-                                return (
-                                    <tr key={research.id}>
-                                        <td>
-                                            <Link href={`/pesquisas/${research.id}`} className="pa-pn-title">{research.title}</Link>
-                                            <small>
-                                                {formatPeriod(research.startDate, research.endDate, new Date(now))}
-                                                {research.status !== "DRAFT" && !teamLoading && ` · ${done} ${done === 1 ? "coleta" : "coletas"}`}
-                                            </small>
-                                        </td>
-                                        <td>
-                                            {teamLoading ? (
-                                                <span className="pa-muted" aria-busy="true">–</span>
-                                            ) : team.length === 0 ? (
-                                                <span className="pa-muted" title="Nenhum pesquisador vinculado">Sem equipe</span>
-                                            ) : (
-                                                <div className="pa-stack" title={team.map((u) => u.name).join(", ")}>
-                                                    {team.slice(0, MAX_AVATARS).map((u) => (
-                                                        <div key={u.id} className={`avatar-pa ${avatarTone(u.id)}`}>{initialsOf(u.name)}</div>
-                                                    ))}
-                                                    {team.length > MAX_AVATARS && (
-                                                        <div className="avatar-pa more">+{team.length - MAX_AVATARS}</div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td><span className={`pa-chip ${situation.tone}`}><i />{situation.label}</span></td>
-                                        <td>
-                                            <div className="pa-seg-wrap" role="img" aria-label={`${pct}% do período decorrido`}>
-                                                <div className="pa-seg" aria-hidden="true">
-                                                    {Array.from({ length: SEGMENTS }).map((_, i) => (
-                                                        <i key={i} className={i < filled ? (situation.endingSoon ? "c" : "f") : ""} />
-                                                    ))}
-                                                </div>
-                                                <span className="pct">{pct}%</span>
-                                            </div>
-                                        </td>
-                                        <td className="pa-actions">
-                                            <Link href={`/pesquisas/${research.id}`} className="pa-open">Abrir</Link>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+            {!loading && researches.length > 0 && (
+                <DataTableToolbar>
+                    <TableSearch value={search} onChange={setSearch} placeholder="Buscar por título ou público..." label="Buscar pesquisas" />
+                </DataTableToolbar>
             )}
+
+            <DataTable
+                label="Pesquisas cadastradas"
+                columns={columns}
+                rows={rows}
+                getRowKey={(research) => research.id}
+                loading={loading}
+                loadingLabel="Carregando pesquisas..."
+                empty={
+                    researches.length === 0 ? (
+                        <TableEmpty title="Nenhuma pesquisa cadastrada." text='Use "Nova pesquisa" para começar.' />
+                    ) : (
+                        <TableEmpty title="Nenhuma pesquisa encontrada" text="Tente outro título ou público." onClear={() => setSearch("")} />
+                    )
+                }
+            />
         </div>
     );
 }

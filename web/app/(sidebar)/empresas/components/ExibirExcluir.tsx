@@ -1,22 +1,24 @@
 'use client';
 
-import { useState, useEffect, useMemo, ReactNode } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { deactivate, getCompanies } from '@/lib/company';
 import { deleteUser, getUsersAdmin } from '@/lib/user';
-import { Contour } from '@/components/ui/contour';
-import { LoadingState } from '@/components/ui/loadingState';
+import { Button } from '@/components/ui/button';
 import {
-    Building2,
-    Pencil,
-    Phone,
-    Power,
-    Search,
-    SearchX,
-    ShieldCheck,
-    Trash2,
-    UsersRound,
-    X,
-} from 'lucide-react';
+    DataTable,
+    DataTableHeader,
+    DataTableToolbar,
+    Muted,
+    PersonCell,
+    RowActions,
+    TableChip,
+    TableEmpty,
+    TableFilters,
+    TableSearch,
+    TableTabs,
+    type DataColumn,
+} from '@/components/ui/data-table';
+import { Building2, UsersRound } from 'lucide-react';
 
 interface Admin {
     id: string;
@@ -47,110 +49,13 @@ const PROFILE_TRANSLATION: Record<string, string> = {
     RESEARCHER: 'Pesquisador',
 };
 
-const TONES = [
-    'bg-[#cfe3d8] text-[#1f3a2f]',
-    'bg-[#f0d5cb] text-[#7a3b29]',
-    'bg-[#dfe6ef] text-[#2a3d57]',
-    'bg-[#e6e0cc] text-[#5b4d1c]',
-];
-
-const toneOf = (n: number) => TONES[Math.abs(n) % TONES.length];
-
-const initialsOf = (name?: string) =>
-    (name ?? '')
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0]?.toUpperCase())
-        .join('') || '?';
-
-const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 const formatDate = (iso?: string) => {
     if (!iso) return '';
     const d = new Date(iso);
     return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
 };
-
-function Monogram({ name, seed, round = false }: { name: string; seed: number; round?: boolean }) {
-    return (
-        <div
-            aria-hidden="true"
-            className={`grid size-12 shrink-0 place-items-center text-[15px] font-bold ${
-                round ? 'rounded-full' : 'rounded-2xl'
-            } ${toneOf(seed)}`}
-        >
-            {initialsOf(name)}
-        </div>
-    );
-}
-
-function IconButton({
-    label,
-    onClick,
-    disabled,
-    danger,
-    children,
-}: {
-    label: string;
-    onClick: () => void;
-    disabled?: boolean;
-    danger?: boolean;
-    children: ReactNode;
-}) {
-    return (
-        <button
-            type="button"
-            title={label}
-            aria-label={label}
-            onClick={onClick}
-            disabled={disabled}
-            className={`grid size-9 place-items-center rounded-full border border-border bg-white text-muted-foreground transition-all disabled:cursor-not-allowed disabled:opacity-40 [&>svg]:size-4 ${
-                danger
-                    ? 'hover:border-[#e8c4b8] hover:bg-[#f3e0d9] hover:text-[#8a432f]'
-                    : 'hover:border-[#c6d0c9] hover:bg-[#e4ece7] hover:text-ink'
-            }`}
-        >
-            {children}
-        </button>
-    );
-}
-
-function StatusPill({ active }: { active: boolean }) {
-    return (
-        <span
-            className={`inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${
-                active ? 'bg-[#e4ece7] text-[var(--green-deep)]' : 'bg-[#f3e0d9] text-[#8a432f]'
-            }`}
-        >
-            <span className={`size-1.5 rounded-full ${active ? 'bg-[var(--green)]' : 'bg-[#ab6049]'}`} />
-            {active ? 'Ativa' : 'Inativa'}
-        </span>
-    );
-}
-
-function Empty({ filtered, text, onClear }: { filtered: boolean; text: string; onClear: () => void }) {
-    return (
-        <div className="relative overflow-hidden rounded-[20px] border border-dashed border-input bg-muted/40 px-6 py-10 text-center">
-            <Contour seed={9} rings={8} cx={0.5} cy={0.5} size={1.1} style={{ opacity: 0.3 }} />
-            <div className="relative z-10 flex flex-col items-center gap-2">
-                <div className="grid size-12 place-items-center rounded-2xl bg-white text-[var(--green-deep)] ring-1 ring-border">
-                    {filtered ? <SearchX className="size-5" /> : <Building2 className="size-5" />}
-                </div>
-                <p className="text-sm font-semibold">{filtered ? 'Nada encontrado' : text}</p>
-                {filtered && (
-                    <button
-                        type="button"
-                        onClick={onClear}
-                        className="mt-1 inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-white px-3.5 text-[13px] font-medium hover:bg-muted"
-                    >
-                        <X className="size-3.5" /> Limpar filtros
-                    </button>
-                )}
-            </div>
-        </div>
-    );
-}
 
 export default function ExibirEditar({ allowActions = true }: ExibirEditarProps) {
     const [rawCompanies, setRawCompanies] = useState<RawCompany[]>([]);
@@ -274,207 +179,171 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
         setStatus('ALL');
     };
 
-    const tabs: { value: Tab; label: string; count: number; icon: ReactNode }[] = [
-        { value: 'companies', label: 'Empresas', count: rawCompanies.length, icon: <Building2 /> },
-        { value: 'admins', label: 'Administradores', count: rawAdmins.length, icon: <UsersRound /> },
+    const companyColumns: DataColumn<RawCompany>[] = [
+        {
+            id: 'name',
+            header: 'Empresa',
+            minWidth: '14rem',
+            cell: (c) => (
+                <PersonCell
+                    id={c.id}
+                    name={c.legalName}
+                    sub={formatDate(c.createdAt) ? `Desde ${formatDate(c.createdAt)}` : undefined}
+                    square
+                />
+            ),
+        },
+        {
+            id: 'contact',
+            header: 'Contato',
+            cell: (c) => c.contactInformation || <Muted>Sem contato</Muted>,
+        },
+        {
+            id: 'status',
+            header: 'Situação',
+            cell: (c) =>
+                c.situation === 'ACTIVE' ? (
+                    <TableChip tone="live">Ativa</TableChip>
+                ) : (
+                    <TableChip tone="off">Inativa</TableChip>
+                ),
+        },
+        ...(allowActions
+            ? [{
+                id: 'actions',
+                header: 'Ações',
+                hideHeader: true,
+                align: 'right',
+                cell: (c: RawCompany) => (
+                    <RowActions>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(String(c.id), 'company')}>
+                            Editar
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={c.situation !== 'ACTIVE'}
+                            onClick={() => handleDeactivateCompany(String(c.id))}
+                        >
+                            {c.situation === 'ACTIVE' ? 'Desativar' : 'Desativada'}
+                        </Button>
+                    </RowActions>
+                ),
+            } as DataColumn<RawCompany>]
+            : []),
     ];
 
-    const filters: { value: StatusFilter; label: string; count: number }[] = [
-        { value: 'ALL', label: 'Todas', count: rawCompanies.length },
-        { value: 'ACTIVE', label: 'Ativas', count: activeCount },
-        { value: 'INACTIVE', label: 'Inativas', count: inactiveCount },
+    const adminColumns: DataColumn<Admin>[] = [
+        {
+            id: 'name',
+            header: 'Administrador',
+            minWidth: '14rem',
+            cell: (a) => <PersonCell id={Number(a.id) || a.name.length} name={a.name} username={a.username} />,
+        },
+        {
+            id: 'profile',
+            header: 'Perfil',
+            cell: (a) => <TableChip tone="done">{PROFILE_TRANSLATION[a.profile] ?? a.profile}</TableChip>,
+        },
+        ...(allowActions
+            ? [{
+                id: 'actions',
+                header: 'Ações',
+                hideHeader: true,
+                align: 'right',
+                cell: (a: Admin) => (
+                    <RowActions>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(String(a.id), 'admin')}>
+                            Editar
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeactivateAdmin(String(a.username))}>
+                            Excluir
+                        </Button>
+                    </RowActions>
+                ),
+            } as DataColumn<Admin>]
+            : []),
     ];
+
+    const total = tab === 'companies' ? rawCompanies.length : rawAdmins.length;
+    const shown = tab === 'companies' ? companies.length : admins.length;
 
     return (
-        <div className="flex flex-col gap-4">
-            {/* Abas */}
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div
-                    role="tablist"
-                    aria-label="Listas"
-                    className="inline-flex w-fit items-center gap-0.5 rounded-full border border-border bg-muted p-1"
-                >
-                    {tabs.map((t) => {
-                        const on = t.value === tab;
-                        return (
-                            <button
-                                key={t.value}
-                                role="tab"
-                                aria-selected={on}
-                                type="button"
-                                onClick={() => switchTab(t.value)}
-                                className={`inline-flex h-9 items-center gap-2 rounded-full px-4 text-[13.5px] font-medium transition-all [&>span>svg]:size-4 ${
-                                    on ? 'bg-ink text-white shadow-sm' : 'text-muted-foreground hover:text-ink'
-                                }`}
-                            >
-                                <span>{t.icon}</span>
-                                {t.label}
-                                <span
-                                    className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-semibold ${
-                                        on ? 'bg-white/15 text-[var(--mint)]' : 'bg-[#e0e5e1] text-muted-foreground'
-                                    }`}
-                                >
-                                    {t.count}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+        <div className="flex flex-col">
+            <TableTabs<Tab>
+                label="Listas"
+                value={tab}
+                onChange={switchTab}
+                options={[
+                    { value: 'companies', label: 'Empresas', count: rawCompanies.length, icon: <Building2 /> },
+                    { value: 'admins', label: 'Administradores', count: rawAdmins.length, icon: <UsersRound /> },
+                ]}
+            />
 
-                <div className="relative w-full lg:max-w-xs">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        aria-label="Buscar"
-                        placeholder={tab === 'companies' ? 'Buscar empresa ou contato...' : 'Buscar nome ou usuário...'}
-                        className="h-10 w-full rounded-full border border-input bg-muted/50 pl-10 pr-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
-                    />
-                    {search && (
-                        <button
-                            type="button"
-                            aria-label="Limpar busca"
-                            onClick={() => setSearch('')}
-                            className="absolute right-2.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full bg-muted text-muted-foreground hover:text-ink"
-                        >
-                            <X className="size-3" />
-                        </button>
+            <DataTableHeader
+                title={tab === 'companies' ? 'Empresas cadastradas' : 'Administradores cadastrados'}
+                count={hasFilter ? `${shown} de ${total}` : total}
+            />
+
+            <DataTableToolbar>
+                <TableSearch
+                    value={search}
+                    onChange={setSearch}
+                    placeholder={tab === 'companies' ? 'Buscar empresa ou contato...' : 'Buscar nome ou usuário...'}
+                    label="Buscar"
+                />
+                <div className="grow flex flex-wrap items-center gap-2">
+                    {tab === 'companies' && !loadingCompanies && rawCompanies.length > 0 && (
+                        <TableFilters<StatusFilter>
+                            label="Situação"
+                            value={status}
+                            onChange={setStatus}
+                            options={[
+                                { value: 'ALL', label: 'Todas', count: rawCompanies.length },
+                                { value: 'ACTIVE', label: 'Ativas', count: activeCount },
+                                { value: 'INACTIVE', label: 'Inativas', count: inactiveCount },
+                            ]}
+                        />
                     )}
                 </div>
-            </div>
+            </DataTableToolbar>
 
-            {/* Filtro de situação */}
-            {tab === 'companies' && !loadingCompanies && rawCompanies.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                    {filters.map((f) => {
-                        const on = f.value === status;
-                        return (
-                            <button
-                                key={f.value}
-                                type="button"
-                                aria-pressed={on}
-                                onClick={() => setStatus(f.value)}
-                                className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors ${
-                                    on
-                                        ? 'border-[var(--green-deep)] bg-[#e4ece7] text-[var(--green-deep)]'
-                                        : 'border-border bg-white text-muted-foreground hover:border-[#c6d0c9] hover:text-ink'
-                                }`}
-                            >
-                                {f.label}
-                                <b className="font-semibold">{f.count}</b>
-                            </button>
-                        );
-                    })}
-                </div>
+            {error && <p className="mb-3 text-sm text-destructive">Erro: {error}</p>}
+            {actionError && <p className="mb-3 rounded-xl bg-[#f3e0d9] px-3.5 py-2 text-sm text-[#8a432f]">{actionError}</p>}
+
+            {tab === 'companies' ? (
+                <DataTable
+                    label="Empresas"
+                    columns={companyColumns}
+                    rows={companies}
+                    getRowKey={(c) => c.id}
+                    loading={loadingCompanies}
+                    loadingLabel="Carregando empresas..."
+                    empty={
+                        <TableEmpty
+                            icon={hasFilter ? undefined : <Building2 />}
+                            title={hasFilter ? 'Nada encontrado' : 'Nenhuma empresa cadastrada ainda.'}
+                            onClear={hasFilter ? clear : undefined}
+                        />
+                    }
+                />
+            ) : (
+                <DataTable
+                    label="Administradores"
+                    columns={adminColumns}
+                    rows={admins}
+                    getRowKey={(a) => a.id}
+                    loading={loadingAdmins}
+                    loadingLabel="Carregando administradores..."
+                    empty={
+                        <TableEmpty
+                            icon={hasFilter ? undefined : <UsersRound />}
+                            title={hasFilter ? 'Nada encontrado' : 'Nenhum administrador cadastrado ainda.'}
+                            onClear={hasFilter ? clear : undefined}
+                        />
+                    }
+                />
             )}
-
-            {error && <p className="text-sm text-destructive">Erro: {error}</p>}
-            {actionError && (
-                <p className="rounded-xl bg-[#f3e0d9] px-3.5 py-2 text-sm text-[#8a432f]">{actionError}</p>
-            )}
-
-            {/* Empresas */}
-            {tab === 'companies' &&
-                (loadingCompanies ? (
-                    <LoadingState label="Carregando empresas..." shape="list" />
-                ) : companies.length === 0 ? (
-                    <Empty filtered={hasFilter} text="Nenhuma empresa cadastrada ainda." onClear={clear} />
-                ) : (
-                    <ul className="flex flex-col gap-2.5">
-                        {companies.map((c) => {
-                            const active = c.situation === 'ACTIVE';
-                            const since = formatDate(c.createdAt);
-
-                            return (
-                                <li
-                                    key={c.id}
-                                    className={`group relative flex flex-wrap items-center gap-x-4 gap-y-3 overflow-hidden rounded-[20px] border bg-white p-3 pl-4 transition-all hover:-translate-y-px hover:border-[#c6d0c9] hover:shadow-[0_16px_28px_-22px_rgba(10,20,16,0.5)] ${
-                                        active ? 'border-border' : 'border-[#ecd0c5] bg-[#fdf8f6]'
-                                    }`}
-                                >
-                                    <span
-                                        aria-hidden="true"
-                                        className={`absolute inset-y-3 left-0 w-1 rounded-r-full ${
-                                            active ? 'bg-[var(--green)]' : 'bg-[#ab6049]'
-                                        }`}
-                                    />
-                                    <Monogram name={c.legalName} seed={c.id} />
-
-                                    <div className="min-w-0 flex-1 basis-48">
-                                        <p className="truncate text-[15px] font-semibold tracking-tight" title={c.legalName}>
-                                            {c.legalName}
-                                        </p>
-                                        <p className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-muted-foreground">
-                                            <Phone className="size-3.5 shrink-0" />
-                                            <span className="truncate">{c.contactInformation || 'Sem contato'}</span>
-                                            {since && <span className="hidden shrink-0 sm:inline">· desde {since}</span>}
-                                        </p>
-                                    </div>
-
-                                    <StatusPill active={active} />
-
-                                    {allowActions && (
-                                        <div className="flex items-center gap-1.5">
-                                            <IconButton label="Editar empresa" onClick={() => handleEdit(String(c.id), 'company')}>
-                                                <Pencil />
-                                            </IconButton>
-                                            <IconButton
-                                                danger
-                                                label={active ? 'Desativar empresa' : 'Empresa já desativada'}
-                                                disabled={!active}
-                                                onClick={() => handleDeactivateCompany(String(c.id))}
-                                            >
-                                                <Power />
-                                            </IconButton>
-                                        </div>
-                                    )}
-                                </li>
-                            );
-                        })}
-                    </ul>
-                ))}
-
-            {/* Administradores */}
-            {tab === 'admins' &&
-                (loadingAdmins ? (
-                    <LoadingState label="Carregando administradores..." shape="list" />
-                ) : admins.length === 0 ? (
-                    <Empty filtered={hasFilter} text="Nenhum administrador cadastrado ainda." onClear={clear} />
-                ) : (
-                    <ul className="flex flex-col gap-2.5">
-                        {admins.map((a) => (
-                            <li
-                                key={a.id}
-                                className="group flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[20px] border border-border bg-white p-3 pl-4 transition-all hover:-translate-y-px hover:border-[#c6d0c9] hover:shadow-[0_16px_28px_-22px_rgba(10,20,16,0.5)]"
-                            >
-                                <Monogram name={a.name} seed={Number(a.id) || a.name.length} round />
-
-                                <div className="min-w-0 flex-1 basis-48">
-                                    <p className="truncate text-[15px] font-semibold tracking-tight" title={a.name}>
-                                        {a.name}
-                                    </p>
-                                    <p className="truncate font-mono text-[12.5px] text-muted-foreground">@{a.username}</p>
-                                </div>
-
-                                <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-[#ebeeeb] px-2.5 text-xs font-medium text-muted-foreground">
-                                    <ShieldCheck className="size-3" />
-                                    {PROFILE_TRANSLATION[a.profile] ?? a.profile}
-                                </span>
-
-                                {allowActions && (
-                                    <div className="flex items-center gap-1.5">
-                                        <IconButton label="Editar administrador" onClick={() => handleEdit(String(a.id), 'admin')}>
-                                            <Pencil />
-                                        </IconButton>
-                                        <IconButton danger label="Excluir administrador" onClick={() => handleDeactivateAdmin(String(a.username))}>
-                                            <Trash2 />
-                                        </IconButton>
-                                    </div>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                ))}
         </div>
     );
 }

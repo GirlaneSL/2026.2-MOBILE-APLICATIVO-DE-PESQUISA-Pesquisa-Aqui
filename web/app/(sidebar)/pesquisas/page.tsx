@@ -4,6 +4,7 @@ import BannerComponent from "@/components/ui/bannerComponent";
 import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
 import DialogLayout from "@/components/ui/dialogLayout";
+import { TableFilters } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/ui/loadingState";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -220,24 +221,33 @@ export default function Pesquisas() {
                         aria-label="Buscar pesquisas"
                     />
                 </div>
-                <div className="pa-legend" role="group" aria-label="Filtrar por situação">
-                    {FILTERS.map((f) => (
-                        <button key={f.value} type="button" className={filter === f.value ? "on" : ""} aria-pressed={filter === f.value} onClick={() => setFilter(f.value)}>
-                            {f.label}<em>{counts[f.value]}</em>
-                        </button>
-                    ))}
-                </div>
+                <TableFilters<Filter>
+                    label="Filtrar por situação"
+                    value={filter}
+                    onChange={setFilter}
+                    options={FILTERS.map((f) => ({ value: f.value, label: f.label, count: counts[f.value] }))}
+                />
                 <div className="end">
                     {view === "cards" && (
-                        <div className="pa-legend" role="group" aria-label="Ordenar">
-                            <button type="button" className={sort === "recent" ? "on" : ""} aria-pressed={sort === "recent"} onClick={() => setSort("recent")}>Recentes</button>
-                            <button type="button" className={sort === "deadline" ? "on" : ""} aria-pressed={sort === "deadline"} onClick={() => setSort("deadline")}>Prazo</button>
-                        </div>
+                        <TableFilters<Sort>
+                            label="Ordenar"
+                            value={sort}
+                            onChange={setSort}
+                            options={[
+                                { value: "recent", label: "Recentes" },
+                                { value: "deadline", label: "Prazo" },
+                            ]}
+                        />
                     )}
-                    <div className="pa-legend" role="group" aria-label="Modo de exibição">
-                        <button type="button" className={view === "cards" ? "on" : ""} aria-pressed={view === "cards"} onClick={() => setView("cards")} aria-label="Ver em cartões"><LayoutGrid /></button>
-                        <button type="button" className={view === "table" ? "on" : ""} aria-pressed={view === "table"} onClick={() => setView("table")} aria-label="Ver em tabela"><Rows3 /></button>
-                    </div>
+                    <TableFilters<"cards" | "table">
+                        label="Modo de exibição"
+                        value={view}
+                        onChange={setView}
+                        options={[
+                            { value: "cards", label: "Cartões", icon: <LayoutGrid /> },
+                            { value: "table", label: "Tabela", icon: <Rows3 /> },
+                        ]}
+                    />
                 </div>
             </div>
 

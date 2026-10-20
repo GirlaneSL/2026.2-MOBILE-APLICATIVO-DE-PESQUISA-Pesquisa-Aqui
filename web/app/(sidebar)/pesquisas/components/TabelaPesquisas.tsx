@@ -1,16 +1,25 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
-import Link from 'next/link';
-import Tabela from '../../(home)/components/tabela';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { deleteResearch, getResearches, publishResearch } from '@/lib/research';
+import {
+    CellTitle,
+    DataTable,
+    DataTableHeader,
+    DataTableToolbar,
+    RowActions,
+    TableChip,
+    TableEmpty,
+    TableSearch,
+    type DataColumn,
+} from '@/components/ui/data-table';
+import { formatPeriod } from '@/lib/fieldData';
+import { deleteResearch, getResearches, publishResearch, type Research as ApiResearch } from '@/lib/research';
+import { situationOf } from '../../(home)/components/PesquisasEquipeTabela';
 import DialogLayout from '@/components/ui/dialogLayout';
 import ModalEditarPesquisa from './ModalEditarPesquisa';
 import toast from 'react-hot-toast';
 import { isSessionExpiredError } from '@/lib/apiFetcher';
-import { LoadingState } from '@/components/ui/loadingState';
 
 export interface Research {
     id: number | string;
@@ -25,30 +34,9 @@ export interface Research {
     [key: string]: any;
 }
 
-interface FormattedResearch {
-    id: string;
-    title: ReactNode;
-    status: ReactNode;
-    createdAt?: string;
-    edit?: ReactNode;
-    publish?: ReactNode;
-    delete?: ReactNode;
-}
+const CHIP_TONE = { light: 'live', clay: 'soon', gray: 'done' } as const;
 
-type Column<T> = {
-    key: keyof T;
-    label: string;
-    className?: string;
-};
-
-const allResearchColumns: readonly Column<FormattedResearch>[] = [
-    { key: 'title', label: 'Título' },
-    { key: 'createdAt', label: 'Criada em' },
-    { key: 'status', label: 'Situação' },
-    { key: 'edit', label: 'Editar' },
-    { key: 'publish', label: 'Publicar' },
-    { key: 'delete', label: 'Excluir' },
-];
+const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 interface TabelaPesquisasProps {
     allowActions?: boolean;
@@ -61,10 +49,8 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
-
-    const columns = allowActions
-        ? allResearchColumns
-        : allResearchColumns.filter((col) => col.key !== 'edit' && col.key !== 'delete' && col.key !== 'publish');
+    const [search, setSearch] = useState('');
+    const [now] = useState(() => Date.now());
 
     useEffect(() => {
         setLoading(true);
@@ -194,95 +180,109 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
         );
     };
 
-    const researches: FormattedResearch[] = rawResearches.map((item) => ({
-        id: String(item.id),
-        title: (
-            <Link
-                href={`/pesquisas/${item.id}`}
-                className="font-medium hover:underline hover:text-green-deep transition-colors block"
-            >
-                {item.title}
-            </Link>
-        ),
-        createdAt: item.createdAt ? new Date(item.createdAt).toLocaleDateString('pt-BR') : '-',
-        status: (
-            <Badge variant={item.status === 'IN_FIELD' || !item.status ? 'default' : item.status === 'CLOSED' ? 'secondary' : 'outline'}>
-                {item.status === 'IN_FIELD' ? 'Em campo'
-                    :
-                    item.status === 'DRAFT' ? 'Rascunho'
-                        :
-                        item.status === 'PUBLISHED' ? 'Publicada'
-                            :
-                            'Encerrada'}
-            </Badge>
+    const term = normalize(search.trim());
+    const researches = useMemo(
+        () =>
+            term
+                ? rawResearches.filter((r) => normalize(`${r.title} ${r.objective ?? ''} ${r.targetAudience ?? ''}`).includes(term))
+                : rawResearches,
+        [rawResearches, term]
+    );
 
-        ),
-        ...(allowActions && {
-            edit: (
-                <DialogLayout
-                    dialogTitle={`Editar: ${item.title}`}
-                    dialogTrigger="Editar"
-                    dialogDescription="Atualize as informações da pesquisa abaixo."
-                    dialogContentClassName={"min-h-200"}
-                    dialogContent={
-                        <ModalEditarPesquisa
-                            research={item}
-                            onSuccess={handleUpdateSuccess}
-                        />
-                    }
+    const columns: DataColumn<Research>[] = [
+        {
+            id: 'title',
+            header: 'Pesquisa',
+            minWidth: '14rem',
+            cell: (item) => (
+                <CellTitle
+                    title={item.title}
+                    href={`/pesquisas/${item.id}`}
+                    sub={item.createdAt ? `Criada em ${new Date(item.createdAt).toLocaleDateString('pt-BR')}` : undefined}
                 />
             ),
-            publish: (
-                <div>
-                    <Button
-                        variant="default"
-                        size="sm"
-                        disabled={item.status !== 'DRAFT'}
-                        className="disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={() => handlePublish(String(item.id))}
-                    >
-                        Publicar
-                    </Button>
-                </div>
-            ),
-            delete: (
-                <div>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled={item.status !== 'DRAFT'}
-                        className="disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={() => handleDelete(String(item.id))}
-                    >
-                        Excluir
-                    </Button>
-                </div>
-            ),
-        }),
-    }));
+        },
+        {
+            id: 'period',
+            header: 'Período',
+            cell: (item) => formatPeriod(item.startDate, item.endDate, new Date(now)),
+        },
+        {
+            id: 'status',
+            header: 'Situação',
+            cell: (item) => {
+                const situation = situationOf(item as unknown as ApiResearch, now);
+                return <TableChip tone={CHIP_TONE[situation.tone]}>{situation.label}</TableChip>;
+            },
+        },
+        ...(allowActions
+            ? [{
+                id: 'actions',
+                header: 'Ações',
+                hideHeader: true,
+                align: 'right',
+                cell: (item: Research) => (
+                    <RowActions>
+                        <DialogLayout
+                            dialogTitle={`Editar: ${item.title}`}
+                            dialogTrigger="Editar"
+                            triggerButtonVariant="outline"
+                            triggerButtonSize="sm"
+                            dialogDescription="Atualize as informações da pesquisa abaixo."
+                            dialogContentClassName={"min-h-200"}
+                            dialogContent={<ModalEditarPesquisa research={item} onSuccess={handleUpdateSuccess} />}
+                        />
+                        <Button
+                            variant="default"
+                            size="sm"
+                            disabled={item.status !== 'DRAFT'}
+                            onClick={() => handlePublish(String(item.id))}
+                        >
+                            Publicar
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={item.status !== 'DRAFT'}
+                            onClick={() => handleDelete(String(item.id))}
+                        >
+                            Excluir
+                        </Button>
+                    </RowActions>
+                ),
+            } as DataColumn<Research>]
+            : []),
+    ];
 
     return (
-        <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b pb-3">
-                <h2 className="flex items-center gap-2 text-sm font-medium">
-                    Pesquisas cadastradas <Badge variant="outline">{researches.length}</Badge>
-                </h2>
-            </div>
+        <div className="flex flex-col">
+            <DataTableHeader title="Pesquisas cadastradas" count={term ? `${researches.length} de ${rawResearches.length}` : rawResearches.length} />
 
-            {error && <p className="text-sm text-destructive">Erro: {error}</p>}
-            {actionError && <p className="text-sm text-destructive">{actionError}</p>}
-
-            {loading ? (
-                <LoadingState label="Carregando pesquisas..." shape="table" columns={6} />
-            ) : researches.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhuma pesquisa encontrada.</p>
-            ) : (
-                <Tabela<FormattedResearch>
-                    key={rawResearches.length}
-                    columns={columns}
-                    data={researches}
-                />
+            {!loading && rawResearches.length > 0 && (
+                <DataTableToolbar>
+                    <TableSearch value={search} onChange={setSearch} placeholder="Buscar por título ou público..." label="Buscar pesquisas" />
+                </DataTableToolbar>
             )}
+
+            {error && <p className="mb-3 text-sm text-destructive">Erro: {error}</p>}
+            {actionError && <p className="mb-3 text-sm text-destructive">{actionError}</p>}
+
+            <DataTable
+                label="Pesquisas cadastradas"
+                columns={columns}
+                rows={researches}
+                getRowKey={(item) => item.id}
+                loading={loading}
+                loadingLabel="Carregando pesquisas..."
+                minWidth={allowActions ? '820px' : '640px'}
+                empty={
+                    rawResearches.length === 0 ? (
+                        <TableEmpty title="Nenhuma pesquisa encontrada." />
+                    ) : (
+                        <TableEmpty title="Nenhuma pesquisa encontrada" text="Tente outro título ou público." onClear={() => setSearch('')} />
+                    )
+                }
+            />
         </div>
     );
 }

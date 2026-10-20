@@ -1,26 +1,26 @@
 'use client'
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
+import {
+    DataTable,
+    DataTableHeader,
+    DataTableToolbar,
+    Muted,
+    PersonCell,
+    RowActions,
+    TableChip,
+    TableEmpty,
+    TableFilters,
+    TableSearch,
+    type DataColumn,
+} from "@/components/ui/data-table";
 import { LoadingState } from "@/components/ui/loadingState";
-import { Input } from "@/components/ui/input";
 import { avatarTone, initialsOf } from "@/lib/fieldData";
 import { deleteUser, UserItem } from "@/lib/user";
-import { ArrowDownAZ, Building2, CalendarClock, LayoutGrid, List, Search, SearchX, Sparkles, Trash2, UsersRound, X } from "lucide-react";
-import { ReactNode, useMemo, useState } from "react";
+import { ArrowDownAZ, Building2, CalendarClock, LayoutGrid, List, Sparkles, Trash2, UsersRound } from "lucide-react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import Tabela from "../../(home)/components/tabela";
-
-interface Row {
-    name: ReactNode;
-    username: string;
-    company: ReactNode;
-    createdAt: string;
-    delete?: ReactNode;
-}
-
-type Column = { key: keyof Row; label: string };
 type ViewMode = 'cards' | 'table';
 type SortMode = 'recent' | 'name';
 
@@ -92,74 +92,6 @@ function Avatar({ user, size = 'md' }: { user: UserItem; size?: 'sm' | 'md' | 'l
     );
 }
 
-function Segmented<T extends string>({
-    value,
-    onChange,
-    options,
-    label,
-}: {
-    value: T;
-    onChange: (v: T) => void;
-    options: { value: T; label: string; icon: ReactNode }[];
-    label: string;
-}) {
-    return (
-        <div
-            role="group"
-            aria-label={label}
-            className="inline-flex items-center gap-0.5 rounded-full border border-border bg-muted p-0.5"
-        >
-            {options.map((o) => {
-                const active = o.value === value;
-                return (
-                    <button
-                        key={o.value}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => onChange(o.value)}
-                        className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-all ${
-                            active
-                                ? 'bg-ink text-white shadow-sm'
-                                : 'text-muted-foreground hover:text-ink'
-                        }`}
-                    >
-                        <span className="[&>svg]:size-3.5">{o.icon}</span>
-                        {o.label}
-                    </button>
-                );
-            })}
-        </div>
-    );
-}
-
-function EmptyState({ hasAny, onClear }: { hasAny: boolean; onClear: () => void }) {
-    return (
-        <div className="relative overflow-hidden rounded-[22px] border border-dashed border-input bg-muted/40 px-6 py-12 text-center">
-            <Contour seed={4} rings={9} cx={0.5} cy={0.5} size={1.1} style={{ opacity: 0.35 }} />
-            <div className="relative z-10 flex flex-col items-center gap-3">
-                <div className="grid size-14 place-items-center rounded-2xl bg-white text-green-deep shadow-sm ring-1 ring-border">
-                    {hasAny ? <SearchX className="size-6" /> : <UsersRound className="size-6" />}
-                </div>
-                <div>
-                    <p className="text-base font-semibold tracking-tight">
-                        {hasAny ? 'Nenhum pesquisador encontrado' : 'Sua equipe de campo começa aqui'}
-                    </p>
-                    <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                        {hasAny
-                            ? 'Tente outro nome, usuário ou empresa.'
-                            : 'Use "Novo pesquisador" para cadastrar quem vai coletar em campo.'}
-                    </p>
-                </div>
-                {hasAny && (
-                    <Button variant="outline" size="sm" onClick={onClear}>
-                        <X /> Limpar busca
-                    </Button>
-                )}
-            </div>
-        </div>
-    );
-}
-
 export default function ListaPesquisadores({
     researchers,
     companyNames,
@@ -172,7 +104,7 @@ export default function ListaPesquisadores({
 }: ListaPesquisadoresProps) {
     const [search, setSearch] = useState('');
     const [deleting, setDeleting] = useState<string | null>(null);
-    const [view, setView] = useState<ViewMode>('cards');
+    const [view, setView] = useState<ViewMode>('table');
     const [sort, setSort] = useState<SortMode>('recent');
 
     const filtered = useMemo(() => {
@@ -214,70 +146,93 @@ export default function ListaPesquisadores({
         }
     };
 
-    const columns: Column[] = [
-        { key: 'name', label: 'Nome' },
-        { key: 'username', label: 'Usuário' },
-        ...(showCompany ? [{ key: 'company', label: 'Empresa' } as Column] : []),
-        { key: 'createdAt', label: 'Cadastrado em' },
-        ...(canDelete ? [{ key: 'delete', label: 'Excluir' } as Column] : []),
-    ];
-
-    const rows: Row[] = filtered.map((r) => ({
-        name: (
-            <span className="flex items-center gap-3">
-                <Avatar user={r} size="sm" />
-                <span className="font-medium">{r.name}</span>
-                {isNew(r) && <Badge>Novo</Badge>}
-            </span>
-        ),
-        username: `@${r.username}`,
-        company: companyNames[r.companyId ?? -1]
-            ? <Badge variant="outline">{companyNames[r.companyId ?? -1]}</Badge>
-            : '—',
-        createdAt: formatDate(r.createdAt),
-        ...(canDelete && {
-            delete: (
-                <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={deleting === r.username}
-                    onClick={() => handleDelete(r)}
-                >
-                    {deleting === r.username ? 'Excluindo...' : 'Excluir'}
-                </Button>
+    const columns: DataColumn<UserItem>[] = [
+        {
+            id: 'name',
+            header: 'Pesquisador',
+            minWidth: '14rem',
+            cell: (r) => (
+                <PersonCell
+                    id={r.id}
+                    name={r.name}
+                    username={r.username}
+                    badge={isNew(r) ? <TableChip tone="live">Novo</TableChip> : undefined}
+                />
             ),
-        }),
-    }));
+        },
+        ...(showCompany
+            ? [{
+                id: 'company',
+                header: 'Empresa',
+                cell: (r: UserItem) => companyNames[r.companyId ?? -1] ?? <Muted>—</Muted>,
+            } as DataColumn<UserItem>]
+            : []),
+        {
+            id: 'createdAt',
+            header: 'Cadastrado em',
+            cell: (r) => {
+                const since = relativeDays(r.createdAt, referenceTime);
+                return (
+                    <div>
+                        {formatDate(r.createdAt)}
+                        {since && <small>{since}</small>}
+                    </div>
+                );
+            },
+        },
+        ...(canDelete
+            ? [{
+                id: 'actions',
+                header: 'Ações',
+                hideHeader: true,
+                align: 'right',
+                cell: (r: UserItem) => (
+                    <RowActions>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={deleting === r.username}
+                            onClick={() => handleDelete(r)}
+                        >
+                            {deleting === r.username ? 'Excluindo...' : 'Excluir'}
+                        </Button>
+                    </RowActions>
+                ),
+            } as DataColumn<UserItem>]
+            : []),
+    ];
 
     const hasQuery = search.trim().length > 0;
 
-    return (
-        <div className="flex flex-col gap-4">
-            {/* Barra de ferramentas */}
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-                <div className="relative flex-1">
-                    <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        className="h-12 rounded-full bg-muted/50 pl-11 pr-11"
-                        placeholder="Buscar por nome, usuário ou empresa..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        aria-label="Buscar pesquisadores"
-                    />
-                    {hasQuery && (
-                        <button
-                            type="button"
-                            aria-label="Limpar busca"
-                            onClick={() => setSearch('')}
-                            className="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-[#e0e5e1] hover:text-ink"
-                        >
-                            <X className="size-3.5" />
-                        </button>
-                    )}
-                </div>
+    const emptyState = (
+        <TableEmpty
+            icon={researchers.length > 0 ? undefined : <UsersRound />}
+            title={researchers.length > 0 ? 'Nenhum pesquisador encontrado' : 'Sua equipe de campo começa aqui'}
+            text={
+                researchers.length > 0
+                    ? 'Tente outro nome, usuário ou empresa.'
+                    : 'Use "Novo pesquisador" para cadastrar quem vai coletar em campo.'
+            }
+            onClear={researchers.length > 0 ? () => setSearch('') : undefined}
+        />
+    );
 
-                <div className="flex flex-wrap items-center gap-2">
-                    <Segmented<SortMode>
+    return (
+        <div className="flex flex-col">
+            <DataTableHeader
+                title="Pesquisadores"
+                count={hasQuery ? `${filtered.length} de ${researchers.length}` : researchers.length}
+            />
+
+            <DataTableToolbar>
+                <TableSearch
+                    value={search}
+                    onChange={setSearch}
+                    placeholder="Buscar por nome, usuário ou empresa..."
+                    label="Buscar pesquisadores"
+                />
+                <div className="grow flex flex-wrap items-center gap-2">
+                    <TableFilters<SortMode>
                         label="Ordenar"
                         value={sort}
                         onChange={setSort}
@@ -286,35 +241,31 @@ export default function ListaPesquisadores({
                             { value: 'name', label: 'A–Z', icon: <ArrowDownAZ /> },
                         ]}
                     />
-                    <Segmented<ViewMode>
+                    <TableFilters<ViewMode>
                         label="Modo de exibição"
                         value={view}
                         onChange={setView}
                         options={[
-                            { value: 'cards', label: 'Cards', icon: <LayoutGrid /> },
                             { value: 'table', label: 'Lista', icon: <List /> },
+                            { value: 'cards', label: 'Cards', icon: <LayoutGrid /> },
                         ]}
                     />
                 </div>
-            </div>
-
-            {!loading && researchers.length > 0 && (
-                <p className="px-1 text-[13px] text-muted-foreground" aria-live="polite">
-                    {hasQuery
-                        ? <>Mostrando <b className="font-semibold text-ink">{filtered.length}</b> de {researchers.length} pesquisadores</>
-                        : <><b className="font-semibold text-ink">{researchers.length}</b> {researchers.length === 1 ? 'pesquisador' : 'pesquisadores'} na equipe</>}
-                </p>
-            )}
+            </DataTableToolbar>
 
             {/* Conteúdo */}
             {loading ? (
-                <LoadingState label="Carregando pesquisadores..." shape="people" />
-            ) : rows.length === 0 ? (
-                <EmptyState hasAny={researchers.length > 0} onClear={() => setSearch('')} />
+                <LoadingState label="Carregando pesquisadores..." shape={view === 'table' ? 'table' : 'people'} columns={4} />
+            ) : filtered.length === 0 ? (
+                emptyState
             ) : view === 'table' ? (
-                <div className={`${maxHeightClassName} overflow-auto`}>
-                    <Tabela<Row> columns={columns} data={rows} />
-                </div>
+                <DataTable
+                    label="Pesquisadores"
+                    columns={columns}
+                    rows={filtered}
+                    getRowKey={(r) => r.id ?? r.username}
+                    className={maxHeightClassName}
+                />
             ) : (
                 <div className={`${maxHeightClassName} overflow-y-auto pr-1`}>
                     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">

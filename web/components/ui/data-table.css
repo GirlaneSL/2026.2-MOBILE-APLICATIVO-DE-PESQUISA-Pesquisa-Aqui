@@ -1,0 +1,362 @@
+/* Padrão único de tabela do painel (components/ui/data-table.tsx). */
+
+/* ---------- cabeçalho da tabela ---------- */
+.pa-dt-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+
+.pa-dt-head h4 {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.pa-dt-head .end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- barra de ferramentas: busca, filtros e controles ---------- */
+.pa-dt-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.pa-dt-search {
+  position: relative;
+  flex: 1 1 240px;
+  max-width: 360px;
+}
+
+.pa-dt-search > svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.pa-dt-search input {
+  width: 100%;
+  height: 40px;
+  padding: 0 38px 0 40px;
+  border: 1px solid var(--input);
+  border-radius: 999px;
+  background: #f6f8f6;
+  font-size: 13.5px;
+  color: var(--ink);
+  outline: 0;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.pa-dt-search input::placeholder {
+  color: #8a968f;
+}
+
+.pa-dt-search input:focus-visible {
+  background: #fff;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(68, 119, 98, 0.18);
+}
+
+.pa-dt-search button {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #e9eee9;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.pa-dt-search button:hover {
+  color: var(--ink);
+}
+
+.pa-dt-search button svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* grupo de botões (filtros e modo de exibição) */
+.pa-dt-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #eef1ee;
+}
+
+.pa-dt-seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pa-dt-seg button:hover {
+  color: var(--ink);
+}
+
+.pa-dt-seg button.on {
+  background: var(--forest);
+  color: #fff;
+}
+
+.pa-dt-seg button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pa-dt-seg em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #dfe5e0;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.pa-dt-seg button.on em {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--mint);
+}
+
+.pa-dt-bar .grow {
+  margin-left: auto;
+}
+
+/* abas que trocam a tabela: sempre no topo, à esquerda; ficam visíveis ao rolar o cartão */
+.pa-dt-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  padding-bottom: 14px;
+  background: #fff;
+}
+
+/* ---------- a tabela ---------- */
+.pa-dt-wrap {
+  overflow: auto;
+  /* Sem altura própria a tabela não rola sozinha: a roda do mouse segue para o cartão ao redor. */
+}
+
+.pa-dt {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pa-dt thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pa-dt td {
+  padding: 14px;
+  border-bottom: 1px solid #eef1ee;
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+.pa-dt th.r,
+.pa-dt td.r {
+  text-align: right;
+}
+
+.pa-dt tbody tr {
+  transition: background 0.15s;
+}
+
+.pa-dt tbody tr:hover {
+  background: #f5f8f5;
+}
+
+.pa-dt tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* linhas em destaque (ex.: pesquisador já vinculado) */
+.pa-dt tbody tr.on {
+  background: #f0f7f3;
+}
+
+.pa-dt tbody tr.on:hover {
+  background: #e8f2ec;
+}
+
+/* ---------- células ---------- */
+.pa-dt-title {
+  min-width: 0;
+}
+
+.pa-dt-title .t {
+  display: block;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.pa-dt-title a.link:hover {
+  color: var(--green-deep);
+  text-decoration: underline;
+}
+
+.pa-dt small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+}
+
+.pa-dt-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pa-dt-person .tx {
+  min-width: 0;
+}
+
+.pa-dt-person .tx b {
+  display: block;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 28ch;
+}
+
+.pa-dt-av {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+
+.pa-dt-av.sq {
+  border-radius: 12px;
+}
+
+.pa-dt-muted {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.pa-dt-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- estado vazio ---------- */
+.pa-dt-empty {
+  position: relative;
+  overflow: hidden;
+  padding: 44px 20px;
+  border: 1px dashed var(--input);
+  border-radius: 22px;
+  background: rgba(238, 241, 238, 0.5);
+  text-align: center;
+}
+
+.pa-dt-empty .in {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.pa-dt-empty .ic {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 4px;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--green-deep);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.pa-dt-empty .ic svg {
+  width: 22px;
+  height: 22px;
+}
+
+.pa-dt-empty .t {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pa-dt-empty .s {
+  margin: 0;
+  max-width: 360px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.pa-dt-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-top: 6px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.pa-dt-clear:hover {
+  background: var(--muted);
+}
+
+.pa-dt-clear svg {
+  width: 14px;
+  height: 14px;
+}

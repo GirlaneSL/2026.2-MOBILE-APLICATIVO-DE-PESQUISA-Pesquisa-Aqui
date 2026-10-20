@@ -1,11 +1,24 @@
 'use client'
 
+import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
+import {
+    DataTable,
+    DataTableHeader,
+    DataTableToolbar,
+    PersonCell,
+    RowActions,
+    TableChip,
+    TableEmpty,
+    TableFilters,
+    TableSearch,
+    type DataColumn,
+} from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/loadingState";
 import { getResearchLinkedResearchers, linkResearcher, unlinkResearcher } from "@/lib/research";
 import { getResearchers, type UserItem } from "@/lib/user";
-import { Check, Link2Off, Plus, Search, SearchX, UserRoundX, UsersRound, X } from "lucide-react";
+import { Link2Off, Plus, UserRoundX, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -120,6 +133,39 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
 
     const linkedUsers = researchers.filter((r) => linked.has(r.id));
 
+    const columns: DataColumn<UserItem>[] = [
+        {
+            id: 'name',
+            header: 'Pesquisador',
+            minWidth: '14rem',
+            cell: (user) => <PersonCell id={user.id} name={user.name} username={user.username} />,
+        },
+        {
+            id: 'status',
+            header: 'Situação',
+            cell: (user) =>
+                linked.has(user.id) ? <TableChip tone="live">Na equipe</TableChip> : <TableChip tone="done">Disponível</TableChip>,
+        },
+        {
+            id: 'actions',
+            header: 'Ações',
+            hideHeader: true,
+            align: 'right',
+            cell: (user) => {
+                const isLinked = linked.has(user.id);
+                const busy = busyId === user.id;
+                return (
+                    <RowActions>
+                        <Button variant={isLinked ? 'outline' : 'default'} size="sm" disabled={busy} onClick={() => toggle(user)}>
+                            {busy ? <Spinner className="size-3.5" /> : isLinked ? <Link2Off /> : <Plus />}
+                            {busy ? 'Aguarde...' : isLinked ? 'Desvincular' : 'Vincular'}
+                        </Button>
+                    </RowActions>
+                );
+            },
+        },
+    ];
+
     return (
         <div className="flex flex-col gap-5">
             {/* Resumo da equipe */}
@@ -176,131 +222,41 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
                 </div>
             </article>
 
-            {/* Ferramentas */}
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-wrap items-center gap-2">
-                    {filters.map((f) => {
-                        const on = f.value === filter;
-                        return (
-                            <button
-                                key={f.value}
-                                type="button"
-                                aria-pressed={on}
-                                onClick={() => setFilter(f.value)}
-                                className={`inline-flex h-9 items-center gap-2 rounded-full border px-4 text-[13px] font-medium transition-colors ${
-                                    on
-                                        ? 'border-ink bg-ink text-white'
-                                        : 'border-border bg-white text-muted-foreground hover:border-[#c6d0c9] hover:text-ink'
-                                }`}
-                            >
-                                {f.label}
-                                <span className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-semibold ${on ? 'bg-white/15 text-[var(--mint)]' : 'bg-[#ebeeeb]'}`}>
-                                    {f.count}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+            {/* Tabela de pesquisadores da empresa */}
+            <div>
+                <DataTableHeader
+                    title="Pesquisadores da empresa"
+                    count={visible.length === total ? total : `${visible.length} de ${total}`}
+                />
 
-                <div className="relative w-full lg:max-w-xs">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
+                <DataTableToolbar>
+                    <TableSearch
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        aria-label="Buscar pesquisadores"
+                        onChange={setSearch}
                         placeholder="Buscar por nome ou usuário..."
-                        className="h-10 w-full rounded-full border border-input bg-white pl-10 pr-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+                        label="Buscar pesquisadores"
                     />
-                    {search && (
-                        <button
-                            type="button"
-                            aria-label="Limpar busca"
-                            onClick={() => setSearch('')}
-                            className="absolute right-2.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full bg-muted text-muted-foreground hover:text-ink"
-                        >
-                            <X className="size-3" />
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Lista */}
-            {visible.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 rounded-[22px] border border-dashed border-input bg-muted/40 px-6 py-10 text-center">
-                    <div className="grid size-12 place-items-center rounded-2xl bg-white text-[var(--green-deep)] ring-1 ring-border">
-                        <SearchX className="size-5" />
+                    <div className="grow">
+                        <TableFilters<Filter> label="Situação" value={filter} onChange={setFilter} options={filters} />
                     </div>
-                    <p className="text-sm font-semibold">Nenhum pesquisador encontrado</p>
-                    <button
-                        type="button"
-                        onClick={() => { setSearch(''); setFilter('ALL'); }}
-                        className="mt-1 inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-white px-3.5 text-[13px] font-medium hover:bg-muted"
-                    >
-                        <X className="size-3.5" /> Limpar filtros
-                    </button>
-                </div>
-            ) : (
-                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {visible.map((user) => {
-                        const isLinked = linked.has(user.id);
-                        const busy = busyId === user.id;
+                </DataTableToolbar>
 
-                        return (
-                            <li
-                                key={user.id}
-                                className={`group relative flex flex-col gap-4 overflow-hidden rounded-[22px] border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_34px_-26px_rgba(10,20,16,0.45)] ${
-                                    isLinked
-                                        ? 'border-[#b9d6c6] bg-[#eef6f1]'
-                                        : 'border-border bg-white hover:border-[#c6d0c9]'
-                                }`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="relative shrink-0">
-                                        <div className={`avatar-pa size-12 text-[15px] ${toneOf(user.id)}`} aria-hidden="true">
-                                            {initialsOf(user.name)}
-                                        </div>
-                                        {isLinked && (
-                                            <span className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-[#eef6f1] bg-[var(--green-deep)] text-white">
-                                                <Check className="size-3" />
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-[15px] font-semibold tracking-tight" title={user.name}>{user.name}</p>
-                                        <p className="truncate font-mono text-[12.5px] text-muted-foreground" title={user.username}>@{user.username}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between gap-2">
-                                    <span
-                                        className={`inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${
-                                            isLinked ? 'bg-white text-[var(--green-deep)]' : 'bg-[#ebeeeb] text-muted-foreground'
-                                        }`}
-                                    >
-                                        <span className={`size-1.5 rounded-full ${isLinked ? 'bg-[var(--green)]' : 'bg-[#9aa59e]'}`} />
-                                        {isLinked ? 'Na equipe' : 'Disponível'}
-                                    </span>
-
-                                    <button
-                                        type="button"
-                                        disabled={busy}
-                                        onClick={() => toggle(user)}
-                                        className={`inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
-                                            isLinked
-                                                ? 'border border-border bg-white text-foreground hover:border-[#e8c4b8] hover:bg-[#f3e0d9] hover:text-[#8a432f]'
-                                                : 'bg-ink text-white hover:bg-[#26332c]'
-                                        }`}
-                                    >
-                                        {busy ? <Spinner className="size-3.5" /> : isLinked ? <Link2Off className="size-3.5" /> : <Plus className="size-3.5" />}
-                                        {busy ? 'Aguarde...' : isLinked ? 'Desvincular' : 'Vincular'}
-                                    </button>
-                                </div>
-                            </li>
-                        );
-                    })}
-                </ul>
-            )}
+                <DataTable
+                    label="Pesquisadores da empresa"
+                    columns={columns}
+                    rows={visible}
+                    getRowKey={(user) => user.id}
+                    rowTone={(user) => (linked.has(user.id) ? 'on' : undefined)}
+                    minWidth="560px"
+                    empty={
+                        <TableEmpty
+                            title="Nenhum pesquisador encontrado"
+                            text="Tente outro nome ou usuário."
+                            onClear={() => { setSearch(''); setFilter('ALL'); }}
+                        />
+                    }
+                />
+            </div>
         </div>
     );
 }

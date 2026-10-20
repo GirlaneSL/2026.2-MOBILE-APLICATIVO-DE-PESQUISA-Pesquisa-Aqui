@@ -1,10 +1,23 @@
 'use client'
 
+import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
+import {
+    CellTitle,
+    DataTable,
+    DataTableHeader,
+    DataTableToolbar,
+    RowActions,
+    TableChip,
+    TableEmpty,
+    TableFilters,
+    TableSearch,
+    type DataColumn,
+} from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/loadingState";
 import { formatDuration, getCollectionAudio, getCollections, type CollectionSummary } from "@/lib/collection";
-import { Clock, FileText, Headphones, Mic, MicOff, Play, Search, SearchX, ShieldAlert, ShieldCheck, Inbox, Users, X } from "lucide-react";
+import { Clock, FileText, Headphones, Play, ShieldAlert, Inbox, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import RespostasColeta from "./RespostasColeta";
@@ -35,14 +48,6 @@ const timeOf = (value: string | null) => (value ? new Date(value).getTime() : 0)
 
 const formatTime = (value: string | null) =>
     value ? new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-';
-
-const dayKey = (value: string | null) =>
-    value ? new Date(value).toLocaleDateString('pt-BR') : 'Sem data';
-
-const dayLabel = (value: string | null) =>
-    value
-        ? new Date(value).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-        : 'Sem data';
 
 const formatSize = (bytes: number) =>
     bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -196,24 +201,91 @@ function ColetasView({
     const lastText =
         lastDays === null ? '—' : lastDays === 0 ? 'Hoje' : lastDays === 1 ? 'Ontem' : `${lastDays} dias`;
 
-    const groups = useMemo(() => {
+    const rows = useMemo(() => {
         const term = normalize(search.trim());
-        const list = collections
+        return collections
             .filter((c) => {
                 if (filter === 'AUDIO' && !c.hasAudio) return false;
                 if (filter === 'NO_AUDIO' && c.hasAudio) return false;
                 return !term || normalize(c.researcherName ?? '').includes(term) || String(c.id).includes(term.replace('#', ''));
             })
             .sort((a, b) => timeOf(b.startedAt) - timeOf(a.startedAt));
-
-        const map = new Map<string, { label: string; items: CollectionSummary[] }>();
-        list.forEach((c) => {
-            const key = dayKey(c.startedAt);
-            if (!map.has(key)) map.set(key, { label: dayLabel(c.startedAt), items: [] });
-            map.get(key)!.items.push(c);
-        });
-        return [...map.values()];
     }, [collections, search, filter]);
+
+    const columns: DataColumn<CollectionSummary>[] = [
+        {
+            id: 'id',
+            header: 'Coleta',
+            cell: (c) => <CellTitle title={`#${c.id}`} />,
+        },
+        {
+            id: 'researcher',
+            header: 'Pesquisador',
+            minWidth: '12rem',
+            cell: (c) => (
+                <div className="pa-dt-person">
+                    <span className={`avatar-pa pa-dt-av ${toneOfName(c.researcherName)}`} aria-hidden="true">
+                        {initialsOf(c.researcherName)}
+                    </span>
+                    <div className="tx"><b>{c.researcherName ?? '-'}</b></div>
+                </div>
+            ),
+        },
+        {
+            id: 'when',
+            header: 'Iniciada em',
+            cell: (c) => (
+                <div>
+                    {c.startedAt ? new Date(c.startedAt).toLocaleDateString('pt-BR') : '-'}
+                    <small>{formatTime(c.startedAt)}</small>
+                </div>
+            ),
+        },
+        {
+            id: 'consent',
+            header: 'Consentimento',
+            cell: (c) =>
+                c.consent.given ? (
+                    <TableChip
+                        tone="live"
+                        title={`Consentimento em ${formatTime(c.consent.at)} por ${c.consent.confirmedByName ?? '-'}`}
+                    >
+                        Consentiu · {formatTime(c.consent.at)}
+                    </TableChip>
+                ) : (
+                    <TableChip tone="done">Sem consentimento</TableChip>
+                ),
+        },
+        {
+            id: 'audio',
+            header: 'Gravação',
+            cell: (c) =>
+                c.hasAudio ? (
+                    <TableChip tone="soon">Gravada · {formatDuration(c.audioDurationSeconds)}</TableChip>
+                ) : (
+                    <TableChip tone="done">Sem gravação</TableChip>
+                ),
+        },
+        {
+            id: 'actions',
+            header: 'Ações',
+            hideHeader: true,
+            align: 'right',
+            cell: (c) => (
+                <RowActions>
+                    {c.hasAudio && (
+                        <Button variant="outline" size="sm" disabled={loadingAudioId === c.id} onClick={() => onListen(c.id)}>
+                            {loadingAudioId === c.id ? <Spinner className="size-3.5" /> : <Play />}
+                            Ouvir
+                        </Button>
+                    )}
+                    <Button size="sm" onClick={() => onView(c)}>
+                        <FileText /> Ver respostas
+                    </Button>
+                </RowActions>
+            ),
+        },
+    ];
 
     const filters: { value: Filter; label: string; count: number }[] = [
         { value: 'ALL', label: 'Todas', count: collections.length },
@@ -244,171 +316,53 @@ function ColetasView({
                 </article>
             </section>
 
-            {/* Ferramentas */}
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-wrap items-center gap-2">
-                    {filters.map((f) => {
-                        const on = f.value === filter;
-                        return (
-                            <button
-                                key={f.value}
-                                type="button"
-                                aria-pressed={on}
-                                onClick={() => setFilter(f.value)}
-                                className={`inline-flex h-9 items-center gap-2 rounded-full border px-4 text-[13px] font-medium transition-colors ${
-                                    on ? 'border-ink bg-ink text-white' : 'border-border bg-white text-muted-foreground hover:border-[#c6d0c9] hover:text-ink'
-                                }`}
-                            >
-                                {f.label}
-                                <span className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-semibold ${on ? 'bg-white/15 text-[var(--mint)]' : 'bg-[#ebeeeb]'}`}>
-                                    {f.count}
-                                </span>
-                            </button>
-                        );
-                    })}
-                    <span
-                        className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium ${
-                            recordInterview ? 'bg-[#f3e0d9] text-[#8a432f]' : 'bg-[#ebeeeb] text-muted-foreground'
-                        }`}
-                    >
-                        {recordInterview ? <Mic className="size-3.5" /> : <MicOff className="size-3.5" />}
-                        Gravação {recordInterview ? 'ligada' : 'desligada'}
-                    </span>
-                </div>
+            {/* Tabela de coletas */}
+            <div>
+                <DataTableHeader
+                    title="Coletas recebidas"
+                    count={rows.length === collections.length ? collections.length : `${rows.length} de ${collections.length}`}
+                />
 
-                <div className="relative w-full lg:max-w-xs">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        aria-label="Buscar coletas"
-                        placeholder="Buscar pesquisador ou nº da coleta..."
-                        className="h-10 w-full rounded-full border border-input bg-white pl-10 pr-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
-                    />
-                    {search && (
-                        <button
-                            type="button"
-                            aria-label="Limpar busca"
-                            onClick={() => setSearch('')}
-                            className="absolute right-2.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full bg-muted text-muted-foreground hover:text-ink"
-                        >
-                            <X className="size-3" />
-                        </button>
-                    )}
-                </div>
+                {collections.length > 0 && (
+                    <DataTableToolbar>
+                        <TableSearch
+                            value={search}
+                            onChange={setSearch}
+                            placeholder="Buscar pesquisador ou nº da coleta..."
+                            label="Buscar coletas"
+                        />
+                        <div className="grow flex flex-wrap items-center gap-2">
+                            <TableFilters<Filter> label="Gravação" value={filter} onChange={setFilter} options={filters} />
+                            <TableChip tone={recordInterview ? 'soon' : 'done'}>
+                                Gravação {recordInterview ? 'ligada' : 'desligada'}
+                            </TableChip>
+                        </div>
+                    </DataTableToolbar>
+                )}
+
+                <DataTable
+                    label="Coletas recebidas"
+                    columns={columns}
+                    rows={rows}
+                    getRowKey={(c) => c.id}
+                    minWidth="860px"
+                    empty={
+                        collections.length === 0 ? (
+                            <TableEmpty
+                                icon={<Inbox />}
+                                title="Nenhuma coleta recebida ainda"
+                                text="Assim que os pesquisadores enviarem coletas pelo aplicativo, elas aparecem aqui."
+                            />
+                        ) : (
+                            <TableEmpty
+                                title="Nenhuma coleta encontrada"
+                                text="Tente outro nome ou número."
+                                onClear={() => { setSearch(''); setFilter('ALL'); }}
+                            />
+                        )
+                    }
+                />
             </div>
-
-            {/* Lista agrupada por dia */}
-            {collections.length === 0 ? (
-                <div className="relative overflow-hidden rounded-[26px] border border-dashed border-input bg-muted/40 px-6 py-14 text-center">
-                    <Contour seed={2} rings={10} cx={0.5} cy={0.5} size={1.2} style={{ opacity: 0.3 }} />
-                    <div className="relative z-10 flex flex-col items-center gap-3">
-                        <div className="grid size-14 place-items-center rounded-2xl bg-white text-[var(--green-deep)] ring-1 ring-border"><Inbox className="size-6" /></div>
-                        <p className="text-base font-semibold tracking-tight">Nenhuma coleta recebida ainda</p>
-                        <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-                            Assim que os pesquisadores enviarem coletas pelo aplicativo, elas aparecem aqui.
-                        </p>
-                    </div>
-                </div>
-            ) : groups.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 rounded-[22px] border border-dashed border-input bg-muted/40 px-6 py-10 text-center">
-                    <div className="grid size-12 place-items-center rounded-2xl bg-white text-[var(--green-deep)] ring-1 ring-border"><SearchX className="size-5" /></div>
-                    <p className="text-sm font-semibold">Nenhuma coleta encontrada</p>
-                    <button
-                        type="button"
-                        onClick={() => { setSearch(''); setFilter('ALL'); }}
-                        className="mt-1 inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-white px-3.5 text-[13px] font-medium hover:bg-muted"
-                    >
-                        <X className="size-3.5" /> Limpar filtros
-                    </button>
-                </div>
-            ) : (
-                <div className="flex flex-col gap-6">
-                    {groups.map((g) => (
-                        <section key={g.label}>
-                            <h4 className="mb-2.5 flex items-center gap-3 px-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                                <span className="first-letter:uppercase">{g.label}</span>
-                                <span className="h-px flex-1 bg-border" />
-                                <span className="rounded-full bg-[#ebeeeb] px-2 py-0.5 text-[11px] normal-case tracking-normal">{g.items.length}</span>
-                            </h4>
-
-                            <ul className="flex flex-col gap-2.5">
-                                {g.items.map((c) => (
-                                    <li
-                                        key={c.id}
-                                        className="group flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[20px] border border-border bg-white p-3 pr-4 transition-all hover:-translate-y-px hover:border-[#c6d0c9] hover:shadow-[0_16px_28px_-22px_rgba(10,20,16,0.5)]"
-                                    >
-                                        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[var(--forest)] text-[15px] font-semibold tracking-tight text-[var(--mint)]">
-                                            #{c.id}
-                                        </span>
-
-                                        <div className="flex min-w-0 flex-1 basis-52 items-center gap-3">
-                                            <div className={`avatar-pa size-10 text-[13px] ${toneOfName(c.researcherName)}`} aria-hidden="true">
-                                                {initialsOf(c.researcherName)}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="truncate text-[15px] font-semibold tracking-tight">{c.researcherName ?? '-'}</p>
-                                                <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                                                    <Clock className="size-3.5" /> {formatTime(c.startedAt)}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            {c.consent.given ? (
-                                                <span
-                                                    className="inline-flex h-7 items-center gap-1.5 rounded-full bg-[#e4ece7] px-2.5 text-xs font-medium text-[var(--green-deep)]"
-                                                    title={`Consentimento em ${formatTime(c.consent.at)} por ${c.consent.confirmedByName ?? '-'}`}
-                                                >
-                                                    <ShieldCheck className="size-3.5" />
-                                                    Consentiu · {formatTime(c.consent.at)}
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex h-7 items-center rounded-full bg-[#ebeeeb] px-2.5 text-xs font-medium text-muted-foreground">
-                                                    Sem consentimento
-                                                </span>
-                                            )}
-
-                                            {c.hasAudio ? (
-                                                <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-[#f3e0d9] px-2.5 text-xs font-medium text-[#8a432f]">
-                                                    <Headphones className="size-3.5" />
-                                                    Gravada · {formatDuration(c.audioDurationSeconds)}
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-[#ebeeeb] px-2.5 text-xs font-medium text-muted-foreground">
-                                                    <MicOff className="size-3.5" />
-                                                    Sem gravação
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <div className="ml-auto flex items-center gap-2">
-                                            {c.hasAudio && (
-                                                <button
-                                                    type="button"
-                                                    disabled={loadingAudioId === c.id}
-                                                    onClick={() => onListen(c.id)}
-                                                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-white px-4 text-[13px] font-semibold transition-colors hover:border-[#e8c4b8] hover:bg-[#f3e0d9] hover:text-[#8a432f] disabled:cursor-not-allowed disabled:opacity-60"
-                                                >
-                                                    {loadingAudioId === c.id ? <Spinner className="size-3.5" /> : <Play className="size-3.5" />}
-                                                    Ouvir
-                                                </button>
-                                            )}
-                                            <button
-                                                type="button"
-                                                onClick={() => onView(c)}
-                                                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-[13px] font-semibold text-white transition-colors hover:bg-[#26332c]"
-                                            >
-                                                <FileText className="size-3.5" /> Ver respostas
-                                            </button>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-                    ))}
-                </div>
-            )}
 
             <RespostasColeta collection={viewing} onClose={onCloseView} />
 

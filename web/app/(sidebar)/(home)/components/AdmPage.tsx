@@ -3,14 +3,14 @@
 import BannerComponent from "@/components/ui/bannerComponent";
 import { Pin } from "@/components/ui/contour";
 import { buttonVariants } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TableTabs } from "@/components/ui/data-table";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
 import { useFieldSnapshot } from "@/hooks/useFieldSnapshot";
 import { buildAdminActivities, countByMonth } from "@/lib/dashboard";
 import { buildTeamRows } from "@/lib/fieldData";
 import { getActiveResearchesInMonth, getResearches, getResearchesByMonth, type Research } from "@/lib/research";
 import { getResearchers, type UserItem } from "@/lib/user";
-import { CalendarClock, ClipboardList, Clock, History, Target, UsersRound } from "lucide-react";
+import { CalendarClock, ClipboardList, Clock, History, NotebookPen, Target, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
@@ -27,10 +27,13 @@ import UltimasAtualizacoesList from "./UltimasAtualizacoesList";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+type TeamTab = "pesquisas" | "pesquisadores";
+
 export default function AdmPage({ userName }: { userName?: string }) {
     const [researches, setResearches] = useState<Research[]>([]);
     const [researchers, setResearchers] = useState<UserItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [teamTab, setTeamTab] = useState<TeamTab>("pesquisas");
 
     useEffect(() => {
         let cancelled = false;
@@ -223,13 +226,18 @@ export default function AdmPage({ userName }: { userName?: string }) {
                     cardDescription="Situação, período e quem coleta em cada pesquisa"
                     CardContentClassName="max-h-[26rem] overflow-auto"
                     cardContent={
-                        <Tabs defaultValue="pesquisas" className="w-full">
-                            <TabsList className="sticky top-0 z-10 grid w-fit grid-cols-2">
-                                <TabsTrigger value="pesquisas">Pesquisas</TabsTrigger>
-                                <TabsTrigger value="pesquisadores">Pesquisadores</TabsTrigger>
-                            </TabsList>
+                        <div className="w-full">
+                            <TableTabs<TeamTab>
+                                label="Tabelas"
+                                value={teamTab}
+                                onChange={setTeamTab}
+                                options={[
+                                    { value: "pesquisas", label: "Pesquisas", count: loading ? undefined : researches.length, icon: <NotebookPen /> },
+                                    { value: "pesquisadores", label: "Pesquisadores", count: loading ? undefined : researchers.length, icon: <UsersRound /> },
+                                ]}
+                            />
 
-                            <TabsContent value="pesquisas" className="pt-2">
+                            {teamTab === "pesquisas" ? (
                                 <PesquisasEquipeTabela
                                     researches={researches}
                                     researchers={researchers}
@@ -239,9 +247,7 @@ export default function AdmPage({ userName }: { userName?: string }) {
                                     loading={loading}
                                     teamLoading={fieldLoading}
                                 />
-                            </TabsContent>
-
-                            <TabsContent value="pesquisadores" className="pt-2">
+                            ) : (
                                 <ListaPesquisadores
                                     researchers={researchers}
                                     companyNames={{}}
@@ -251,8 +257,8 @@ export default function AdmPage({ userName }: { userName?: string }) {
                                     onDeleted={() => { }}
                                     maxHeightClassName="max-h-none"
                                 />
-                            </TabsContent>
-                        </Tabs>
+                            )}
+                        </div>
                     }
                 />
             </section>
