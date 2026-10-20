@@ -13,7 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 //   people          grade de cartões com avatar (pesquisadores)
 //   research-cards  grade de cartões de pesquisa (página Pesquisas)
 //   table           tabela com cabeçalho e linhas (pesquisas em tabela, home)
-//   sections        questionário: blocos com cabeçalho escuro e itens
+//   sections        questionário: blocos com cabeçalho claro, itens e botão de adicionar
 //   collections     aba Coletas: indicadores, filtros e coletas agrupadas por dia
 //   answers         respostas de uma coleta: seções com perguntas e respostas
 //   page            página de pesquisa: faixa de título, abas e conteúdo
@@ -185,15 +185,34 @@ export function LoadingState({ label, shape = "list", count, columns = 5, tone =
             <div className="space-y-4">
                 {times(total).map((i) => (
                     <div key={i} className={cn("overflow-hidden rounded-[26px] border", panel)}>
-                        <div className="h-[76px] bg-[var(--forest)]/90" />
-                        <div className="space-y-3 p-4">
+                        {/* cabeçalho claro: faixa lateral, número, rótulo + título, selos e botões */}
+                        <div className={cn("relative flex items-center gap-3 rounded-t-[25px] border-b border-l-4 px-4 py-4 sm:px-5", line, dark ? "border-l-white/20 bg-white/5" : "border-l-[var(--green)]/30 bg-gradient-to-r from-[#eef5f0] to-white")}>
+                            {block("size-11")}
+                            <div className="flex-1 space-y-2">
+                                {bar("w-16", "h-2.5")}
+                                {bar("w-1/3", "h-4")}
+                            </div>
+                            <div className="hidden items-center gap-1.5 md:flex">
+                                {bar("w-20", "h-7")}
+                                {bar("w-24", "h-7")}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                {times(4).map((b) => <div key={b} className={cn("size-9 rounded-full", fill)} />)}
+                            </div>
+                        </div>
+                        <div className="space-y-3 p-3 sm:p-4">
                             {times(3).map((j) => (
                                 <div key={j} className="flex items-center gap-3">
                                     {block("size-7", "rounded-full")}
-                                    {block("size-10", "rounded-xl")}
-                                    {bar("w-1/2", "h-3.5")}
+                                    {block("size-10", "rounded-full")}
+                                    <div className="flex-1 space-y-2">
+                                        {bar("w-1/3", "h-3.5")}
+                                        {bar("w-16", "h-2.5")}
+                                    </div>
+                                    {bar("w-16", "h-5")}
                                 </div>
                             ))}
+                            <div className={cn("h-12 rounded-2xl border border-dashed", line)} />
                         </div>
                     </div>
                 ))}

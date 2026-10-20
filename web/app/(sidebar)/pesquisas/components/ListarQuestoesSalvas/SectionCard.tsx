@@ -53,37 +53,30 @@ export function SectionCard({
 
     return (
         <section className="overflow-hidden rounded-[26px] border border-border bg-white shadow-[0_24px_40px_-34px_rgba(10,20,16,0.3)]">
-            <header className="relative flex flex-wrap items-center gap-3 overflow-hidden bg-[var(--forest)] px-4 py-4 text-[var(--fg-dark)] sm:flex-nowrap sm:px-5">
-                {/* marca d'água: número da seção */}
-                <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -right-2 -top-6 select-none text-[120px] font-bold leading-none tracking-tighter text-[rgba(191,227,208,0.07)]"
-                >
-                    {String(section.order).padStart(2, "0")}
-                </span>
+            <header className="relative flex flex-wrap items-center gap-3 rounded-t-[25px] border-b border-l-4 border-border border-l-[var(--green)] bg-gradient-to-r from-[#eef5f0] to-white px-4 py-4 sm:flex-nowrap sm:px-5">
 
-                <span className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-[var(--mint)] text-lg font-bold text-[var(--forest)]">
+                <span className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-[var(--mint)] text-lg font-bold text-[var(--green-deep)]">
                     {section.order}
                 </span>
 
                 <div className="relative order-last min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-0">
-                    <p className="mb-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted-dark)]">
+                    <p className="mb-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--green)]">
                         Seção {section.order}
                     </p>
                     <Input
                         defaultValue={section.title}
                         onBlur={(e) => onBlurTitle(section.id, e.target.value)}
                         placeholder="Título da seção"
-                        className="h-9 rounded-xl border-transparent bg-transparent px-2 -ml-2 text-lg font-semibold tracking-tight text-[var(--fg-dark)] shadow-none placeholder:text-[var(--muted-dark)] hover:border-white/20 focus-visible:border-[var(--mint)] focus-visible:bg-white/5 focus-visible:ring-[rgba(191,227,208,0.2)]"
+                        className="h-9 rounded-xl border-transparent bg-transparent px-2 -ml-2 text-lg font-semibold tracking-tight text-ink shadow-none placeholder:text-muted-foreground hover:border-border focus-visible:border-[var(--green)] focus-visible:bg-white focus-visible:ring-[rgba(68,119,98,0.2)]"
                     />
                 </div>
 
                 <div className="relative hidden shrink-0 items-center gap-1.5 md:flex">
-                    <span className="inline-flex h-7 items-center rounded-full bg-[rgba(191,227,208,0.12)] px-3 text-xs font-medium text-[var(--mint)]">
+                    <span className="inline-flex h-7 items-center rounded-full bg-[#e4ece7] px-3 text-xs font-medium text-[var(--green-deep)]">
                         {total} {total === 1 ? "questão" : "questões"}
                     </span>
                     {required > 0 && (
-                        <span className="inline-flex h-7 items-center rounded-full bg-[rgba(224,145,122,0.18)] px-3 text-xs font-medium text-[#f0b09c]">
+                        <span className="inline-flex h-7 items-center rounded-full bg-[#f3e0d9] px-3 text-xs font-medium text-[#8a432f]">
                             {required} {required === 1 ? "obrigatória" : "obrigatórias"}
                         </span>
                     )}
