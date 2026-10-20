@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'a1fcd91d3097d1341d0bffa70083472ea5d0b8ed7d8ebfa66794952e4f125c46'>;
+  StorageHashBase<'e60306dcee284b3963c6686a8abb694baebdab9baf72aa8bf8db4d5053a94b29'>;
 export type ExecutionHash =
   ExecutionHashBase<'89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09'>;
 export type ProfileHash =
@@ -374,6 +374,7 @@ export type FieldOutputTypes = {
       readonly username: CodecTypes['pg/text@1']['output'];
       readonly passwordHash: CodecTypes['pg/text@1']['output'];
       readonly profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER';
+      readonly situation: 'ACTIVE' | 'INACTIVE';
       readonly companyId: CodecTypes['pg/int4@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -515,6 +516,7 @@ export type FieldInputTypes = {
       readonly username: CodecTypes['pg/text@1']['input'];
       readonly passwordHash: CodecTypes['pg/text@1']['input'];
       readonly profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER';
+      readonly situation: 'ACTIVE' | 'INACTIVE';
       readonly companyId: CodecTypes['pg/int4@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -657,6 +659,7 @@ export type StorageColumnTypes = {
       readonly name: CodecTypes['pg/text@1']['output'];
       readonly passwordHash: CodecTypes['pg/text@1']['output'];
       readonly profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER';
+      readonly situation: 'ACTIVE' | 'INACTIVE';
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly username: CodecTypes['pg/text@1']['output'];
     };
@@ -798,6 +801,7 @@ export type StorageColumnInputTypes = {
       readonly name: CodecTypes['pg/text@1']['input'];
       readonly passwordHash: CodecTypes['pg/text@1']['input'];
       readonly profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER';
+      readonly situation: 'ACTIVE' | 'INACTIVE';
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly username: CodecTypes['pg/text@1']['input'];
     };
@@ -1793,6 +1797,15 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
                 };
+                readonly situation: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'ACTIVE'>;
+                  };
+                };
                 readonly companyId: {
                   readonly nativeType: 'int4';
                   readonly codecId: 'pg/int4@1';
@@ -1865,6 +1878,10 @@ type ContractBase = Omit<
             readonly ResearchStatus: {
               readonly kind: 'valueSet';
               readonly values: readonly ['DRAFT', 'PUBLISHED', 'IN_FIELD', 'CLOSED'];
+            };
+            readonly UserSituation: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['ACTIVE', 'INACTIVE'];
             };
           };
         };
@@ -2867,6 +2884,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly situation: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly companyId: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
@@ -2952,6 +2973,7 @@ type ContractBase = Omit<
                 readonly username: { readonly column: 'username' };
                 readonly passwordHash: { readonly column: 'passwordHash' };
                 readonly profile: { readonly column: 'profile' };
+                readonly situation: { readonly column: 'situation' };
                 readonly companyId: { readonly column: 'companyId' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
@@ -2961,6 +2983,13 @@ type ContractBase = Omit<
         };
         readonly enum: {
           readonly CompanySituation: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'ACTIVE'; readonly value: 'ACTIVE' },
+              { readonly name: 'INACTIVE'; readonly value: 'INACTIVE' },
+            ];
+          };
+          readonly UserSituation: {
             readonly codecId: 'pg/text@1';
             readonly members: readonly [
               { readonly name: 'ACTIVE'; readonly value: 'ACTIVE' },

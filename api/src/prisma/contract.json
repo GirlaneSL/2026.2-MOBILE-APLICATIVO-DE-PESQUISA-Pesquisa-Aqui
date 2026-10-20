@@ -160,6 +160,19 @@
                 "value": "CLOSED"
               }
             ]
+          },
+          "UserSituation": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "ACTIVE",
+                "value": "ACTIVE"
+              },
+              {
+                "name": "INACTIVE",
+                "value": "INACTIVE"
+              }
+            ]
           }
         },
         "models": {
@@ -1698,6 +1711,19 @@
                   "plane": "domain"
                 }
               },
+              "situation": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "UserSituation",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
               "updatedAt": {
                 "nullable": false,
                 "type": {
@@ -1809,6 +1835,9 @@
                 },
                 "profile": {
                   "column": "profile"
+                },
+                "situation": {
+                  "column": "situation"
                 },
                 "updatedAt": {
                   "column": "updatedAt"
@@ -3010,6 +3039,11 @@
                   "expression": "\"profile\" IN ('SUPERADMINISTRATOR', 'ADMINISTRATOR', 'RESEARCHER')",
                   "name": "user_profile_check_aec248b3",
                   "prefix": "user_profile_check"
+                },
+                {
+                  "expression": "\"situation\" IN ('ACTIVE', 'INACTIVE')",
+                  "name": "user_situation_check_0eafbbbd",
+                  "prefix": "user_situation_check"
                 }
               ],
               "columns": {
@@ -3053,6 +3087,21 @@
                   "valueSet": {
                     "entityKind": "valueSet",
                     "entityName": "Profile",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "situation": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "ACTIVE"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "UserSituation",
                     "namespaceId": "public",
                     "plane": "storage"
                   }
@@ -3151,6 +3200,13 @@
                 "IN_FIELD",
                 "CLOSED"
               ]
+            },
+            "UserSituation": {
+              "kind": "valueSet",
+              "values": [
+                "ACTIVE",
+                "INACTIVE"
+              ]
             }
           }
         },
@@ -3158,7 +3214,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "a1fcd91d3097d1341d0bffa70083472ea5d0b8ed7d8ebfa66794952e4f125c46"
+    "storageHash": "e60306dcee284b3963c6686a8abb694baebdab9baf72aa8bf8db4d5053a94b29"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",
