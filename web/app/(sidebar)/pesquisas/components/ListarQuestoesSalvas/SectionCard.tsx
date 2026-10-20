@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { FormSection } from "@/lib/questionnaire";
 import { QuestionCard, QuestionActions, OptionActions } from "./QuestionCard";
 import type { RulesContext } from "./RegrasExibicao";
+import { useReadOnly } from "./ReadOnlyContext";
 
 interface SectionCardProps {
     section: FormSection;
@@ -47,6 +48,7 @@ export function SectionCard({
     section, sIndex, totalSections, onBlurTitle, onMove, onDelete, onAddQuestion,
     qActions, optActions, rulesCtx, openQuestionIds, onToggleQuestion,
 }: SectionCardProps) {
+    const readOnly = useReadOnly();
     const [collapsed, setCollapsed] = useState(false);
     const total = section.questions.length;
     const required = section.questions.filter((q) => q.required).length;
@@ -65,7 +67,8 @@ export function SectionCard({
                     </p>
                     <Input
                         defaultValue={section.title}
-                        onBlur={(e) => onBlurTitle(section.id, e.target.value)}
+                        readOnly={readOnly}
+                        onBlur={(e) => { if (!readOnly) onBlurTitle(section.id, e.target.value); }}
                         placeholder="Título da seção"
                         className="h-9 rounded-xl border-transparent bg-transparent px-2 -ml-2 text-lg font-semibold tracking-tight text-ink shadow-none placeholder:text-muted-foreground hover:border-border focus-visible:border-[var(--green)] focus-visible:bg-white focus-visible:ring-[rgba(68,119,98,0.2)]"
                     />
@@ -83,9 +86,13 @@ export function SectionCard({
                 </div>
 
                 <div className="relative ml-auto flex shrink-0 items-center gap-1.5 sm:ml-0">
-                    <RoundButton label="Mover seção para cima" onClick={() => onMove(sIndex, "up")} disabled={sIndex === 0}><ArrowUp /></RoundButton>
-                    <RoundButton label="Mover seção para baixo" onClick={() => onMove(sIndex, "down")} disabled={sIndex === totalSections - 1}><ArrowDown /></RoundButton>
-                    <RoundButton danger label="Excluir seção" onClick={() => onDelete(section.id)}><Trash2 /></RoundButton>
+                    {!readOnly && (
+                        <>
+                            <RoundButton label="Mover seção para cima" onClick={() => onMove(sIndex, "up")} disabled={sIndex === 0}><ArrowUp /></RoundButton>
+                            <RoundButton label="Mover seção para baixo" onClick={() => onMove(sIndex, "down")} disabled={sIndex === totalSections - 1}><ArrowDown /></RoundButton>
+                            <RoundButton danger label="Excluir seção" onClick={() => onDelete(section.id)}><Trash2 /></RoundButton>
+                        </>
+                    )}
                     <RoundButton label={collapsed ? "Expandir seção" : "Recolher seção"} onClick={() => setCollapsed((c) => !c)}>
                         <ChevronDown className={cn("transition-transform", collapsed && "-rotate-90")} />
                     </RoundButton>
@@ -117,6 +124,7 @@ export function SectionCard({
                         </div>
                     )}
 
+                    {!readOnly && (
                     <button
                         type="button"
                         onClick={() => onAddQuestion(section.id)}
@@ -125,6 +133,7 @@ export function SectionCard({
                         <span className="grid size-6 place-items-center rounded-full bg-[var(--green-deep)] text-white"><Plus className="size-3.5" /></span>
                         Adicionar questão nesta seção
                     </button>
+                    )}
                 </div>
             )}
         </section>

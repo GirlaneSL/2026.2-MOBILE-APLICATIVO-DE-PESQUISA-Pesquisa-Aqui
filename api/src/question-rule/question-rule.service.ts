@@ -127,7 +127,7 @@ export class QuestionRuleService {
       throw new BadRequestException('As duas questões da regra precisam pertencer à mesma pesquisa.');
     }
     const researchId = sourceSection.researchId;
-    await this.researchService.findOne(researchId, currentUser);
+    await this.researchService.assertEditable(researchId, currentUser);
 
     const { questions, edges } = await this.load(researchId);
     const error = checkNewRule(questions, edges, dto);
@@ -152,7 +152,7 @@ export class QuestionRuleService {
   async delete(id: number, currentUser: UserPayLoad) {
     const rule = await this.orm.QuestionRule.where({ id }).first();
     if (!rule) throw new NotFoundException('Rule not found');
-    await this.researchService.findOne(rule.researchId, currentUser);
+    await this.researchService.assertEditable(rule.researchId, currentUser);
     return await this.orm.QuestionRule.where({ id }).delete();
   }
 

@@ -23,7 +23,7 @@ export class ResearchController {
 
     @Get(':id')
     findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
-        return this.researchService.findOne(id, currentUser);
+        return this.researchService.findOneWithLock(id, currentUser);
     }
 
     @Patch(':id')

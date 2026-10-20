@@ -7,7 +7,7 @@ import { LoadingState } from "@/components/ui/loadingState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getResearchById, publishResearch, type Research } from "@/lib/research";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, CalendarRange, Check, ClipboardList, FileText, Flag, ListChecks, Mic, MicOff, Quote, ShieldAlert, Target, UsersRound } from "lucide-react";
+import { ArrowLeft, CalendarRange, Check, ClipboardList, FileText, Flag, ListChecks, Lock, Mic, MicOff, Quote, ShieldAlert, Target, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -127,7 +127,7 @@ export default function PesquisaDetalhePage() {
     const handlePublish = async () => {
         try {
             const updated = await publishResearch(research.id);
-            setState({ status: 'success', research: { ...research, status: updated.status } });
+            setState({ status: 'success', research: { ...research, status: updated.status, locked: true } });
             toast.success('Pesquisa publicada! Ela já está visível para o aplicativo.');
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Erro ao publicar pesquisa');
@@ -138,6 +138,8 @@ export default function PesquisaDetalhePage() {
 
     const stepIndex = Math.max(0, STEPS.findIndex((st) => st.key === research.status));
     const closed = research.status === 'CLOSED';
+    // Publicada pelo administrador ou baixada por um pesquisador: só leitura (a API também bloqueia).
+    const locked = research.locked ?? research.status !== 'DRAFT';
     const vig = vigencia(research.startDate, research.endDate, now);
     const audience = (research.targetAudience || "")
         .split(/[;\n]|,(?![^(]*\))/)
@@ -230,10 +232,14 @@ export default function PesquisaDetalhePage() {
                     </TabsList>
 
                     <div className="flex items-center gap-2">
-                        <DialogLayout
-                            dialogTrigger="Editar" triggerButtonVariant="outline" triggerButtonSize="sm" dialogTitle="Editar dados da pesquisa" dialogDescription="Atualize os dados principais."
-                            dialogContent={<ModalEditarPesquisa isMontagem={false} research={research} onSuccess={() => toast.success('Pesquisa atualizada!')} />}
-                        />
+                        {locked ? (
+                            <Button variant="outline" size="sm" disabled title="Pesquisa publicada ou baixada: não pode mais ser editada"><Lock />Edição bloqueada</Button>
+                        ) : (
+                            <DialogLayout
+                                dialogTrigger="Editar" triggerButtonVariant="outline" triggerButtonSize="sm" dialogTitle="Editar dados da pesquisa" dialogDescription="Atualize os dados principais."
+                                dialogContent={<ModalEditarPesquisa isMontagem={false} research={research} onSuccess={() => toast.success('Pesquisa atualizada!')} />}
+                            />
+                        )}
                         {research.status === 'DRAFT' && (
                             <Button size="sm" onClick={handlePublish}><Flag />Publicar</Button>
                         )}
@@ -381,7 +387,7 @@ export default function PesquisaDetalhePage() {
                 </TabsContent>
 
                 <TabsContent value="questions" className="mt-0">
-                    <ListarQuestoesSalvas researchId={params.id} />
+                    <ListarQuestoesSalvas researchId={params.id} readOnly={locked} />
                 </TabsContent>
 
                 <TabsContent value="researchers" className="mt-0">

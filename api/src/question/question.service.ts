@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma.service.js';
 import { UserPayLoad } from '../auth/current-user.type.js';
 import { SectionService } from '../section/section.service.js';
 import { QuestionRuleService } from '../question-rule/question-rule.service.js';
+import { ResearchService } from '../research/research.service.js';
 import { ReorderQuestionsDto } from './dto/reorder-questions.dto.js';
 
 @Injectable()
@@ -13,10 +14,12 @@ export class QuestionService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     private readonly sectionService: SectionService,
     private readonly ruleService: QuestionRuleService,
+    private readonly researchService: ResearchService,
   ) { }
 
   async create(createQuestionDto: CreateQuestionDto, currentUser: UserPayLoad) {
-    await this.sectionService.findOne(createQuestionDto.sectionId, currentUser);
+    const section = await this.sectionService.findOne(createQuestionDto.sectionId, currentUser);
+    await this.researchService.assertEditable(section.researchId, currentUser);
 
     return await this.prisma.client.orm.public.Question.create({
       statement: createQuestionDto.statement,
@@ -58,6 +61,7 @@ export class QuestionService {
 
   async update(id: number, updateQuestionDto: UpdateQuestionDto, currentUser: UserPayLoad, force = false) {
     const { question, section } = await this.findWithSection(id, currentUser);
+    await this.researchService.assertEditable(section.researchId, currentUser);
 
     // Trocar o tipo pode invalidar a resposta que dispara regras desta questão.
     if (updateQuestionDto.type !== undefined && updateQuestionDto.type !== question.type) {
@@ -90,6 +94,7 @@ export class QuestionService {
   // Reordena todas as questões de uma seção de uma vez, validando as regras no resultado final.
   async reorder(dto: ReorderQuestionsDto, currentUser: UserPayLoad) {
     const section = await this.sectionService.findOne(dto.sectionId, currentUser);
+    await this.researchService.assertEditable(section.researchId, currentUser);
     const questions = await this.prisma.client.orm.public.Question.where({ sectionId: dto.sectionId }).all();
 
     const currentIds = questions.map((q) => q.id).sort((a, b) => a - b);
@@ -112,6 +117,7 @@ export class QuestionService {
 
   async delete(id: number, currentUser: UserPayLoad, force = false) {
     const { section } = await this.findWithSection(id, currentUser);
+    await this.researchService.assertEditable(section.researchId, currentUser);
 
     // Avisa se a questão é usada em regras; as regras saem junto (ON DELETE CASCADE).
     await this.ruleService.guardQuestionDeletion(section.researchId, [id], force, 'Esta questão participa');
@@ -127,7 +133,8 @@ export class QuestionService {
   }
 
   // --- GERENCIAMENTO DE OPÇÕES DE RESPOSTA ---
-  async createOption(questionId: number, text: string, order: number) {
+  async createOption(questionId: number, text: string, order: number, currentUser: UserPayLoad) {
+    await this.assertQuestionEditable(questionId, currentUser);
     return await this.prisma.client.orm.public.QuestionOption.create({
       questionId,
       text,
@@ -135,20 +142,31 @@ export class QuestionService {
     });
   }
 
+  // Resolve questão -> seção -> pesquisa e confere acesso + trava.
+  private async assertQuestionEditable(questionId: number, currentUser: UserPayLoad) {
+    const { section } = await this.findWithSection(questionId, currentUser);
+    await this.researchService.assertEditable(section.researchId, currentUser);
+    return section;
+  }
+
   async getOptions(questionId: number) {
     return await this.prisma.client.orm.public.QuestionOption.where({ questionId }).all();
   }
 
-  async updateOption(id: number, text?: string, order?: number) {
+  async updateOption(id: number, currentUser: UserPayLoad, text?: string, order?: number) {
+    const current = await this.prisma.client.orm.public.QuestionOption.where({ id }).first();
+    if (!current) throw new NotFoundException('Option not found');
+    await this.assertQuestionEditable(current.questionId, currentUser);
     const data: any = {};
     if (text !== undefined) data.text = text;
     if (order !== undefined) data.order = order;
     return await this.prisma.client.orm.public.QuestionOption.where({ id }).update(data);
   }
 
-  async deleteOption(id: number, force = false) {
+  async deleteOption(id: number, currentUser: UserPayLoad, force = false) {
     const option = await this.prisma.client.orm.public.QuestionOption.where({ id }).first();
     if (option) {
+      await this.assertQuestionEditable(option.questionId, currentUser);
       const question = await this.prisma.client.orm.public.Question.where({ id: option.questionId }).first();
       const section = question
         ? await this.prisma.client.orm.public.Section.where({ id: question.sectionId }).first()

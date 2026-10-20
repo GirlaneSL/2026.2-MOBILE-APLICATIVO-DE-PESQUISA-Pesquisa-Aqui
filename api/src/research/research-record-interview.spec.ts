@@ -1,8 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { ResearchService } from './research.service';
 
-// Mudar a gravação da entrevista é mudança de estrutura: só vale enquanto a pesquisa é rascunho.
-function setup(status: string, recordInterview: boolean) {
+// Pesquisa publicada (status != DRAFT) ou já baixada por um pesquisador fica travada:
+// nenhum campo de conteúdo pode mudar. Só o status (ciclo de vida) continua aceito.
+function setup(status: string, recordInterview: boolean, downloads: any[] = []) {
   const research = { id: 1, companyId: 10, status, recordInterview };
   const update = jest.fn(async (data: any) => ({ ...research, ...data }));
   const prisma = {
@@ -12,6 +13,7 @@ function setup(status: string, recordInterview: boolean) {
           Research: { where: () => ({ first: async () => research, update }) },
           Section: { where: () => ({ all: async () => [{ id: 7 }] }) },
           Question: { where: () => ({ first: async () => ({ id: 1 }) }) },
+          ResearchDownload: { where: () => ({ first: async () => downloads[0] ?? null }) },
         },
       },
     },
@@ -20,34 +22,46 @@ function setup(status: string, recordInterview: boolean) {
   return { service: new ResearchService(prisma, { removeDir: jest.fn() } as any), update, user };
 }
 
-describe('ResearchService.update — recordInterview', () => {
-  it('liga e desliga livremente no rascunho', async () => {
+describe('ResearchService.update — travamento da edição', () => {
+  it('edita livremente no rascunho (inclusive a gravação da entrevista)', async () => {
     const { service, update, user } = setup('DRAFT', false);
-    await service.update(1, { recordInterview: true }, user);
-    expect(update).toHaveBeenCalledWith({ recordInterview: true });
+    await service.update(1, { recordInterview: true, description: 'nova' }, user);
+    expect(update).toHaveBeenCalledWith({ recordInterview: true, description: 'nova' });
   });
 
-  it.each(['PUBLISHED', 'IN_FIELD'])('impede ligar com a pesquisa %s', async (status) => {
+  it.each(['PUBLISHED', 'IN_FIELD'])('impede editar qualquer campo com a pesquisa %s', async (status) => {
     const { service, update, user } = setup(status, false);
-    await expect(service.update(1, { recordInterview: true }, user)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update(1, { description: 'nova' }, user)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.update(1, { recordInterview: true }, user)).rejects.toBeInstanceOf(ForbiddenException);
     expect(update).not.toHaveBeenCalled();
   });
 
-  it.each(['PUBLISHED', 'IN_FIELD'])('impede desligar com a pesquisa %s', async (status) => {
-    const { service, update, user } = setup(status, true);
-    await expect(service.update(1, { recordInterview: false }, user)).rejects.toBeInstanceOf(BadRequestException);
+  it('impede editar um rascunho que já tem cópia baixada', async () => {
+    const { service, update, user } = setup('DRAFT', false, [{ id: 3 }]);
+    await expect(service.update(1, { title: 'x' }, user)).rejects.toBeInstanceOf(ForbiddenException);
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('reenviar o mesmo valor não é mudança', async () => {
-    const { service, update, user } = setup('IN_FIELD', true);
-    await service.update(1, { recordInterview: true, targetAudience: 'Adultos' }, user);
-    expect(update).toHaveBeenCalled();
+  it('continua permitindo avançar o status de uma pesquisa publicada', async () => {
+    const { service, update, user } = setup('PUBLISHED', false);
+    await service.update(1, { status: 'IN_FIELD' as any }, user);
+    expect(update).toHaveBeenCalledWith({ status: 'IN_FIELD' });
+  });
+});
+
+describe('ResearchService.assertEditable', () => {
+  it('libera rascunho sem downloads', async () => {
+    const { service, user } = setup('DRAFT', false);
+    await expect(service.assertEditable(1, user)).resolves.toMatchObject({ id: 1 });
   });
 
-  it('continua permitindo editar outros campos em campo', async () => {
-    const { service, update, user } = setup('IN_FIELD', true);
-    await service.update(1, { description: 'nova' }, user);
-    expect(update).toHaveBeenCalledWith({ description: 'nova' });
+  it.each(['PUBLISHED', 'IN_FIELD', 'CLOSED'])('bloqueia pesquisa %s', async (status) => {
+    const { service, user } = setup(status, false);
+    await expect(service.assertEditable(1, user)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('bloqueia quando já houve download', async () => {
+    const { service, user } = setup('DRAFT', false, [{ id: 1 }]);
+    await expect(service.assertEditable(1, user)).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

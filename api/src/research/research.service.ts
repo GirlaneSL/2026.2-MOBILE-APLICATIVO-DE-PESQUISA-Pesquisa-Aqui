@@ -24,6 +24,9 @@ function assertValidTransition(current: ResearchStatus, next: ResearchStatus) {
     }
 }
 
+export const RESEARCH_LOCKED_MESSAGE =
+    'Esta pesquisa já foi publicada ou baixada por um pesquisador e não pode mais ser editada.';
+
 @Injectable()
 export class ResearchService {
     private readonly logger = new Logger(ResearchService.name);
@@ -77,10 +80,43 @@ export class ResearchService {
         return research;
     }
 
+    /** Detalhe para a tela: a pesquisa + `locked` (para esconder os controles de edição). */
+    async findOneWithLock(id: number, currentUser: UserPayLoad) {
+        const research = await this.findOne(id, currentUser);
+        return { ...research, locked: await this.isLocked(research) };
+    }
+
+    /**
+     * Pesquisa travada: depois de publicada pelo administrador (status != DRAFT) ou de
+     * baixada por um pesquisador (existe cópia em ResearchDownload), o conteúdo não pode
+     * mais ser editado: dados, seções, questões, opções e regras.
+     * Só o ciclo de vida (status) e o vínculo de pesquisadores continuam permitidos.
+     */
+    async isLocked(research: { id: number; status: string }): Promise<boolean> {
+        if (research.status !== ResearchStatus.DRAFT) return true;
+        const download = await this.prisma.client.orm.public.ResearchDownload.where({ researchId: research.id }).first();
+        return !!download;
+    }
+
+    /** Lança 403 se a pesquisa estiver travada. Retorna a pesquisa para quem quiser reaproveitar. */
+    async assertEditable(researchId: number, currentUser: UserPayLoad) {
+        const research = await this.findOne(researchId, currentUser);
+        if (await this.isLocked(research)) throw new ForbiddenException(RESEARCH_LOCKED_MESSAGE);
+        return research;
+    }
+
     async update(id: number, updateResearchDto: UpdateResearchDto, currentUser: UserPayLoad) {
         const research = await this.findOne(id, currentUser)
 
         if (research.status === ResearchStatus.CLOSED) throw new BadRequestException('Closed research cannot be modified');
+
+        // Travada (publicada/baixada): só é aceita a mudança de status (PUBLISHED -> IN_FIELD -> CLOSED).
+        const contentFields = Object.keys(updateResearchDto).filter(
+            (key) => key !== 'status' && (updateResearchDto as Record<string, unknown>)[key] !== undefined,
+        );
+        if (contentFields.length > 0 && (await this.isLocked(research))) {
+            throw new ForbiddenException(RESEARCH_LOCKED_MESSAGE);
+        }
 
         // Gravar a entrevista é decisão de estrutura (muda o que o aplicativo exige e coleta):
         // depois de publicada, e enquanto estiver em campo, não pode ser ligada nem desligada.

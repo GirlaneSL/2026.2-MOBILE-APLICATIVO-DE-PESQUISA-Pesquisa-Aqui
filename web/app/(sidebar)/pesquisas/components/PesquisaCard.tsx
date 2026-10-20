@@ -86,20 +86,24 @@ export default function PesquisaCard({ research, team, collections, teamLoading 
 
             <div className="pa-rc-actions">
                 <Link href={`/pesquisas/${research.id}`} className="pa-rc-open">Abrir</Link>
-                <DialogLayout
-                    triggerButtonVariant="outline"
-                    triggerButtonSize="sm"
-                    dialogTrigger="Editar"
-                    dialogTitle={`Editar: ${research.title}`}
-                    dialogDescription="Atualize as informações da pesquisa abaixo."
-                    dialogContentClassName="min-h-200"
-                    dialogContent={
-                        <ModalEditarPesquisa
-                            research={research as unknown as EditableResearch}
-                            onSuccess={(updated) => onUpdated(updated as unknown as Research)}
-                        />
-                    }
-                />
+                {isDraft ? (
+                    <DialogLayout
+                        triggerButtonVariant="outline"
+                        triggerButtonSize="sm"
+                        dialogTrigger="Editar"
+                        dialogTitle={`Editar: ${research.title}`}
+                        dialogDescription="Atualize as informações da pesquisa abaixo."
+                        dialogContentClassName="min-h-200"
+                        dialogContent={
+                            <ModalEditarPesquisa
+                                research={research as unknown as EditableResearch}
+                                onSuccess={(updated) => onUpdated(updated as unknown as Research)}
+                            />
+                        }
+                    />
+                ) : (
+                    <Button size="sm" variant="outline" disabled title="Pesquisa publicada: não pode mais ser editada">Editar</Button>
+                )}
                 {isDraft && (
                     <>
                         <Button size="sm" variant="secondary" onClick={() => onPublish(research.id)}><Send />Publicar</Button>

@@ -11,6 +11,8 @@ export interface Research {
     endDate: string;
     targetAudience: string;
     recordInterview: boolean;
+    /** true quando publicada ou já baixada por um pesquisador: não pode mais ser editada. */
+    locked?: boolean;
     companyId: number;
     createdAt?: string;
     updatedAt?: string;

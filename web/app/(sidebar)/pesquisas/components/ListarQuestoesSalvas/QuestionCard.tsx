@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { FormQuestion, FrontendQuestionType } from "@/lib/questionnaire";
 import { RegrasExibicao, type RulesContext } from "./RegrasExibicao";
+import { useReadOnly } from "./ReadOnlyContext";
 
 export const QUESTION_TYPES_LABEL: { type: FrontendQuestionType; label: string }[] = [
     { type: "text", label: "Texto Livre" }, { type: "number", label: "Numérica" },
@@ -105,6 +106,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, optActions, rulesCtx, open, onToggle }: QuestionCardProps) {
+    const readOnly = useReadOnly();
     const TypeIcon = QUESTION_TYPE_ICONS[q.type] ?? Type;
     const typeLabel = QUESTION_TYPES_LABEL.find((t) => t.type === q.type)?.label ?? q.type;
     const questionId = Number(q.id);
@@ -178,16 +180,18 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
                     <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", !open && "-rotate-90")} />
                 </button>
 
+                {!readOnly && (
                 <div className="flex shrink-0 items-center md:opacity-0 md:transition-opacity md:group-focus-within:opacity-100 md:group-hover:opacity-100">
                     <MiniButton label="Mover para cima" onClick={() => qActions.moveQuestion(sectionId, qIndex, "up")} disabled={qIndex === 0}><ArrowUp /></MiniButton>
                     <MiniButton label="Mover para baixo" onClick={() => qActions.moveQuestion(sectionId, qIndex, "down")} disabled={qIndex === totalQuestions - 1}><ArrowDown /></MiniButton>
                     <MiniButton danger label="Excluir questão" onClick={() => qActions.handleDeleteQuestion(sectionId, q.id)}><Trash2 /></MiniButton>
                 </div>
+                )}
             </div>
 
             {/* Edição: aparece ao expandir */}
             {open && (
-                <div className="mb-3 ml-3 mt-2 space-y-5 rounded-[22px] border border-border bg-[#f6f9f7] p-4 sm:ml-10 sm:p-5">
+                <fieldset disabled={readOnly} className="mb-3 ml-3 mt-2 m-0 min-w-0 space-y-5 rounded-[22px] border border-border bg-[#f6f9f7] p-4 sm:ml-10 sm:p-5">
                     <Field label="Enunciado">
                         <Input
                             className="h-11 bg-white text-[15px] font-medium"
@@ -340,14 +344,15 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
                                             placeholder={`Opção ${optIndex + 1}`}
                                             required
                                         />
-                                        <div className="flex items-center">
+                                        {!readOnly && <div className="flex items-center">
                                             <MiniButton label="Mover para cima" onClick={() => optActions.moveOption(sectionId, q.id, optIndex, "up")} disabled={optIndex === 0}><ArrowUp /></MiniButton>
                                             <MiniButton label="Mover para baixo" onClick={() => optActions.moveOption(sectionId, q.id, optIndex, "down")} disabled={optIndex === (q.options?.length || 0) - 1}><ArrowDown /></MiniButton>
                                             <MiniButton danger label="Excluir opção" onClick={() => optActions.handleDeleteOption(sectionId, q.id, opt.id)}><Trash2 /></MiniButton>
-                                        </div>
+                                        </div>}
                                     </div>
                                 ))}
                             </div>
+                            {!readOnly && (
                             <button
                                 type="button"
                                 onClick={() => optActions.handleAddOption(sectionId, q.id)}
@@ -355,12 +360,13 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
                             >
                                 <Plus className="size-4" /> Adicionar opção
                             </button>
+                            )}
                         </Block>
                     )}
 
                     {/* Regras de exibição: quando esta questão aparece para o entrevistado */}
                     <RegrasExibicao question={q} ctx={rulesCtx} />
-                </div>
+                </fieldset>
             )}
         </div>
     );

@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CornerDownRight, EyeOff, GitBranch, Plus, X } from "lucide-react";
 import type { DisplayRule, FormQuestion, FormSection } from "@/lib/questionnaire";
+import { useReadOnly } from "./ReadOnlyContext";
 
 // Contexto das regras repassado de ListarQuestoesSalvas até cada questão.
 export interface RulesContext {
@@ -45,6 +46,7 @@ function triggerText(sections: FormSection[], rule: DisplayRule) {
 }
 
 export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx: RulesContext }) {
+    const readOnly = useReadOnly();
     const [adding, setAdding] = useState(false);
     const [sourceId, setSourceId] = useState<string>("");
     const [trigger, setTrigger] = useState<string>("");
@@ -90,7 +92,7 @@ export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx:
                     <span className="grid size-6 place-items-center rounded-lg bg-[var(--forest)] text-[var(--mint)]"><GitBranch className="size-3.5" /></span>
                     Lógica de exibição
                 </h4>
-                {!adding && (
+                {!adding && !readOnly && (
                     <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)} className="bg-white">
                         <Plus className="mr-1 size-4" /> Adicionar regra
                     </Button>
@@ -115,9 +117,11 @@ export function RegrasExibicao({ question, ctx }: { question: FormQuestion; ctx:
                                     <strong>{labelOf(ctx.sections, rule.sourceQuestionId, rule.sourceLabel)}</strong>
                                     {" "}«{shorten(src?.title ?? rule.sourceStatement, 40)}» {" "}= <strong>{triggerText(ctx.sections, rule)}</strong>
                                 </span>
-                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => ctx.onDeleteRule(rule.id)} title="Remover regra">
-                                    <X className="w-3.5 h-3.5" />
-                                </Button>
+                                {!readOnly && (
+                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => ctx.onDeleteRule(rule.id)} title="Remover regra">
+                                        <X className="w-3.5 h-3.5" />
+                                    </Button>
+                                )}
                             </div>
                         );
                     })}

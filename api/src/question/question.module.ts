@@ -3,11 +3,13 @@ import { QuestionService } from './question.service.js';
 import { QuestionController } from './question.controller.js';
 import { PrismaModule } from '../prisma.module.js';
 import { SectionModule } from '../section/section.module.js';
+import { StorageModule } from '../collection/storage.module.js';
+import { ResearchService } from '../research/research.service.js';
 import { QuestionRuleModule } from '../question-rule/question-rule.module.js';
 
 @Module({
-  imports: [PrismaModule, SectionModule, QuestionRuleModule],
+  imports: [PrismaModule, StorageModule, SectionModule, QuestionRuleModule],
   controllers: [QuestionController],
-  providers: [QuestionService],
+  providers: [QuestionService, ResearchService],
 })
 export class QuestionModule { }

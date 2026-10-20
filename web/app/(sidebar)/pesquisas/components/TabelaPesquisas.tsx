@@ -223,15 +223,19 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
                 align: 'right',
                 cell: (item: Research) => (
                     <RowActions>
-                        <DialogLayout
-                            dialogTitle={`Editar: ${item.title}`}
-                            dialogTrigger="Editar"
-                            triggerButtonVariant="outline"
-                            triggerButtonSize="sm"
-                            dialogDescription="Atualize as informações da pesquisa abaixo."
-                            dialogContentClassName={"min-h-200"}
-                            dialogContent={<ModalEditarPesquisa research={item} onSuccess={handleUpdateSuccess} />}
-                        />
+                        {item.status === 'DRAFT' ? (
+                            <DialogLayout
+                                dialogTitle={`Editar: ${item.title}`}
+                                dialogTrigger="Editar"
+                                triggerButtonVariant="outline"
+                                triggerButtonSize="sm"
+                                dialogDescription="Atualize as informações da pesquisa abaixo."
+                                dialogContentClassName={"min-h-200"}
+                                dialogContent={<ModalEditarPesquisa research={item} onSuccess={handleUpdateSuccess} />}
+                            />
+                        ) : (
+                            <Button variant="outline" size="sm" disabled title="Pesquisa publicada: não pode mais ser editada">Editar</Button>
+                        )}
                         <Button
                             variant="default"
                             size="sm"

@@ -16,7 +16,7 @@ export class SectionService {
   ) { }
 
   async create(createSectionDto: CreateSectionDto, currentUser: UserPayLoad) {
-    await this.researchService.findOne(createSectionDto.researchId, currentUser);
+    await this.researchService.assertEditable(createSectionDto.researchId, currentUser);
 
     return await this.prisma.client.orm.public.Section.create({
       title: createSectionDto.title,
@@ -42,6 +42,7 @@ export class SectionService {
 
   async update(id: number, updateSectionDto: UpdateSectionDto, currentUser: UserPayLoad, force = false) {
     const section = await this.findOne(id, currentUser);
+    await this.researchService.assertEditable(section.researchId, currentUser);
 
     // Mudar a ordem da seção não pode deixar regra apontando para trás.
     if (updateSectionDto.order !== undefined && updateSectionDto.order !== section.order) {
@@ -57,7 +58,7 @@ export class SectionService {
 
   // Reordena todas as seções da pesquisa de uma vez, validando as regras no resultado final.
   async reorder(dto: ReorderSectionsDto, currentUser: UserPayLoad) {
-    await this.researchService.findOne(dto.researchId, currentUser);
+    await this.researchService.assertEditable(dto.researchId, currentUser);
     const sections = await this.prisma.client.orm.public.Section.where({ researchId: dto.researchId }).all();
 
     const currentIds = sections.map((s) => s.id).sort((a, b) => a - b);
@@ -80,6 +81,7 @@ export class SectionService {
 
   async delete(id: number, currentUser: UserPayLoad, force = false) {
     const section = await this.findOne(id, currentUser);
+    await this.researchService.assertEditable(section.researchId, currentUser);
 
     const questions = await this.prisma.client.orm.public.Question.where({ sectionId: id }).all();
     const questionIds = questions.map((q) => q.id);

@@ -27,15 +27,16 @@ import {
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { LoadingState } from "@/components/ui/loadingState";
 import { Button } from "@/components/ui/button";
-import { ChevronsDownUp, ChevronsUpDown, FolderPlus, Info } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, FolderPlus, Info, Lock } from "lucide-react";
 import { Contour } from "@/components/ui/contour";
 import toast from "react-hot-toast";
 
 import { SectionCard } from "./SectionCard";
 import { QuestionActions, OptionActions, hasOptions } from "./QuestionCard";
 import type { RulesContext } from "./RegrasExibicao";
+import { ReadOnlyProvider } from "./ReadOnlyContext";
 
-export default function ListarQuestoesSalvas({ researchId }: { researchId: string | number }) {
+export default function ListarQuestoesSalvas({ researchId, readOnly = false }: { researchId: string | number; readOnly?: boolean }) {
     const [sections, setSections] = useState<FormSection[]>([]);
     const [rules, setRules] = useState<DisplayRule[]>([]);
     // Questões abertas para edição (as demais aparecem só como linha-resumo).
@@ -493,9 +494,11 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                             Comece criando uma seção. Dentro dela você adiciona as questões que o pesquisador fará em campo.
                         </p>
                     </div>
-                    <Button size="sm" onClick={handleAddSection}>
-                        <FolderPlus className="mr-1.5 size-4" /> Criar primeira seção
-                    </Button>
+                    {!readOnly && (
+                        <Button size="sm" onClick={handleAddSection}>
+                            <FolderPlus className="mr-1.5 size-4" /> Criar primeira seção
+                        </Button>
+                    )}
                 </div>
             </div>
         );
@@ -513,6 +516,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
     ];
 
     return (
+        <ReadOnlyProvider value={readOnly}>
         <div className="space-y-4 normal-case">
             <div className="sticky top-2 z-10 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[24px] border border-border bg-white/90 p-3 pl-5 shadow-[0_18px_34px_-24px_rgba(10,20,16,0.5)] backdrop-blur">
                 <dl className="flex flex-1 flex-wrap items-center gap-x-6 gap-y-2">
@@ -529,16 +533,25 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
                             ? <><ChevronsDownUp className="mr-1.5 size-4" /> Recolher tudo</>
                             : <><ChevronsUpDown className="mr-1.5 size-4" /> Expandir tudo</>}
                     </Button>
-                    <Button size="sm" onClick={handleAddSection}>
-                        <FolderPlus className="mr-1.5 size-4" /> Adicionar seção
-                    </Button>
+                    {!readOnly && (
+                        <Button size="sm" onClick={handleAddSection}>
+                            <FolderPlus className="mr-1.5 size-4" /> Adicionar seção
+                        </Button>
+                    )}
                 </div>
             </div>
 
-            <p className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground">
-                <Info className="size-3.5 shrink-0" />
-                Os campos são salvos ao sair deles. Reordenar e excluir são imediatos.
-            </p>
+            {readOnly ? (
+                <p className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground">
+                    <Lock className="size-3.5 shrink-0" />
+                    Esta pesquisa já foi publicada ou baixada por um pesquisador. O questionário não pode mais ser editado.
+                </p>
+            ) : (
+                <p className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground">
+                    <Info className="size-3.5 shrink-0" />
+                    Os campos são salvos ao sair deles. Reordenar e excluir são imediatos.
+                </p>
+            )}
 
             {sections.map((section, sIndex) => (
                 <SectionCard
@@ -559,5 +572,6 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
             ))}
             <div className="h-100 w-full flex-shrink-0" aria-hidden="true" />
         </div>
+        </ReadOnlyProvider>
     );
 }

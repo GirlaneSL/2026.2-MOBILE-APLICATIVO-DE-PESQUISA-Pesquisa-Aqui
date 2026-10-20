@@ -44,8 +44,8 @@ export class QuestionController {
   }
 
   @Post(':id/option')
-  createOption(@Param('id') id: string, @Body() body: { text: string; order: number }) {
-    return this.questionService.createOption(+id, body.text, body.order);
+  createOption(@Param('id') id: string, @Body() body: { text: string; order: number }, @CurrentUser() currentUser: UserPayLoad) {
+    return this.questionService.createOption(+id, body.text, body.order, currentUser);
   }
 
   @Get(':id/options')
@@ -54,13 +54,13 @@ export class QuestionController {
   }
 
   @Patch('option/:id')
-  updateOption(@Param('id') id: string, @Body() body: { text?: string; order?: number }) {
-    return this.questionService.updateOption(+id, body.text, body.order);
+  updateOption(@Param('id') id: string, @Body() body: { text?: string; order?: number }, @CurrentUser() currentUser: UserPayLoad) {
+    return this.questionService.updateOption(+id, currentUser, body.text, body.order);
   }
 
   @Delete('option/:id')
-  deleteOption(@Param('id') id: string, @Query('force') force?: string) {
-    return this.questionService.deleteOption(+id, force === 'true');
+  deleteOption(@Param('id') id: string, @CurrentUser() currentUser: UserPayLoad, @Query('force') force?: string) {
+    return this.questionService.deleteOption(+id, currentUser, force === 'true');
   }
 
 }
