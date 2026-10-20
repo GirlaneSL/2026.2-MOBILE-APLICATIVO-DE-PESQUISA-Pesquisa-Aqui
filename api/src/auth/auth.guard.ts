@@ -36,6 +36,15 @@ export class AuthGuard implements CanActivate {
         }
       }
 
+      // Usuário desativado perde a sessão na hora, sem esperar o token expirar.
+      if (payload.sub) {
+        const user = await this.prisma.client.orm.public.User.where({ username: String(payload.sub) }).first()
+
+        if (user && user.situation === 'INACTIVE') {
+          throw new UnauthorizedException('Your session has ended because your account has been deactivated')
+        }
+      }
+
       request['user'] = payload;
 
     } catch (error) {

@@ -17,21 +17,28 @@ import {
 } from "@/components/ui/data-table";
 import { LoadingState } from "@/components/ui/loadingState";
 import { avatarTone, initialsOf } from "@/lib/fieldData";
-import { deleteUser, UserItem } from "@/lib/user";
+import { deleteUser, setUserSituation, UserItem } from "@/lib/user";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
-import { ArrowDownAZ, Building2, CalendarClock, LayoutGrid, List, Sparkles, Trash2, UsersRound } from "lucide-react";
+import EditUserDialog from "@/components/ui/edit-user-dialog";
+import { ArrowDownAZ, Building2, CalendarClock, LayoutGrid, List, Pencil, Power, PowerOff, Sparkles, Trash2, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 type ViewMode = 'cards' | 'table';
 type SortMode = 'recent' | 'name';
+type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE';
 
 interface ListaPesquisadoresProps {
     researchers: UserItem[];
     companyNames: Record<number, string>;
     loading: boolean;
     canDelete: boolean;
+    /** Mostra o botão Editar (nome, usuário e senha). */
+    canEdit?: boolean;
+    /** Mostra o botão Desativar/Reativar (o acesso do pesquisador é bloqueado, as coletas ficam salvas). */
+    canDeactivate?: boolean;
     showCompany: boolean;
     onDeleted: (username: string) => void;
+    onUpdated?: (user: UserItem) => void;
     /** Momento de referência (ms) para "há X dias" e para o selo "Novo". */
     referenceTime?: number;
     /** Limita a altura da listagem (uso em card). */
@@ -39,6 +46,9 @@ interface ListaPesquisadoresProps {
 }
 
 const DAY = 24 * 60 * 60 * 1000;
+
+/** Usuário sem o campo (resposta antiga) conta como ativo. */
+const isActive = (u: UserItem) => u.situation !== 'INACTIVE';
 
 const normalize = (s: string) =>
     s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -98,32 +108,42 @@ export default function ListaPesquisadores({
     companyNames,
     loading,
     canDelete,
+    canEdit = false,
+    canDeactivate = false,
     showCompany,
     onDeleted,
+    onUpdated,
     referenceTime = 0,
     maxHeightClassName = "max-h-96",
 }: ListaPesquisadoresProps) {
     const [search, setSearch] = useState('');
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [editing, setEditing] = useState<UserItem | null>(null);
+    const [togglingSituation, setTogglingSituation] = useState<string | null>(null);
+    const [status, setStatus] = useState<StatusFilter>('ALL');
     const [view, setView] = useState<ViewMode>('table');
     const [sort, setSort] = useState<SortMode>('recent');
 
     const filtered = useMemo(() => {
         const term = normalize(search.trim());
-        const base = !term
+        const matching = !term
             ? researchers
             : researchers.filter((r) =>
                 normalize(r.name).includes(term) ||
                 normalize(r.username).includes(term) ||
                 normalize(companyNames[r.companyId ?? -1] ?? '').includes(term)
             );
+        const base = status === 'ALL' ? matching : matching.filter((r) => isActive(r) === (status === 'ACTIVE'));
 
         return [...base].sort((a, b) =>
             sort === 'name'
                 ? a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
                 : timeValue(b.createdAt) - timeValue(a.createdAt)
         );
-    }, [researchers, search, companyNames, sort]);
+    }, [researchers, search, companyNames, sort, status]);
+
+    const activeCount = researchers.filter(isActive).length;
+    const inactiveCount = researchers.length - activeCount;
 
     const isNew = (r: UserItem) =>
         !!referenceTime && timeValue(r.createdAt) >= referenceTime - 30 * DAY;
@@ -150,6 +170,32 @@ export default function ListaPesquisadores({
         }
     };
 
+    const handleToggleSituation = async (user: UserItem) => {
+        const deactivating = isActive(user);
+
+        if (deactivating) {
+            const confirmed = await confirmDialog({
+                title: "Desativar pesquisador",
+                description: `Tem certeza que deseja desativar o pesquisador "${user.name}"? Ele não conseguirá entrar no sistema nem no aplicativo até ser reativado. As coletas já registradas continuam salvas.`,
+                confirmLabel: "Desativar",
+                variant: "destructive",
+            });
+            if (!confirmed) return;
+        }
+
+        setTogglingSituation(user.username);
+        try {
+            const updated = await setUserSituation(user.username, deactivating ? 'INACTIVE' : 'ACTIVE');
+            toast.success(deactivating ? "Pesquisador desativado" : "Pesquisador reativado");
+            onUpdated?.(updated);
+        } catch (error) {
+            console.error(error);
+            toast.error(error instanceof Error ? error.message : "Erro ao alterar a situação do pesquisador");
+        } finally {
+            setTogglingSituation(null);
+        }
+    };
+
     const columns: DataColumn<UserItem>[] = [
         {
             id: 'name',
@@ -172,6 +218,12 @@ export default function ListaPesquisadores({
             } as DataColumn<UserItem>]
             : []),
         {
+            id: 'situation',
+            header: 'Situação',
+            cell: (r) =>
+                isActive(r) ? <TableChip tone="live">Ativo</TableChip> : <TableChip tone="off">Inativo</TableChip>,
+        },
+        {
             id: 'createdAt',
             header: 'Cadastrado em',
             cell: (r) => {
@@ -184,7 +236,7 @@ export default function ListaPesquisadores({
                 );
             },
         },
-        ...(canDelete
+        ...(canDelete || canEdit || canDeactivate
             ? [{
                 id: 'actions',
                 header: 'Ações',
@@ -192,14 +244,31 @@ export default function ListaPesquisadores({
                 align: 'right',
                 cell: (r: UserItem) => (
                     <RowActions>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={deleting === r.username}
-                            onClick={() => handleDelete(r)}
-                        >
-                            {deleting === r.username ? 'Excluindo...' : 'Excluir'}
-                        </Button>
+                        {canEdit && (
+                            <Button variant="outline" size="sm" onClick={() => setEditing(r)}>
+                                Editar
+                            </Button>
+                        )}
+                        {canDeactivate && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={togglingSituation === r.username}
+                                onClick={() => handleToggleSituation(r)}
+                            >
+                                {togglingSituation === r.username ? 'Aguarde...' : isActive(r) ? 'Desativar' : 'Reativar'}
+                            </Button>
+                        )}
+                        {canDelete && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={deleting === r.username}
+                                onClick={() => handleDelete(r)}
+                            >
+                                {deleting === r.username ? 'Excluindo...' : 'Excluir'}
+                            </Button>
+                        )}
                     </RowActions>
                 ),
             } as DataColumn<UserItem>]
@@ -217,7 +286,7 @@ export default function ListaPesquisadores({
                     ? 'Tente outro nome, usuário ou empresa.'
                     : 'Use "Novo pesquisador" para cadastrar quem vai coletar em campo.'
             }
-            onClear={researchers.length > 0 ? () => setSearch('') : undefined}
+            onClear={researchers.length > 0 ? () => { setSearch(''); setStatus('ALL'); } : undefined}
         />
     );
 
@@ -236,6 +305,18 @@ export default function ListaPesquisadores({
                     label="Buscar pesquisadores"
                 />
                 <div className="grow flex flex-wrap items-center gap-2">
+                    {!loading && researchers.length > 0 && (inactiveCount > 0 || status !== 'ALL') && (
+                        <TableFilters<StatusFilter>
+                            label="Situação"
+                            value={status}
+                            onChange={setStatus}
+                            options={[
+                                { value: 'ALL', label: 'Todos', count: researchers.length },
+                                { value: 'ACTIVE', label: 'Ativos', count: activeCount },
+                                { value: 'INACTIVE', label: 'Inativos', count: inactiveCount },
+                            ]}
+                        />
+                    )}
                     <TableFilters<SortMode>
                         label="Ordenar"
                         value={sort}
@@ -281,7 +362,7 @@ export default function ListaPesquisadores({
                             return (
                                 <li
                                     key={r.id ?? r.username}
-                                    className="group relative flex flex-col gap-4 overflow-hidden rounded-[22px] border border-border bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c6d0c9] hover:shadow-[0_20px_34px_-26px_rgba(10,20,16,0.45)]"
+                                    className={`group relative flex flex-col gap-4 overflow-hidden rounded-[22px] border border-border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c6d0c9] hover:shadow-[0_20px_34px_-26px_rgba(10,20,16,0.45)] ${isActive(r) ? 'bg-white' : 'bg-[#f6f7f6]'}`}
                                 >
                                     {/* curvas de nível discretas que aparecem no hover */}
                                     <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-44 opacity-0 transition-opacity duration-300 group-hover:opacity-60">
@@ -295,6 +376,11 @@ export default function ListaPesquisadores({
                                                 <p className="truncate text-[15px] font-semibold tracking-tight" title={r.name}>
                                                     {r.name}
                                                 </p>
+                                                {!isActive(r) && (
+                                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#f3e0d9] px-2 py-0.5 text-[11px] font-semibold text-[#8a432f]">
+                                                        <PowerOff className="size-3" /> Inativo
+                                                    </span>
+                                                )}
                                                 {fresh && (
                                                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e4ece7] px-2 py-0.5 text-[11px] font-semibold text-green-deep">
                                                         <Sparkles className="size-3" /> Novo
@@ -306,17 +392,44 @@ export default function ListaPesquisadores({
                                             </p>
                                         </div>
 
-                                        {canDelete && (
-                                            <button
-                                                type="button"
-                                                aria-label={`Excluir ${r.name}`}
-                                                title="Excluir pesquisador"
-                                                disabled={deleting === r.username}
-                                                onClick={() => handleDelete(r)}
-                                                className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-all hover:bg-[#f3e0d9] hover:text-[#8a432f] disabled:opacity-50 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </button>
+                                        {(canEdit || canDelete || canDeactivate) && (
+                                            <div className="flex shrink-0 items-center gap-1">
+                                                {canDeactivate && (
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`${isActive(r) ? 'Desativar' : 'Reativar'} ${r.name}`}
+                                                        title={isActive(r) ? 'Desativar pesquisador' : 'Reativar pesquisador'}
+                                                        disabled={togglingSituation === r.username}
+                                                        onClick={() => handleToggleSituation(r)}
+                                                        className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-all hover:bg-[#e9ede9] hover:text-foreground disabled:opacity-50 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                                                    >
+                                                        {isActive(r) ? <PowerOff className="size-4" /> : <Power className="size-4" />}
+                                                    </button>
+                                                )}
+                                                {canEdit && (
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Editar ${r.name}`}
+                                                        title="Editar pesquisador"
+                                                        onClick={() => setEditing(r)}
+                                                        className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-all hover:bg-[#e9ede9] hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                                                    >
+                                                        <Pencil className="size-4" />
+                                                    </button>
+                                                )}
+                                                {canDelete && (
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Excluir ${r.name}`}
+                                                        title="Excluir pesquisador"
+                                                        disabled={deleting === r.username}
+                                                        onClick={() => handleDelete(r)}
+                                                        className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-all hover:bg-[#f3e0d9] hover:text-[#8a432f] disabled:opacity-50 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
 
@@ -337,6 +450,15 @@ export default function ListaPesquisadores({
                         })}
                     </ul>
                 </div>
+            )}
+
+            {canEdit && (
+                <EditUserDialog
+                    user={editing}
+                    role="pesquisador"
+                    onOpenChange={(open) => { if (!open) setEditing(null); }}
+                    onSaved={(updated) => onUpdated?.(updated)}
+                />
             )}
         </div>
     );

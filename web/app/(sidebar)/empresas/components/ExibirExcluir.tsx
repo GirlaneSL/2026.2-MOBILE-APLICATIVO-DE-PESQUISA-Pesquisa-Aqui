@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { deactivate, getCompanies } from '@/lib/company';
-import { deleteUser, getUsersAdmin } from '@/lib/user';
+import { deactivate, deleteCompany, getCompanies, type CompanyItem } from '@/lib/company';
+import { deleteUser, getUsersAdmin, setUserSituation, type UserItem } from '@/lib/user';
 import { Button } from '@/components/ui/button';
 import {
     DataTable,
@@ -21,18 +21,21 @@ import {
 import { Building2, UsersRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '@/components/ui/confirm-dialog';
+import EditUserDialog from '@/components/ui/edit-user-dialog';
+import EditarEmpresaDialog from './EditarEmpresaDialog';
 
-interface Admin {
-    id: string;
-    name: string;
-    username: string;
-    profile: string;
-}
+type Admin = UserItem;
 
 interface ExibirEditarProps {
     allowActions?: boolean;
     /** Chamado depois que um administrador é excluído, para a página manter contadores e gráficos em dia. */
     onAdminDeleted?: (username: string) => void;
+    /** Chamado depois de editar um administrador. */
+    onAdminUpdated?: (admin: UserItem) => void;
+    /** Chamado depois de editar ou desativar uma empresa. */
+    onCompanyUpdated?: (company: CompanyItem) => void;
+    /** Chamado depois de excluir uma empresa. */
+    onCompanyDeleted?: (id: number) => void;
 }
 
 interface RawCompany {
@@ -61,7 +64,13 @@ const formatDate = (iso?: string) => {
     return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
 };
 
-export default function ExibirEditar({ allowActions = true, onAdminDeleted }: ExibirEditarProps) {
+export default function ExibirEditar({
+    allowActions = true,
+    onAdminDeleted,
+    onAdminUpdated,
+    onCompanyUpdated,
+    onCompanyDeleted,
+}: ExibirEditarProps) {
     const [rawCompanies, setRawCompanies] = useState<RawCompany[]>([]);
     const [loadingCompanies, setLoadingCompanies] = useState(true);
 
@@ -71,13 +80,50 @@ export default function ExibirEditar({ allowActions = true, onAdminDeleted }: Ex
     const [error, setError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [deletingAdmin, setDeletingAdmin] = useState<string | null>(null);
+    const [togglingAdmin, setTogglingAdmin] = useState<string | null>(null);
+    const [deletingCompany, setDeletingCompany] = useState<number | null>(null);
+    const [editingCompany, setEditingCompany] = useState<RawCompany | null>(null);
+    const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
 
     const [tab, setTab] = useState<Tab>('companies');
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState<StatusFilter>('ALL');
 
-    const handleEdit = (id: string, type: 'company' | 'admin') => {
-        console.log(`Editar ${type}:`, id);
+    const handleCompanySaved = (updated: CompanyItem) => {
+        setRawCompanies((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
+        onCompanyUpdated?.(updated);
+    };
+
+    const handleAdminSaved = (updated: UserItem) => {
+        setRawAdmins((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
+        onAdminUpdated?.(updated);
+    };
+
+    const handleDeleteCompany = async (id: string) => {
+        const company = rawCompanies.find((c) => String(c.id) === id);
+
+        const confirmed = await confirmDialog({
+            title: 'Excluir empresa',
+            description: `Tem certeza que deseja excluir a empresa "${company?.legalName ?? id}"? Esta ação não pode ser desfeita.\n\nEmpresas com administradores, pesquisadores ou pesquisas vinculados não podem ser excluídas; nesse caso, use "Desativar".`,
+            confirmLabel: 'Excluir',
+            variant: 'destructive',
+        });
+        if (!confirmed) return;
+
+        setActionError(null);
+        setDeletingCompany(+id);
+
+        try {
+            await deleteCompany(+id);
+
+            setRawCompanies((prev) => prev.filter((c) => c.id !== +id));
+            onCompanyDeleted?.(+id);
+            toast.success(`Empresa "${company?.legalName ?? id}" excluída`);
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Erro ao excluir empresa');
+        } finally {
+            setDeletingCompany(null);
+        }
     };
 
     const handleDeactivateCompany = async (id: string) => {
@@ -99,8 +145,41 @@ export default function ExibirEditar({ allowActions = true, onAdminDeleted }: Ex
             setRawCompanies((prev) =>
                 prev.map((c) => (c.id === +id ? { ...c, situation: 'INACTIVE' } : c))
             );
+            if (company) onCompanyUpdated?.({ ...company, situation: 'INACTIVE' });
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Erro ao desativar empresa');
+        }
+    };
+
+    const handleToggleAdminSituation = async (username: string) => {
+        const admin = rawAdmins.find((a) => a.username === username);
+        if (!admin) return;
+
+        const deactivating = admin.situation !== 'INACTIVE';
+
+        if (deactivating) {
+            const confirmed = await confirmDialog({
+                title: 'Desativar administrador',
+                description: `Tem certeza que deseja desativar o administrador "${admin.name}"? Ele não conseguirá entrar no sistema até ser reativado.`,
+                confirmLabel: 'Desativar',
+                variant: 'destructive',
+            });
+            if (!confirmed) return;
+        }
+
+        setActionError(null);
+        setTogglingAdmin(username);
+
+        try {
+            const updated = await setUserSituation(username, deactivating ? 'INACTIVE' : 'ACTIVE');
+
+            setRawAdmins((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
+            onAdminUpdated?.(updated);
+            toast.success(deactivating ? 'Administrador desativado' : 'Administrador reativado');
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Erro ao alterar a situação do administrador');
+        } finally {
+            setTogglingAdmin(null);
         }
     };
 
@@ -232,7 +311,7 @@ export default function ExibirEditar({ allowActions = true, onAdminDeleted }: Ex
                 align: 'right',
                 cell: (c: RawCompany) => (
                     <RowActions>
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(String(c.id), 'company')}>
+                        <Button variant="outline" size="sm" onClick={() => setEditingCompany(c)}>
                             Editar
                         </Button>
                         <Button
@@ -242,6 +321,14 @@ export default function ExibirEditar({ allowActions = true, onAdminDeleted }: Ex
                             onClick={() => handleDeactivateCompany(String(c.id))}
                         >
                             {c.situation === 'ACTIVE' ? 'Desativar' : 'Desativada'}
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={deletingCompany !== null}
+                            onClick={() => handleDeleteCompany(String(c.id))}
+                        >
+                            {deletingCompany === c.id ? 'Excluindo...' : 'Excluir'}
                         </Button>
                     </RowActions>
                 ),
@@ -261,6 +348,16 @@ export default function ExibirEditar({ allowActions = true, onAdminDeleted }: Ex
             header: 'Perfil',
             cell: (a) => <TableChip tone="done">{PROFILE_TRANSLATION[a.profile] ?? a.profile}</TableChip>,
         },
+        {
+            id: 'situation',
+            header: 'Situação',
+            cell: (a) =>
+                a.situation === 'INACTIVE' ? (
+                    <TableChip tone="off">Inativo</TableChip>
+                ) : (
+                    <TableChip tone="live">Ativo</TableChip>
+                ),
+        },
         ...(allowActions
             ? [{
                 id: 'actions',
@@ -269,8 +366,16 @@ export default function ExibirEditar({ allowActions = true, onAdminDeleted }: Ex
                 align: 'right',
                 cell: (a: Admin) => (
                     <RowActions>
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(String(a.id), 'admin')}>
+                        <Button variant="outline" size="sm" onClick={() => setEditingAdmin(a)}>
                             Editar
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={togglingAdmin === a.username}
+                            onClick={() => handleToggleAdminSituation(a.username)}
+                        >
+                            {togglingAdmin === a.username ? 'Aguarde...' : a.situation === 'INACTIVE' ? 'Reativar' : 'Desativar'}
                         </Button>
                         <Button
                             variant="destructive"
@@ -364,6 +469,22 @@ export default function ExibirEditar({ allowActions = true, onAdminDeleted }: Ex
                         />
                     }
                 />
+            )}
+
+            {allowActions && (
+                <>
+                    <EditarEmpresaDialog
+                        company={editingCompany}
+                        onOpenChange={(open) => { if (!open) setEditingCompany(null); }}
+                        onSaved={handleCompanySaved}
+                    />
+                    <EditUserDialog
+                        user={editingAdmin}
+                        role="administrador"
+                        onOpenChange={(open) => { if (!open) setEditingAdmin(null); }}
+                        onSaved={handleAdminSaved}
+                    />
+                </>
             )}
         </div>
     );

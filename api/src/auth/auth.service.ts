@@ -27,6 +27,10 @@ export class AuthService {
             throw new ForbiddenException('Acesso negado: Aplicativo exclusivo para pesquisadores.');
         }
 
+        if (user.situation === 'INACTIVE') {
+            throw new UnauthorizedException('Access denied: Inactive user');
+        }
+
         if (user.companyId) {
             const company = await this.prisma.client.orm.public.Company.where({ id: user.companyId }).first();
 

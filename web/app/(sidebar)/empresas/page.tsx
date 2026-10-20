@@ -31,6 +31,18 @@ export default function EmpresaPage() {
         setAdmins((prev) => prev.filter((a) => a.username !== username));
     }, []);
 
+    const handleAdminUpdated = useCallback((updated: UserItem) => {
+        setAdmins((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
+    }, []);
+
+    const handleCompanyUpdated = useCallback((updated: CompanyItem) => {
+        setCompanies((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
+    }, []);
+
+    const handleCompanyDeleted = useCallback((id: number) => {
+        setCompanies((prev) => prev.filter((c) => c.id !== id));
+    }, []);
+
     const reloadData = useCallback(() => {
         setLoadingData(true);
         setReloadKey((k) => k + 1);
@@ -192,7 +204,15 @@ export default function EmpresaPage() {
                         </Button>
                     }
                     CardContentClassName="max-h-[34rem] overflow-auto"
-                    cardContent={<ExibirEditar key={reloadKey} onAdminDeleted={handleAdminDeleted} />}
+                    cardContent={
+                        <ExibirEditar
+                            key={reloadKey}
+                            onAdminDeleted={handleAdminDeleted}
+                            onAdminUpdated={handleAdminUpdated}
+                            onCompanyUpdated={handleCompanyUpdated}
+                            onCompanyDeleted={handleCompanyDeleted}
+                        />
+                    }
                 />
 
                 <div className="pa-c4 flex flex-col gap-4">

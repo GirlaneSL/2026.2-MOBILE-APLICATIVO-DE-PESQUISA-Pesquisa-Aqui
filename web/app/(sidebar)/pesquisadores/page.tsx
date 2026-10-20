@@ -68,6 +68,9 @@ export default function PesquisadoresPage() {
     const handleDeleted = (username: string) =>
         setResearchers((prev) => prev.filter((r) => r.username !== username));
 
+    const handleUpdated = (updated: UserItem) =>
+        setResearchers((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+
     const stats = useMemo(() => {
         const DAY = 24 * 60 * 60 * 1000;
         const last30 = referenceTime - 30 * DAY;
@@ -212,9 +215,12 @@ export default function PesquisadoresPage() {
                         researchers={researchers}
                         companyNames={companyNames}
                         loading={loading}
-                        canDelete={isSuperAdmin}
+                        canDelete={canRegister}
+                        canEdit={canRegister}
+                        canDeactivate={canRegister}
                         showCompany={isSuperAdmin}
                         onDeleted={handleDeleted}
+                        onUpdated={handleUpdated}
                         referenceTime={referenceTime}
                         maxHeightClassName="max-h-[34rem]"
                     />

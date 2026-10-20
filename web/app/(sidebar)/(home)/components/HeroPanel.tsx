@@ -29,14 +29,14 @@ export default function HeroPanel({ greeting, value, caption, delta, minis, chil
                         </div>
                     )}
                 </div>
-                <div className="pa-minis">
+                <dl className="pa-minis">
                     {minis.map((mini) => (
                         <div key={mini.label}>
-                            <b>{mini.value}</b>
-                            <span>{mini.label}</span>
+                            <dt>{mini.label}</dt>
+                            <dd>{mini.value}</dd>
                         </div>
                     ))}
-                </div>
+                </dl>
             </div>
             <div className="pa-hero-r">
                 <div className="grid-bg" />

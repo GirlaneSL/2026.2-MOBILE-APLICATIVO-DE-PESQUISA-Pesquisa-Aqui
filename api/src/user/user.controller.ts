@@ -1,6 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
+import { UpdateUserDto } from './dto/update-user.dto.js';
+import { UpdateUserSituationDto } from './dto/update-user-situation.dto.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { AuthGuard } from '../auth/auth.guard.js';
@@ -23,6 +25,24 @@ export class UserController {
     @Get('/admins')
     findAllAdmin(@CurrentUser() currentUser: UserPayLoad) {
         return this.userService.findAllAdmin(currentUser);
+    }
+
+    @Patch(':username')
+    update(
+        @Param('username') username: string,
+        @Body() updateUserDto: UpdateUserDto,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.userService.update(username, updateUserDto, currentUser);
+    }
+
+    @Patch(':username/situation')
+    setSituation(
+        @Param('username') username: string,
+        @Body() updateUserSituationDto: UpdateUserSituationDto,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.userService.setSituation(username, updateUserSituationDto.situation, currentUser);
     }
 
     @Delete(':username')
