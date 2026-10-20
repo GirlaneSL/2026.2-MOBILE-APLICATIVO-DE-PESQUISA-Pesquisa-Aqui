@@ -247,11 +247,15 @@ export class AudioStorage {
     private async cloudRemoveDir(relativeDir: string): Promise<void> {
         const prefix = `${relativeDir.replace(/\\/g, '/').replace(/\/+$/, '')}/`;
         for (const kind of KINDS) {
-            await cloudinary.api.delete_resources_by_prefix(prefix, {
-                resource_type: kind,
-                type: 'authenticated',
-                invalidate: true,
-            });
+            // O Cloudinary apaga em lotes: repete enquanto ele disser que sobrou arquivo (`partial`).
+            for (let round = 0; round < 50; round++) {
+                const result = await cloudinary.api.delete_resources_by_prefix(prefix, {
+                    resource_type: kind,
+                    type: 'authenticated',
+                    invalidate: true,
+                });
+                if (!result?.partial) break;
+            }
         }
     }
 

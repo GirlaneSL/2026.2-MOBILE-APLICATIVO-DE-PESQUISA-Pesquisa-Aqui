@@ -17,7 +17,7 @@ function setup(status: string, recordInterview: boolean) {
     },
   } as any;
   const user = { sub: 'adm', username: 'adm', profile: 'ADMINISTRATOR', companyId: 10 } as any;
-  return { service: new ResearchService(prisma), update, user };
+  return { service: new ResearchService(prisma, { removeDir: jest.fn() } as any), update, user };
 }
 
 describe('ResearchService.update — recordInterview', () => {

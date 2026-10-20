@@ -1,5 +1,6 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service.js';
+import { AudioStorage } from '../collection/audio-storage.js';
 import { CreateResearchDto, ResearchStatus } from './dto/create-research.dto.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { UpdateResearchDto } from './dto/update-research.dto.js';
@@ -25,7 +26,9 @@ function assertValidTransition(current: ResearchStatus, next: ResearchStatus) {
 
 @Injectable()
 export class ResearchService {
-    constructor(private prisma: PrismaService) { }
+    private readonly logger = new Logger(ResearchService.name);
+
+    constructor(private prisma: PrismaService, private audioStorage: AudioStorage) { }
 
     async create(createResearchDto: CreateResearchDto, currentUser: UserPayLoad) {
         if (new Date(createResearchDto.endDate) < new Date(createResearchDto.startDate)) throw new BadRequestException('The end date cannot be earlier than the start date');
@@ -171,7 +174,15 @@ export class ResearchService {
 
         if (research.status !== ResearchStatus.DRAFT) throw new BadRequestException('Only draft research can be deleted.');
 
-        return this.prisma.client.orm.public.Research.where({ id }).delete()
+        const deleted = await this.prisma.client.orm.public.Research.where({ id }).delete();
+
+        // As coletas e respostas saem junto (cascata no banco); as mídias delas (Cloudinary) também.
+        // Todas ficam sob `<id da pesquisa>/`. Se a limpeza falhar, a exclusão já valeu: só registra.
+        await this.audioStorage
+            .removeDir(String(id))
+            .catch((error) => this.logger.error(`Pesquisa ${id} excluída, mas as mídias não foram apagadas: ${error?.message ?? error}`));
+
+        return deleted;
     }
 
     // Pacote completo da pesquisa para o app móvel (uma única resposta)
