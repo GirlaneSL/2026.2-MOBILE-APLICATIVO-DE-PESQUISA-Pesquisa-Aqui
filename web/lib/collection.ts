@@ -30,6 +30,15 @@ export interface CollectionMediaFile {
     mimeType: string;
 }
 
+// Arquivo que a resposta cita (foto ou áudio) e se já chegou ao servidor.
+export interface CollectionExpectedFile {
+    // Nome no aparelho, como a resposta o guarda
+    name: string;
+    received: boolean;
+    // Presente quando received = true: o arquivo guardado, para abrir pela API autenticada
+    file: CollectionMediaFile | null;
+}
+
 export interface CollectionQuestion {
     id: number;
     statement: string;
@@ -40,6 +49,8 @@ export interface CollectionQuestion {
     options: CollectionQuestionOption[];
     // Arquivos enviados pelo aplicativo para esta pergunta (fotos ou áudio); vazio nas coletas antigas e nos outros tipos.
     files: CollectionMediaFile[];
+    // Os arquivos que a resposta cita, cada um com "chegou ou não" (os arquivos sobem depois das respostas).
+    expectedFiles: CollectionExpectedFile[];
     // Valor bruto gravado pelo aplicativo; null quando a pergunta ficou sem resposta.
     answer: string | null;
 }
@@ -50,7 +61,17 @@ export interface CollectionSection {
     questions: CollectionQuestion[];
 }
 
+// Resumo dos arquivos da coleta: quantos já chegaram e quantos faltam.
+export interface CollectionFilesSummary {
+    expected: number;
+    received: number;
+    missing: number;
+    complete: boolean;
+    interviewAudio: { expected: boolean; received: boolean };
+}
+
 export interface CollectionDetail extends CollectionSummary {
+    filesSummary: CollectionFilesSummary;
     sections: CollectionSection[];
 }
 

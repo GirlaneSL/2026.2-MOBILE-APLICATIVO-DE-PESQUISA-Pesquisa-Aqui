@@ -8,6 +8,10 @@ import type { SendFailure } from './collectionStore';
 // - as coletas vão uma a uma, da mais antiga para a mais nova;
 // - o que o servidor confirma sai da fila; o que falha fica, com o motivo guardado;
 // - se a conexão cai (ou a sessão expira), a rodada para na hora: o resto da fila fica intacta, sem culpa;
+// - o envio tem duas etapas: primeiro as respostas de TODAS as coletas, depois os arquivos (fotos e áudios),
+//   um a um. Assim um arquivo pesado, ou uma rede ruim, nunca atrasa a chegada das respostas;
+// - a coleta só sai da fila quando as respostas E todos os arquivos foram confirmados. Um arquivo que falha é
+//   reenviado sozinho na próxima rodada, sem mandar a coleta inteira de novo;
 // - nada aqui apaga coleta sem confirmação do servidor. Interrompido no meio, o reenvio repete o mesmo
 //   identificador (clientId) e o servidor responde "já existia": não duplica.
 
@@ -27,13 +31,19 @@ export type SendOutcome =
 export interface QueueEntry {
     clientId: string;
     lastFailure?: SendFailure;
+    /** As respostas já chegaram ao servidor; falta (no máximo) enviar arquivos. */
+    collectionSent?: boolean;
 }
 
 export interface SyncDeps {
     /** Coletas finalizadas e ainda não confirmadas, a mais antiga primeiro. */
     listQueue(): Promise<QueueEntry[]>;
-    /** Lê a coleta, monta o envio e manda para o servidor. Não lança erro. */
+    /** Etapa 1: lê a coleta, monta o envio e manda as respostas ao servidor. Não lança erro. */
     send(clientId: string): Promise<SendOutcome>;
+    /** O servidor recebeu as respostas. Devolve true se ainda há arquivos para enviar (etapa 2). */
+    onCollectionSent(clientId: string): Promise<boolean>;
+    /** Etapa 2: envia os arquivos que ainda faltam, um a um. "confirmed" = todos chegaram. Não lança erro. */
+    sendFiles(clientId: string): Promise<SendOutcome>;
     /** O servidor confirmou: tira a coleta do aparelho. */
     onConfirmed(clientId: string): Promise<void>;
     /** Guarda o motivo da falha na coleta. */
@@ -124,65 +134,114 @@ export function createSyncEngine(deps: SyncDeps) {
         });
 
         let unreachableInRow = 0;
+        let stopped = false;
+
+        const finishEntry = (entry: QueueEntry) => {
+            const remaining = { ...state.items };
+            delete remaining[entry.clientId];
+            update({ items: remaining, done: state.done + 1 });
+        };
+
+        // Resultado de uma etapa. Devolve "confirmed" quando a etapa deu certo; senão registra a falha.
+        // Define `stopped` quando a rodada inteira deve parar (sessão expirada ou sem conexão).
+        const settle = async (
+            entry: QueueEntry,
+            run: () => Promise<SendOutcome>,
+        ): Promise<Extract<SendOutcome, { kind: 'confirmed' }> | null> => {
+            update({ items: { ...state.items, [entry.clientId]: 'sending' } });
+
+            let outcome: SendOutcome;
+            try {
+                outcome = await run();
+            } catch (error) {
+                console.log(`Falha inesperada ao enviar a coleta ${entry.clientId}:`, error);
+                outcome = { kind: 'failed', reason: 'Erro inesperado ao enviar a coleta. Tente novamente.', retryable: true };
+            }
+
+            if (outcome.kind === 'auth') {
+                summary.stoppedBy = 'auth';
+                summary.stopReason = 'Sua sessão expirou. Entre de novo para enviar as coletas.';
+                stopped = true;
+                return null;
+            }
+
+            if (outcome.kind === 'confirmed') {
+                unreachableInRow = 0;
+                return outcome;
+            }
+
+            summary.failed += 1;
+            const failure: SendFailure =
+                outcome.kind === 'failed'
+                    ? { reason: outcome.reason, code: outcome.code, retryable: outcome.retryable, at: new Date(now()).toISOString() }
+                    : { reason: outcome.reason, retryable: true, at: new Date(now()).toISOString() };
+            try {
+                await deps.onFailed(entry.clientId, failure);
+            } catch (error) {
+                console.log(`Falha ao guardar o motivo da coleta ${entry.clientId}:`, error);
+            }
+
+            if (outcome.kind === 'unreachable') {
+                unreachableInRow += 1;
+                // Sem rede de verdade: para. Com rede, o problema pode ser só desta coleta (um arquivo
+                // que não sobe, por exemplo): ela fica com o motivo e a fila segue, para uma coleta
+                // não travar todas as outras. Se falhar várias seguidas, o servidor está fora: para.
+                const online = deps.isOnline ? await deps.isOnline().catch(() => false) : false;
+                if (!online || unreachableInRow >= MAX_CONSECUTIVE_UNREACHABLE) {
+                    summary.stoppedBy = 'unreachable';
+                    summary.stopReason = outcome.reason;
+                    stopped = true;
+                }
+            } else {
+                unreachableInRow = 0;
+            }
+
+            finishEntry(entry);
+            return null;
+        };
+
+        const confirmEntry = async (entry: QueueEntry) => {
+            summary.confirmed += 1;
+            try {
+                await deps.onConfirmed(entry.clientId);
+            } catch (error) {
+                // A coleta fica na fila; no próximo envio o servidor responde "já existia" e ela sai.
+                console.log(`Falha ao tirar a coleta ${entry.clientId} da fila:`, error);
+            }
+            finishEntry(entry);
+        };
 
         try {
+            const awaitingFiles: QueueEntry[] = queue.filter((entry) => entry.collectionSent);
+
+            // Etapa 1: as respostas de todas as coletas, antes de qualquer arquivo.
             for (const entry of queue) {
-                update({ items: { ...state.items, [entry.clientId]: 'sending' } });
+                if (stopped) break;
+                if (entry.collectionSent) continue;
 
-                let outcome: SendOutcome;
+                const confirmed = await settle(entry, () => deps.send(entry.clientId));
+                if (!confirmed) continue;
+
+                let hasFiles = false;
                 try {
-                    outcome = await deps.send(entry.clientId);
+                    hasFiles = await deps.onCollectionSent(entry.clientId);
                 } catch (error) {
-                    console.log(`Falha inesperada ao enviar a coleta ${entry.clientId}:`, error);
-                    outcome = { kind: 'failed', reason: 'Erro inesperado ao enviar a coleta. Tente novamente.', retryable: true };
+                    console.log(`Falha ao registrar o envio da coleta ${entry.clientId}:`, error);
                 }
 
-                if (outcome.kind === 'auth') {
-                    summary.stoppedBy = 'auth';
-                    summary.stopReason = 'Sua sessão expirou. Entre de novo para enviar as coletas.';
-                    break;
-                }
-
-                if (outcome.kind === 'confirmed') {
-                    unreachableInRow = 0;
-                    summary.confirmed += 1;
-                    try {
-                        await deps.onConfirmed(entry.clientId);
-                    } catch (error) {
-                        // A coleta fica na fila; no próximo envio o servidor responde "já existia" e ela sai.
-                        console.log(`Falha ao tirar a coleta ${entry.clientId} da fila:`, error);
-                    }
+                if (hasFiles) {
+                    update({ items: { ...state.items, [entry.clientId]: 'waiting' } });
+                    awaitingFiles.push(entry);
                 } else {
-                    summary.failed += 1;
-                    const failure: SendFailure =
-                        outcome.kind === 'failed'
-                            ? { reason: outcome.reason, code: outcome.code, retryable: outcome.retryable, at: new Date(now()).toISOString() }
-                            : { reason: outcome.reason, retryable: true, at: new Date(now()).toISOString() };
-                    try {
-                        await deps.onFailed(entry.clientId, failure);
-                    } catch (error) {
-                        console.log(`Falha ao guardar o motivo da coleta ${entry.clientId}:`, error);
-                    }
-
-                    if (outcome.kind === 'unreachable') {
-                        unreachableInRow += 1;
-                        // Sem rede de verdade: para. Com rede, o problema pode ser só desta coleta (um arquivo
-                        // que não sobe, por exemplo): ela fica com o motivo e a fila segue, para uma coleta
-                        // não travar todas as outras. Se falhar várias seguidas, o servidor está fora: para.
-                        const online = deps.isOnline ? await deps.isOnline().catch(() => false) : false;
-                        if (!online || unreachableInRow >= MAX_CONSECUTIVE_UNREACHABLE) {
-                            summary.stoppedBy = 'unreachable';
-                            summary.stopReason = outcome.reason;
-                            break;
-                        }
-                    } else {
-                        unreachableInRow = 0;
-                    }
+                    await confirmEntry(entry);
                 }
+            }
 
-                const remaining = { ...state.items };
-                delete remaining[entry.clientId];
-                update({ items: remaining, done: state.done + 1 });
+            // Etapa 2: os arquivos, coleta a coleta. Falha de uma coleta não impede as outras.
+            for (const entry of awaitingFiles) {
+                if (stopped) break;
+                const confirmed = await settle(entry, () => deps.sendFiles(entry.clientId));
+                if (confirmed) await confirmEntry(entry);
             }
         } finally {
             summary.finishedAt = new Date(now()).toISOString();

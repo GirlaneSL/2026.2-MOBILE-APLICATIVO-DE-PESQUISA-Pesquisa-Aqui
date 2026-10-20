@@ -121,6 +121,67 @@ export function buildCollectionFormData(input: CollectionInput): FormData {
     return form;
 }
 
+// Um arquivo da coleta que sobe sozinho, depois das respostas.
+export interface UploadFile {
+    // Identifica o arquivo na fila do aparelho: não muda entre tentativas
+    key: string;
+    uri: string;
+    // Nome no aparelho (o valor guardado na resposta): o servidor o usa para não gravar duas vezes
+    name: string;
+    mimeType: string;
+    // Sem questão = áudio da entrevista
+    questionId?: number;
+    durationSeconds?: number;
+    label: string; // para mensagens ("foto", "áudio", "áudio da entrevista")
+}
+
+/** Todos os arquivos que a coleta precisa enviar, na ordem: entrevista, fotos, áudios das questões. */
+export function listUploadFiles(input: CollectionInput): UploadFile[] {
+    const files: UploadFile[] = [];
+    if (input.audio) {
+        files.push({
+            key: 'interview',
+            uri: input.audio.uri,
+            name: `coleta-${input.clientId}.m4a`,
+            mimeType: input.audio.mimeType ?? 'audio/mp4',
+            durationSeconds: Math.round(input.audio.durationSeconds),
+            label: 'áudio da entrevista',
+        });
+    }
+    for (const photo of input.photos ?? []) {
+        files.push({
+            key: `photo:${photo.questionId}:${photo.name}`,
+            uri: photo.uri,
+            name: photo.name,
+            mimeType: photo.mimeType,
+            questionId: photo.questionId,
+            label: 'foto',
+        });
+    }
+    for (const audio of input.questionAudios ?? []) {
+        files.push({
+            key: `audio:${audio.questionId}:${audio.name}`,
+            uri: audio.uri,
+            name: audio.name,
+            mimeType: audio.mimeType,
+            questionId: audio.questionId,
+            durationSeconds: Math.round(audio.durationSeconds),
+            label: 'áudio',
+        });
+    }
+    return files;
+}
+
+// Multipart de UM arquivo (POST /collection/:clientId/files): o arquivo e os campos que o ligam à coleta.
+export function buildFileFormData(file: UploadFile): FormData {
+    const form = new FormData();
+    form.append('name', file.name);
+    if (file.questionId !== undefined) form.append('questionId', String(file.questionId));
+    if (file.durationSeconds !== undefined) form.append('durationSeconds', String(file.durationSeconds));
+    form.append('file', filePart(file.uri, file.name, file.mimeType));
+    return form;
+}
+
 // Envia a coleta: respostas, consentimento (data, hora) e o áudio, tudo na mesma requisição.
 export async function uploadCollection(input: CollectionInput) {
     const response = await apiFetch('/collection', {

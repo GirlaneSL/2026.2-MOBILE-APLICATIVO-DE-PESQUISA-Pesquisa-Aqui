@@ -1,57 +1,91 @@
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
-import { deleteAudio } from './audioStorage';
-import { sendCollection } from './collectionSender';
+import { sendCollection, sendCollectionFiles } from './collectionSender';
 import {
     buildCollectionInput,
     getCollection,
     listSendQueue,
+    markCollectionSent,
+    markFileUploaded,
     recordSendFailure,
     removeCollection,
+    resetCollectionSent,
 } from './collectionStore';
+import { listUploadFiles, type CollectionInput } from './collectionUpload';
 import { orderedQuestions } from './displayRules';
 import { getCachedResearchPackage } from './researchCache';
-import { createSyncEngine } from './syncEngine';
+import { createSyncEngine, type SendOutcome } from './syncEngine';
 
 // A fila de envio do aparelho: o motor (syncEngine) ligado ao armazenamento local e à API.
 // É um só para o app inteiro: a tela de sincronização, o envio automático e o fim da coleta usam este mesmo.
 // Como vive fora das telas, o envio continua mesmo que o pesquisador saia da tela ou comece outra coleta.
+
+// Monta o envio de uma coleta finalizada a partir do que está no aparelho. Devolve o motivo da falha se não der.
+async function loadInput(clientId: string): Promise<{ input: CollectionInput } | { failure: SendOutcome }> {
+    const collection = await getCollection(clientId);
+    if (!collection || collection.status !== 'FINISHED') {
+        return { failure: { kind: 'failed', reason: 'Esta coleta não está mais no aparelho.', retryable: false } };
+    }
+
+    // As regras de pulo vêm do pacote da pesquisa: questão escondida não viaja.
+    // O pacote some se o pesquisador sair da conta, por isso este aviso.
+    const pkg = await getCachedResearchPackage(collection.researchId);
+    if (!pkg) {
+        return {
+            failure: {
+                kind: 'failed',
+                code: 'PACKAGE_MISSING',
+                reason: 'A pesquisa não está mais baixada neste aparelho. Baixe-a de novo (com internet) e toque em "Tentar de novo".',
+                retryable: false,
+            },
+        };
+    }
+
+    return { input: await buildCollectionInput(collection, orderedQuestions(pkg), pkg.displayRules) };
+}
 
 export const syncQueue = createSyncEngine({
     async listQueue() {
         return (await listSendQueue()).map((collection) => ({
             clientId: collection.clientId,
             lastFailure: collection.sendState?.lastFailure,
+            collectionSent: collection.upload?.collectionSent === true,
         }));
     },
 
+    // Etapa 1: só as respostas. Os arquivos sobem depois (sendFiles), cada um por conta própria.
     async send(clientId) {
-        const collection = await getCollection(clientId);
-        if (!collection || collection.status !== 'FINISHED') {
-            return { kind: 'failed', reason: 'Esta coleta não está mais no aparelho.', retryable: false };
-        }
+        const loaded = await loadInput(clientId);
+        if ('failure' in loaded) return loaded.failure;
+        return sendCollection(loaded.input);
+    },
 
-        // As regras de pulo vêm do pacote da pesquisa: questão escondida não viaja.
-        // O pacote some se o pesquisador sair da conta, por isso este aviso.
-        const pkg = await getCachedResearchPackage(collection.researchId);
-        if (!pkg) {
-            return {
-                kind: 'failed',
-                code: 'PACKAGE_MISSING',
-                reason: 'A pesquisa não está mais baixada neste aparelho. Baixe-a de novo (com internet) e toque em "Tentar de novo".',
-                retryable: false,
-            };
-        }
+    async onCollectionSent(clientId) {
+        await markCollectionSent(clientId);
+        const loaded = await loadInput(clientId);
+        // Sem como montar a lista (pacote sumiu), não há o que enviar: a coleta pode sair da fila.
+        if ('failure' in loaded) return false;
+        const uploaded = (await getCollection(clientId))?.upload?.uploaded ?? [];
+        return listUploadFiles(loaded.input).some((file) => !uploaded.includes(file.key));
+    },
 
-        const input = await buildCollectionInput(collection, orderedQuestions(pkg), pkg.displayRules);
-        return sendCollection(input);
+    // Etapa 2: os arquivos que o servidor ainda não tem. O que já subiu não sobe de novo.
+    async sendFiles(clientId) {
+        const loaded = await loadInput(clientId);
+        if ('failure' in loaded) return loaded.failure;
+
+        const uploaded = (await getCollection(clientId))?.upload?.uploaded ?? [];
+        const outcome = await sendCollectionFiles(loaded.input, uploaded, (key) => markFileUploaded(clientId, key));
+
+        // O servidor não tem a coleta: volta a mandar as respostas na próxima rodada.
+        if (outcome.kind === 'failed' && outcome.code === 'COLLECTION_NOT_RECEIVED') {
+            await resetCollectionSent(clientId);
+        }
+        return outcome;
     },
 
     async onConfirmed(clientId) {
-        const collection = await getCollection(clientId);
-        await removeCollection(clientId); // sai da fila: o servidor já tem esta coleta
-        // O áudio da entrevista seguiu junto com a coleta e não serve mais.
-        // Fotos e áudios de questão ficam: o servidor ainda não recebe esses arquivos.
-        if (collection?.audio?.uri) deleteAudio(collection.audio.uri);
+        await removeCollection(clientId); // sai da fila: o servidor já tem a coleta e todos os arquivos
+        // Cada arquivo foi apagado do aparelho assim que o servidor o recebeu (collectionSender).
     },
 
     onFailed: recordSendFailure,

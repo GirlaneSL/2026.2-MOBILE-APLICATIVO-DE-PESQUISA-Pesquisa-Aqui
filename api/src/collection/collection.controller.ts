@@ -6,14 +6,16 @@ import {
     HttpCode,
     Param,
     ParseIntPipe,
+    ParseUUIDPipe,
     Post,
     Query,
     StreamableFile,
+    UploadedFile,
     UploadedFiles,
     UseGuards,
     UseInterceptors,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '../auth/auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
@@ -22,6 +24,8 @@ import { CollectionService } from './collection.service.js';
 import type { UploadedAudio } from './collection.service.js';
 import { CreateCollectionDto, MAX_MEDIA_FILES } from './dto/create-collection.dto.js';
 import { SyncCollectionsDto } from './dto/sync-collections.dto.js';
+import { UploadCollectionFileDto } from './dto/upload-collection-file.dto.js';
+import { uploadMaxBytes } from './media-validation.js';
 
 // Limite do arquivo de áudio por coleta (padrão 150 MB; ajustável por AUDIO_MAX_BYTES).
 const MAX_AUDIO_BYTES = Number(process.env.AUDIO_MAX_BYTES) || 150 * 1024 * 1024;
@@ -64,6 +68,22 @@ export class CollectionController {
     @HttpCode(200)
     sync(@Body() dto: SyncCollectionsDto, @CurrentUser() currentUser: UserPayLoad) {
         return this.collectionSyncService.sync(dto, currentUser);
+    }
+
+    // Envio de arquivo, separado das respostas: a coleta chega primeiro (POST /collection/sync) e cada foto ou
+    // áudio sobe depois, ligado a ela pelo UUID da coleta e pela questão (campo `questionId`; sem ele, é o
+    // áudio da entrevista). multipart/form-data: `file` + `name` (nome no aparelho) + `questionId`.
+    // Reenviar o mesmo arquivo não grava outra cópia (responde ALREADY_EXISTS).
+    @Post(':clientId/files')
+    @HttpCode(200)
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: uploadMaxBytes(), files: 1 } }))
+    uploadFile(
+        @Param('clientId', new ParseUUIDPipe()) clientId: string,
+        @Body() dto: UploadCollectionFileDto,
+        @UploadedFile() file: UploadedAudio | undefined,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.collectionService.uploadFile(clientId, dto, file, currentUser);
     }
 
     @Get()

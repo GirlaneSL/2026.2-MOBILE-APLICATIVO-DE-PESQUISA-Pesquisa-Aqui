@@ -4,6 +4,16 @@ import type { UserPayLoad } from '../auth/current-user.type.js';
 import { AudioStorage, audioExtensionFor, imageExtensionFor, mediaTypeFor } from './audio-storage.js';
 import { assertValidConsent } from './consent.js';
 import type { CollectionPayloadDto } from './dto/create-collection.dto.js';
+import type { UploadCollectionFileDto } from './dto/upload-collection-file.dto.js';
+import {
+    audioMaxBytes,
+    fileStem,
+    formatLimit,
+    looksLikeAudio,
+    looksLikeImage,
+    photoMaxBytes,
+    storedFileName,
+} from './media-validation.js';
 
 export interface UploadedAudio {
     originalname: string;
@@ -21,8 +31,31 @@ export interface UploadedMedia {
 // Foto reduzida pelo app costuma ter poucos MB; acima disso é arquivo errado ou abuso.
 const MAX_PHOTO_BYTES = 30 * 1024 * 1024;
 
-// Nome dos arquivos de resposta guardados: montado pelo servidor (`q<questão>-<posição>.<extensão>`).
-const MEDIA_NAME = /^q(\d{1,10})-(\d{1,4})\.([a-z0-9]{2,5})$/;
+// Nome dos arquivos de resposta guardados: montado pelo servidor.
+//  - `q<questão>-<posição>.<extensão>`: envio antigo (arquivos junto da coleta)
+//  - `q<questão>-f<identificador>.<extensão>`: envio de arquivo separado (o identificador vem do nome no aparelho)
+const MEDIA_NAME = /^q(\d{1,10})-(\d{1,4}|f[0-9a-f-]{8,41})\.([a-z0-9]{2,5})$/;
+
+const FILE_QUESTION_TYPES = ['PHOTO', 'MULTIPLE_PHOTOS', 'AUDIO'];
+
+// Nomes de arquivo que a resposta de uma questão de foto/áudio guarda.
+function answerFileNames(type: string, answer: string | null): string[] {
+    if (answer === null || answer.trim() === '') return [];
+    if (type === 'MULTIPLE_PHOTOS') {
+        try {
+            const parsed: unknown = JSON.parse(answer);
+            return Array.isArray(parsed) ? parsed.map(String) : [answer];
+        } catch {
+            return [answer];
+        }
+    }
+    return [answer];
+}
+
+// Recusa de arquivo com código legível pela máquina (o aplicativo decide se tenta de novo).
+function fileRejection(Exception: typeof BadRequestException | typeof NotFoundException, code: string, message: string, retryable: boolean) {
+    return new Exception({ statusCode: Exception === NotFoundException ? 404 : 400, code, message, retryable });
+}
 
 @Injectable()
 export class CollectionService {
@@ -187,6 +220,8 @@ export class CollectionService {
 
         const mediaNames = (await this.audioStorage.list(this.mediaDir(collection.researchId, collection.id)))
             .filter((name) => MEDIA_NAME.test(name));
+        let expectedCount = 0;
+        let receivedCount = 0;
 
         const sections = (await orm.Section.where({ researchId: collection.researchId }).all()).sort(
             (a, b) => a.order - b.order,
@@ -204,6 +239,14 @@ export class CollectionService {
                             .sort((a, b) => a.order - b.order)
                             .map((option) => ({ id: option.id, text: option.text }));
 
+                        const answer = answerByQuestion.get(question.id) ?? null;
+                        const files = this.filesOfQuestion(mediaNames, question.id);
+                        const expectedFiles = FILE_QUESTION_TYPES.includes(question.type)
+                            ? this.expectedFilesOf(question.id, question.type, answer, mediaNames, files)
+                            : [];
+                        expectedCount += expectedFiles.length;
+                        receivedCount += expectedFiles.filter((file) => file.received).length;
+
                         return {
                             id: question.id,
                             statement: question.statement,
@@ -212,8 +255,10 @@ export class CollectionService {
                             scaleLeftLabel: question.scaleLeftLabel ?? null,
                             scaleRightLabel: question.scaleRightLabel ?? null,
                             options,
-                            answer: answerByQuestion.get(question.id) ?? null,
-                            files: this.filesOfQuestion(mediaNames, question.id),
+                            answer,
+                            files,
+                            // Quais arquivos esta resposta cita e quais já chegaram ao servidor.
+                            expectedFiles,
                         };
                     }),
                 );
@@ -222,10 +267,153 @@ export class CollectionService {
             }),
         );
 
+        // Áudio da entrevista: esperado quando a pesquisa grava e o entrevistado aceitou.
+        const interviewExpected = !!research && research.recordInterview && collection.consentGiven;
+        const interviewReceived = collection.audioPath !== null;
+        if (interviewExpected) expectedCount += 1;
+        if (interviewExpected && interviewReceived) receivedCount += 1;
+
         return {
             ...this.toSummary(collection, researcher?.name ?? null, confirmedBy?.name ?? null),
+            filesSummary: {
+                expected: expectedCount,
+                received: receivedCount,
+                missing: expectedCount - receivedCount,
+                complete: expectedCount === receivedCount,
+                interviewAudio: { expected: interviewExpected, received: interviewReceived },
+            },
             sections: detailedSections,
         };
+    }
+
+    // Recebe UM arquivo (foto, áudio de questão ou áudio da entrevista) de uma coleta que já chegou.
+    // A coleta é identificada pelo UUID do aparelho; o arquivo, pela questão e pelo nome que tem no aparelho.
+    async uploadFile(
+        clientId: string,
+        dto: UploadCollectionFileDto,
+        file: UploadedAudio | undefined,
+        currentUser: UserPayLoad,
+    ) {
+        if (currentUser.profile !== 'RESEARCHER') {
+            throw new ForbiddenException('Somente pesquisadores enviam arquivos de coleta.');
+        }
+        if (!file) throw fileRejection(BadRequestException, 'FILE_MISSING', 'Nenhum arquivo foi enviado (campo "file").', false);
+
+        const orm = this.prisma.client.orm.public;
+
+        // No token, `sub` é o username (não o id numérico)
+        const user = await orm.User.where({ username: String(currentUser.sub) }).first();
+        if (!user) throw new ForbiddenException('Usuário não encontrado.');
+
+        // 1. A coleta precisa já ter chegado: o arquivo vai sempre depois das respostas.
+        const collection = await orm.Collection.where({ researcherId: user.id, clientId: clientId.toLowerCase() }).first();
+        const research = collection ? await orm.Research.where({ id: collection.researchId }).first() : null;
+        if (!collection || !research || research.companyId !== currentUser.companyId) {
+            throw fileRejection(
+                NotFoundException,
+                'COLLECTION_NOT_RECEIVED',
+                'Esta coleta ainda não chegou ao servidor. Envie a coleta antes dos arquivos.',
+                true,
+            );
+        }
+
+        const name = dto.name.trim();
+        const mediaDir = this.mediaDir(collection.researchId, collection.id);
+
+        // 2. Áudio da entrevista (sem questão) ou arquivo de uma questão.
+        const isInterview = dto.questionId === undefined || dto.questionId === null;
+        let questionType: string | null = null;
+        if (isInterview) {
+            if (!research.recordInterview || !collection.consentGiven) {
+                throw fileRejection(
+                    BadRequestException,
+                    'FILE_NOT_EXPECTED',
+                    'Esta coleta não tem gravação de entrevista: o áudio foi recusado.',
+                    false,
+                );
+            }
+        } else {
+            const questionTypes = await this.loadQuestionTypes(research.id);
+            questionType = questionTypes.get(dto.questionId!) ?? null;
+            if (!questionType) {
+                throw fileRejection(BadRequestException, 'QUESTION_NOT_FOUND', `A questão ${dto.questionId} não pertence a esta pesquisa.`, false);
+            }
+            if (!FILE_QUESTION_TYPES.includes(questionType)) {
+                throw fileRejection(BadRequestException, 'FILE_NOT_EXPECTED', `A questão ${dto.questionId} não recebe arquivo.`, false);
+            }
+            // O arquivo precisa ser um dos que a resposta da coleta cita.
+            const answers = (await orm.Answer.where({ collectionId: collection.id, questionId: dto.questionId! }).all())
+                .sort((a, b) => a.id - b.id);
+            const cited = answerFileNames(questionType, answers.at(-1)?.value ?? null);
+            if (!cited.some((citedName) => fileStem(citedName) === fileStem(name))) {
+                throw fileRejection(
+                    BadRequestException,
+                    'FILE_NOT_EXPECTED',
+                    `O arquivo "${name}" não consta na resposta da questão ${dto.questionId} desta coleta.`,
+                    false,
+                );
+            }
+        }
+
+        const isAudio = isInterview || questionType === 'AUDIO';
+
+        // 3. Já recebido: não grava de novo.
+        if (isInterview) {
+            if (collection.audioPath) return this.fileResult('ALREADY_EXISTS', collection.audioMimeType ?? 'audio/mp4', collection.audioSizeBytes ?? 0, null);
+        } else {
+            const stem = fileStem(name);
+            const already = (await this.audioStorage.list(mediaDir)).find((stored) => {
+                const match = MEDIA_NAME.exec(stored);
+                return match !== null && Number(match[1]) === dto.questionId && match[2] === stem;
+            });
+            if (already) return this.fileResult('ALREADY_EXISTS', mediaTypeFor(already) ?? file.mimetype, file.size, already);
+        }
+
+        // 4. Tipo e tamanho (limites do servidor).
+        const extension = isAudio ? audioExtensionFor(file.mimetype) : imageExtensionFor(file.mimetype);
+        if (!extension) {
+            throw fileRejection(BadRequestException, 'UNSUPPORTED_TYPE', `Formato de ${isAudio ? 'áudio' : 'foto'} não suportado (${file.mimetype || 'sem tipo'}).`, false);
+        }
+        if (!file.size || file.buffer.length === 0) {
+            throw fileRejection(BadRequestException, 'EMPTY_FILE', 'O arquivo está vazio.', false);
+        }
+        const maxBytes = isAudio ? audioMaxBytes() : photoMaxBytes();
+        if (file.buffer.length > maxBytes) {
+            throw fileRejection(
+                BadRequestException,
+                'FILE_TOO_LARGE',
+                `O arquivo passa do tamanho máximo permitido para ${isAudio ? 'áudio' : 'foto'} (${formatLimit(maxBytes)}).`,
+                false,
+            );
+        }
+        if (!(isAudio ? looksLikeAudio(file.buffer) : looksLikeImage(file.buffer))) {
+            throw fileRejection(BadRequestException, 'INVALID_CONTENT', `O conteúdo do arquivo não é ${isAudio ? 'um áudio' : 'uma foto'} válido.`, false);
+        }
+
+        // 5. Grava.
+        if (isInterview) {
+            const audioPath = await this.audioStorage.save(research.id, file.buffer, extension);
+            try {
+                await orm.Collection.where({ id: collection.id }).update({
+                    audioPath,
+                    audioMimeType: file.mimetype,
+                    audioSizeBytes: file.buffer.length,
+                    audioDurationSeconds: dto.durationSeconds ?? null,
+                });
+            } catch (error) {
+                await this.audioStorage.remove(audioPath).catch(() => undefined);
+                throw error;
+            }
+            return this.fileResult('ACCEPTED', file.mimetype, file.buffer.length, null);
+        }
+
+        const stored = storedFileName(dto.questionId!, name, extension);
+        await this.audioStorage.saveAt(`${mediaDir}/${stored}`, file.buffer);
+        return this.fileResult('ACCEPTED', file.mimetype, file.buffer.length, stored);
+    }
+
+    private fileResult(status: 'ACCEPTED' | 'ALREADY_EXISTS', mimeType: string, sizeBytes: number, storedName: string | null) {
+        return { status, file: { name: storedName, mimeType, sizeBytes } };
     }
 
     // Abre uma foto ou um áudio de resposta. Só administrador da empresa dona da pesquisa chega aqui.
@@ -286,8 +474,39 @@ export class CollectionService {
         return mediaNames
             .map((name) => ({ name, match: MEDIA_NAME.exec(name) }))
             .filter((item) => item.match !== null && Number(item.match[1]) === questionId)
-            .sort((a, b) => Number(a.match![2]) - Number(b.match![2]))
+            .sort((a, b) => {
+                const left = a.match![2];
+                const right = b.match![2];
+                const leftNumber = /^\d+$/.test(left);
+                const rightNumber = /^\d+$/.test(right);
+                if (leftNumber && rightNumber) return Number(left) - Number(right);
+                if (leftNumber !== rightNumber) return leftNumber ? -1 : 1; // envio antigo primeiro
+                return left.localeCompare(right);
+            })
             .map((item) => ({ name: item.name, mimeType: mediaTypeFor(item.name) ?? 'application/octet-stream' }));
+    }
+
+    // Arquivos que a resposta cita, cada um com "chegou ou não". O arquivo chegou se existe com o identificador
+    // do nome (envio separado) ou, nas coletas antigas, na mesma posição da lista (envio junto da coleta).
+    private expectedFilesOf(
+        questionId: number,
+        type: string,
+        answer: string | null,
+        mediaNames: string[],
+        files: { name: string; mimeType: string }[],
+    ) {
+        const legacy = files.filter((file) => /^\d+$/.test(MEDIA_NAME.exec(file.name)?.[2] ?? ''));
+        return answerFileNames(type, answer).map((deviceName, index) => {
+            const stem = fileStem(deviceName);
+            const storedName = mediaNames.find((stored) => {
+                const match = MEDIA_NAME.exec(stored);
+                return match !== null && Number(match[1]) === questionId && match[2] === stem;
+            });
+            const file = storedName
+                ? { name: storedName, mimeType: mediaTypeFor(storedName) ?? 'application/octet-stream' }
+                : (legacy[index] ?? null);
+            return { name: deviceName, received: file !== null, file };
+        });
     }
 
     // Mapa questão -> tipo, de todas as questões da pesquisa.

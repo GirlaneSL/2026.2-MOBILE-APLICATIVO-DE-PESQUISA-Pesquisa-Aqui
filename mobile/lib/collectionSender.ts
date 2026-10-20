@@ -1,15 +1,15 @@
 import { File } from 'expo-file-system';
 import { ApiError, apiFetch } from './api';
-import { buildCollectionFormData, type CollectionInput } from './collectionUpload';
+import { buildFileFormData, listUploadFiles, type CollectionInput } from './collectionUpload';
 import type { SendOutcome } from './syncEngine';
 
 // Envio de UMA coleta ao servidor. Nunca lança erro: tudo vira um SendOutcome para a fila decidir.
 //
-// Dois caminhos, porque o servidor tem dois endpoints:
-//  - POST /collection/sync  (JSON): a coleta sem arquivo. É idempotente pelo clientId (UUID do aparelho) e responde
-//    ACCEPTED, ALREADY_EXISTS ou REJECTED com motivo.
-//  - POST /collection (multipart): quando há algum arquivo (áudio da entrevista, fotos, áudios de questão).
-//    Também é idempotente pelo clientId: reenviar devolve a coleta já gravada.
+// O envio é separado em duas etapas, para um arquivo pesado nunca travar a fila:
+//  1. POST /collection/sync (JSON): as respostas, sem arquivo. Idempotente pelo clientId (UUID do aparelho);
+//     responde ACCEPTED, ALREADY_EXISTS ou REJECTED com motivo.
+//  2. POST /collection/:clientId/files (multipart): um arquivo por requisição (foto, áudio de questão ou áudio
+//     da entrevista), ligado à coleta pelo UUID e à questão. Reenviar o mesmo arquivo não duplica.
 
 const SYNC_TIMEOUT_MS = 30_000;
 const UPLOAD_TIMEOUT_MS = 3 * 60_000; // áudio de entrevista longa e várias fotos pesam dezenas de MB
@@ -101,7 +101,7 @@ async function sendViaSync(input: CollectionInput): Promise<SendOutcome> {
     return { kind: 'failed', reason: 'Resposta do servidor não reconhecida. Tente novamente.', retryable: true };
 }
 
-// ---------- Com arquivos: POST /collection (multipart) ----------
+// ---------- Arquivos: POST /collection/:clientId/files (um por requisição) ----------
 
 function fileExists(uri: string): boolean {
     try {
@@ -111,28 +111,76 @@ function fileExists(uri: string): boolean {
     }
 }
 
-async function sendMultipart(input: CollectionInput): Promise<SendOutcome> {
-    // O fetch do Expo não aceita { uri, name, type } no FormData ("Unsupported FormDataPart implementation"):
-    // o arquivo vai como objeto com bytes(), que o filePart (dentro do buildCollectionFormData) monta.
-    const response = await post('/collection', buildCollectionFormData(input), UPLOAD_TIMEOUT_MS);
-    if (!response.ok) return failureFromHttp(response);
-    return { kind: 'confirmed', alreadyExisted: false };
+function removeFileQuietly(uri: string): void {
+    try {
+        const file = new File(uri);
+        if (file.exists) file.delete();
+    } catch {
+        // arquivo que o sistema não deixa apagar não atrapalha o envio
+    }
+}
+
+/**
+ * Envia os arquivos da coleta que o servidor ainda não tem, um a um. A coleta (respostas) já chegou antes.
+ * - arquivo que o servidor já recebeu (resposta ALREADY_EXISTS) conta como enviado: não duplica;
+ * - falha de rede ou do servidor para na hora (o que já subiu não sobe de novo na próxima rodada);
+ * - recusa definitiva de um arquivo (tipo, tamanho) não impede os outros: a coleta fica na fila com o motivo.
+ */
+export async function sendCollectionFiles(
+    input: CollectionInput,
+    uploadedKeys: string[],
+    onUploaded: (key: string) => Promise<void>,
+): Promise<SendOutcome> {
+    try {
+        let refusal: SendOutcome | null = null;
+
+        for (const file of listUploadFiles(input)) {
+            if (uploadedKeys.includes(file.key)) continue;
+
+            // Arquivo que sumiu do aparelho não tem como ser reenviado: não prende a coleta na fila para sempre.
+            if (!fileExists(file.uri)) {
+                await onUploaded(file.key);
+                continue;
+            }
+
+            const response = await post(
+                `/collection/${encodeURIComponent(input.clientId)}/files`,
+                buildFileFormData(file),
+                UPLOAD_TIMEOUT_MS,
+            );
+
+            if (!response.ok) {
+                const failure = await failureFromHttp(response);
+                if (failure.kind === 'failed' && failure.code === 'COLLECTION_NOT_RECEIVED') {
+                    // O servidor não tem a coleta: quem chama volta a enviar as respostas primeiro.
+                    return { ...failure, reason: 'O servidor não encontrou esta coleta. As respostas serão enviadas de novo.', retryable: true };
+                }
+                if (failure.kind === 'failed' && !failure.retryable) {
+                    refusal = { ...failure, reason: `O servidor recusou ${file.label}: ${failure.reason}` };
+                    continue;
+                }
+                return failure;
+            }
+
+            await onUploaded(file.key);
+            removeFileQuietly(file.uri); // já está no servidor: libera o espaço do aparelho
+        }
+
+        return refusal ?? { kind: 'confirmed', alreadyExisted: false };
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 401) return { kind: 'auth' };
+        if (error instanceof Unreachable) return { kind: 'unreachable', reason: error.message };
+        console.log('Falha inesperada ao enviar os arquivos da coleta:', error);
+        return { kind: 'failed', reason: 'Erro inesperado ao enviar os arquivos. Tente novamente.', retryable: true };
+    }
 }
 
 // ---------- Entrada ----------
 
+/** Etapa 1: as respostas da coleta (sem arquivos) chegam primeiro. */
 export async function sendCollection(input: CollectionInput): Promise<SendOutcome> {
     try {
-        // Arquivo que sumiu do aparelho não tem como ser reenviado: as respostas seguem sem ele,
-        // em vez de a coleta ficar presa na fila para sempre.
-        const audio = input.audio && fileExists(input.audio.uri) ? input.audio : undefined;
-        const photos = (input.photos ?? []).filter((photo) => fileExists(photo.uri));
-        const questionAudios = (input.questionAudios ?? []).filter((item) => fileExists(item.uri));
-
-        const hasFiles = audio !== undefined || photos.length > 0 || questionAudios.length > 0;
-        return hasFiles
-            ? await sendMultipart({ ...input, audio, photos, questionAudios })
-            : await sendViaSync(input);
+        return await sendViaSync(input);
     } catch (error) {
         if (error instanceof ApiError && error.status === 401) return { kind: 'auth' };
         if (error instanceof Unreachable) return { kind: 'unreachable', reason: error.message };

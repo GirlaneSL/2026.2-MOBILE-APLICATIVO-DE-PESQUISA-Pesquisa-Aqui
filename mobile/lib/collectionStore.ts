@@ -50,6 +50,13 @@ export interface SendState {
     lastFailure?: SendFailure;
 }
 
+// Andamento do envio em duas etapas: as respostas primeiro, depois cada arquivo.
+// Também some junto com a coleta quando tudo foi confirmado.
+export interface UploadState {
+    collectionSent: boolean; // o servidor já tem as respostas desta coleta
+    uploaded: string[]; // chaves dos arquivos que o servidor já recebeu (não sobem de novo)
+}
+
 export interface LocalCollection {
     // UUID gerado no aparelho: é ele que impede a duplicidade quando a coleta for enviada
     clientId: string;
@@ -67,6 +74,7 @@ export interface LocalCollection {
     recordingIssues?: RecordingIssue[];
     // Só existe depois de uma tentativa de envio que falhou
     sendState?: SendState;
+    upload?: UploadState;
     updatedAt: string;
 }
 
@@ -189,6 +197,44 @@ export async function recordSendFailure(clientId: string, failure: SendFailure):
         sendState: { attempts: (stored.sendState?.attempts ?? 0) + 1, lastFailure: failure },
     };
     await AsyncStorage.setItem(keyOf(clientId), JSON.stringify(next));
+}
+
+async function patchFinished(clientId: string, patch: (stored: LocalCollection) => LocalCollection): Promise<void> {
+    const stored = await readCollection(clientId);
+    if (!stored || stored.status !== 'FINISHED') return;
+    await AsyncStorage.setItem(keyOf(clientId), JSON.stringify(patch(stored)));
+}
+
+/** O servidor recebeu as respostas: daqui em diante só os arquivos que faltam são reenviados. */
+export async function markCollectionSent(clientId: string): Promise<void> {
+    await patchFinished(clientId, (stored) => ({
+        ...stored,
+        upload: { uploaded: stored.upload?.uploaded ?? [], collectionSent: true },
+        // a falha anterior (se houve) era das respostas, que agora chegaram
+        sendState: undefined,
+    }));
+}
+
+/** O servidor disse que não tem a coleta (ex.: base restaurada): as respostas voltam a ser enviadas. */
+export async function resetCollectionSent(clientId: string): Promise<void> {
+    await patchFinished(clientId, (stored) => ({
+        ...stored,
+        upload: { uploaded: stored.upload?.uploaded ?? [], collectionSent: false },
+    }));
+}
+
+/** Guarda que um arquivo já chegou ao servidor. */
+export async function markFileUploaded(clientId: string, key: string): Promise<void> {
+    await patchFinished(clientId, (stored) => {
+        const uploaded = stored.upload?.uploaded ?? [];
+        return {
+            ...stored,
+            upload: {
+                collectionSent: stored.upload?.collectionSent ?? true,
+                uploaded: uploaded.includes(key) ? uploaded : [...uploaded, key],
+            },
+        };
+    });
 }
 
 /** Tira a coleta do aparelho. Só o envio chama isto, depois de o servidor confirmar o recebimento. */

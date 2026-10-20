@@ -168,6 +168,8 @@ function MediaItem({ collectionId, file }: { collectionId: number; file: Collect
 
 function QuestionItem({ number, question, collectionId }: { number: number; question: CollectionQuestion; collectionId: number }) {
     const answer = formatAnswer(question);
+    const expected = question.expectedFiles ?? [];
+    const missing = expected.filter((file) => !file.received).length;
     const showFiles = answer.kind === 'file' && question.files.length > 0;
 
     return (
@@ -182,6 +184,13 @@ function QuestionItem({ number, question, collectionId }: { number: number; ques
                 </div>
             ) : (
                 <AnswerView answer={answer} />
+            )}
+            {missing > 0 && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {missing === 1
+                        ? '1 arquivo desta resposta ainda não chegou (o aplicativo envia sozinho quando tiver rede).'
+                        : `${missing} arquivos desta resposta ainda não chegaram (o aplicativo envia sozinho quando tiver rede).`}
+                </p>
             )}
         </li>
     );
@@ -222,7 +231,7 @@ function RespostasConteudo({ collectionId }: { collectionId: number }) {
         );
     }
 
-    const { sections } = state.detail;
+    const { sections, filesSummary } = state.detail;
     const questions = sections.flatMap((section) => section.questions);
     const answered = questions.filter((question) => formatAnswer(question).kind !== 'empty').length;
 
@@ -241,6 +250,21 @@ function RespostasConteudo({ collectionId }: { collectionId: number }) {
     return (
         <div className="flex flex-col gap-5">
             <p className="text-sm text-muted-foreground">{answered} de {questions.length} pergunta(s) respondida(s)</p>
+            {filesSummary && filesSummary.expected > 0 && (
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <Badge variant={filesSummary.complete ? 'default' : 'secondary'}>
+                        {filesSummary.complete
+                            ? 'Todos os arquivos chegaram'
+                            : `${filesSummary.missing} arquivo(s) ainda não chegaram`}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                        {filesSummary.received} de {filesSummary.expected} arquivo(s) recebido(s)
+                        {filesSummary.interviewAudio.expected && !filesSummary.interviewAudio.received
+                            ? ' · falta o áudio da entrevista'
+                            : ''}
+                    </span>
+                </div>
+            )}
             {numbered.map(({ section, firstNumber }) => (
                 <section key={section.id} className="flex flex-col gap-2">
                     <h3 className="text-base font-semibold">{section.title}</h3>
