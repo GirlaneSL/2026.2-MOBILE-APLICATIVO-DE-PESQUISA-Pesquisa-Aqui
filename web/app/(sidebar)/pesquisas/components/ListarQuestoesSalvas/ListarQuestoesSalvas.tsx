@@ -24,6 +24,7 @@ import {
     type FormQuestion,
     type FrontendQuestionType
 } from "@/lib/questionnaire";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { LoadingState } from "@/components/ui/loadingState";
 import { Button } from "@/components/ui/button";
 import { ChevronsDownUp, ChevronsUpDown, FolderPlus, Info } from "lucide-react";
@@ -139,7 +140,13 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
             ? "Atenção: Esta é a única seção da pesquisa. Se você excluí-la, o questionário ficará vazio. Deseja continuar?"
             : "Tem certeza que deseja excluir esta seção e todas as suas questões?";
 
-        if (!confirm(message)) return;
+        const confirmedDelete = await confirmDialog({
+            title: "Excluir seção",
+            description: message,
+            confirmLabel: "Excluir",
+            variant: "destructive",
+        });
+        if (!confirmedDelete) return;
 
         try {
             const result = await withRulesConfirm((force) => deleteSectionApi(Number(sectionId), force));
@@ -160,7 +167,12 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
         const question = section?.questions.find(q => q.id === questionId);
 
         if (question && question.type !== newType) {
-            const confirmed = confirm("Aviso: Mudar o tipo desta questão pode fazer com que configurações ou respostas anteriores sejam perdidas. Deseja continuar?");
+            const confirmed = await confirmDialog({
+                title: "Mudar o tipo da questão",
+                description: "Mudar o tipo desta questão pode fazer com que configurações ou respostas anteriores sejam perdidas. Deseja continuar?",
+                confirmLabel: "Mudar tipo",
+                variant: "destructive",
+            });
             if (!confirmed) return;
         }
 
@@ -297,7 +309,14 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
     };
 
     const handleDeleteQuestion = async (sectionId: string, questionId: string) => {
-        if (confirm("Deseja excluir esta questão?")) {
+        const confirmedDelete = await confirmDialog({
+            title: "Excluir questão",
+            description: "Deseja excluir esta questão?",
+            confirmLabel: "Excluir",
+            variant: "destructive",
+        });
+
+        if (confirmedDelete) {
             try {
                 const result = await withRulesConfirm((force) => deleteQuestionApi(Number(questionId), force));
                 if (result.cancelled) return;

@@ -1,4 +1,5 @@
 import { apiFetch } from "./apiFetcher";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 export type FrontendQuestionType =
     | "text" | "number" | "date" | "time" | "boolean"
@@ -113,7 +114,14 @@ export async function withRulesConfirm<T>(
         return { cancelled: false, value: await run(false) };
     } catch (error) {
         if (!(error instanceof RulesConflictError)) throw error;
-        if (!window.confirm(describeRulesConflict(error))) return { cancelled: true };
+        const confirmed = await confirmDialog({
+            title: "Regras de exibição afetadas",
+            description: error.message,
+            details: error.rules.map((r) => `${r.targetLabel} só aparece se ${r.sourceLabel} = ${r.triggerLabel}`),
+            confirmLabel: "Continuar",
+            variant: "destructive",
+        });
+        if (!confirmed) return { cancelled: true };
         return { cancelled: false, value: await run(true) };
     }
 }

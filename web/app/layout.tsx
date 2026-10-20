@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken",
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="pt-BR" className={hankenGrotesk.variable}>
       <body>
         {children}
+        <ConfirmDialogHost />
       </body>
     </html>
   );

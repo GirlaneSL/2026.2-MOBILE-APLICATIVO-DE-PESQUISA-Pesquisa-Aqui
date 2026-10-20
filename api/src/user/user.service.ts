@@ -94,10 +94,20 @@ export class UserService {
             throw new ForbiddenException('Only superadministrators can delete users');
         }
 
+        if (username === currentUser.username) {
+            throw new ForbiddenException('You cannot delete your own account');
+        }
+
         const user = await this.findOne(username);
+
+        if (user.profile === 'SUPERADMINISTRATOR') {
+            throw new ForbiddenException('Superadministrators cannot be deleted');
+        }
 
         await this.prisma.client.orm.public.User.where({ username }).delete();
 
-        return user;
+        const { passwordHash: _, ...userWithoutPassword } = user;
+
+        return userWithoutPassword;
     }
 }

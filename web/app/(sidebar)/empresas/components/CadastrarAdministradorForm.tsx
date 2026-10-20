@@ -28,7 +28,7 @@ export default function CadastrarAdministradorForm() {
             .then(setCompanies)
             .catch((error) => {
                 console.log(error);
-                alert("Erro ao carregar empresas");
+                toast.error("Erro ao carregar empresas");
 
             });
     }, []);

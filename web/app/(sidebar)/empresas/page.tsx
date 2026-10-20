@@ -27,6 +27,10 @@ export default function EmpresaPage() {
     const [loadingData, setLoadingData] = useState(true);
     const [reloadKey, setReloadKey] = useState(0);
 
+    const handleAdminDeleted = useCallback((username: string) => {
+        setAdmins((prev) => prev.filter((a) => a.username !== username));
+    }, []);
+
     const reloadData = useCallback(() => {
         setLoadingData(true);
         setReloadKey((k) => k + 1);
@@ -188,7 +192,7 @@ export default function EmpresaPage() {
                         </Button>
                     }
                     CardContentClassName="max-h-[34rem] overflow-auto"
-                    cardContent={<ExibirEditar key={reloadKey} />}
+                    cardContent={<ExibirEditar key={reloadKey} onAdminDeleted={handleAdminDeleted} />}
                 />
 
                 <div className="pa-c4 flex flex-col gap-4">

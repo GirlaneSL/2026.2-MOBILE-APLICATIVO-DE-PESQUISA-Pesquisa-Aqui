@@ -18,6 +18,7 @@ import {
 import { LoadingState } from "@/components/ui/loadingState";
 import { avatarTone, initialsOf } from "@/lib/fieldData";
 import { deleteUser, UserItem } from "@/lib/user";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { ArrowDownAZ, Building2, CalendarClock, LayoutGrid, List, Sparkles, Trash2, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
@@ -128,9 +129,12 @@ export default function ListaPesquisadores({
         !!referenceTime && timeValue(r.createdAt) >= referenceTime - 30 * DAY;
 
     const handleDelete = async (user: UserItem) => {
-        const confirmed = window.confirm(
-            `Tem certeza que deseja excluir o pesquisador "${user.name}"? Ele perderá o acesso ao sistema.`
-        );
+        const confirmed = await confirmDialog({
+            title: "Excluir pesquisador",
+            description: `Tem certeza que deseja excluir o pesquisador "${user.name}"? Ele perderá o acesso ao sistema.`,
+            confirmLabel: "Excluir",
+            variant: "destructive",
+        });
         if (!confirmed) return;
 
         setDeleting(user.username);

@@ -19,6 +19,8 @@ import {
     type DataColumn,
 } from '@/components/ui/data-table';
 import { Building2, UsersRound } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { confirmDialog } from '@/components/ui/confirm-dialog';
 
 interface Admin {
     id: string;
@@ -29,6 +31,8 @@ interface Admin {
 
 interface ExibirEditarProps {
     allowActions?: boolean;
+    /** Chamado depois que um administrador é excluído, para a página manter contadores e gráficos em dia. */
+    onAdminDeleted?: (username: string) => void;
 }
 
 interface RawCompany {
@@ -57,7 +61,7 @@ const formatDate = (iso?: string) => {
     return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
 };
 
-export default function ExibirEditar({ allowActions = true }: ExibirEditarProps) {
+export default function ExibirEditar({ allowActions = true, onAdminDeleted }: ExibirEditarProps) {
     const [rawCompanies, setRawCompanies] = useState<RawCompany[]>([]);
     const [loadingCompanies, setLoadingCompanies] = useState(true);
 
@@ -66,6 +70,7 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
 
     const [error, setError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [deletingAdmin, setDeletingAdmin] = useState<string | null>(null);
 
     const [tab, setTab] = useState<Tab>('companies');
     const [search, setSearch] = useState('');
@@ -78,9 +83,12 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
     const handleDeactivateCompany = async (id: string) => {
         const company = rawCompanies.find((c) => String(c.id) === id);
 
-        const confirmed = window.confirm(
-            `Tem certeza que deseja desativar a empresa "${company?.legalName ?? id}"? Isso impedirá o acesso de todos os usuários dela ao sistema.`
-        );
+        const confirmed = await confirmDialog({
+            title: 'Desativar empresa',
+            description: `Tem certeza que deseja desativar a empresa "${company?.legalName ?? id}"? Isso impedirá o acesso de todos os usuários dela ao sistema.`,
+            confirmLabel: 'Desativar',
+            variant: 'destructive',
+        });
         if (!confirmed) return;
 
         setActionError(null);
@@ -97,21 +105,29 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
     };
 
     const handleDeactivateAdmin = async (username: string) => {
-        const admins = rawAdmins.find((c) => String(c.username) === username);
+        const admin = rawAdmins.find((a) => a.username === username);
 
-        const confirmed = window.confirm(
-            `Tem certeza que deseja excluir o admin "${admins?.name ?? username}"? Isso impedirá o acesso dele ao sistema.`
-        );
+        const confirmed = await confirmDialog({
+            title: 'Excluir administrador',
+            description: `Tem certeza que deseja excluir o administrador "${admin?.name ?? username}"? Ele perderá o acesso ao sistema e esta ação não pode ser desfeita.`,
+            confirmLabel: 'Excluir',
+            variant: 'destructive',
+        });
         if (!confirmed) return;
 
         setActionError(null);
+        setDeletingAdmin(username);
 
         try {
             await deleteUser(username);
 
             setRawAdmins((prev) => prev.filter((a) => a.username !== username));
+            onAdminDeleted?.(username);
+            toast.success(`Administrador "${admin?.name ?? username}" excluído`);
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Erro ao excluir admin');
+            setActionError(err instanceof Error ? err.message : 'Erro ao excluir administrador');
+        } finally {
+            setDeletingAdmin(null);
         }
     };
 
@@ -122,7 +138,7 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
             })
             .catch((error) => {
                 console.log(error);
-                alert('Erro ao carregar admins');
+                toast.error('Erro ao carregar administradores');
             })
             .finally(() => {
                 setLoadingAdmins(false);
@@ -256,8 +272,13 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
                         <Button variant="outline" size="sm" onClick={() => handleEdit(String(a.id), 'admin')}>
                             Editar
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeactivateAdmin(String(a.username))}>
-                            Excluir
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={deletingAdmin !== null}
+                            onClick={() => handleDeactivateAdmin(String(a.username))}
+                        >
+                            {deletingAdmin === a.username ? 'Excluindo...' : 'Excluir'}
                         </Button>
                     </RowActions>
                 ),
