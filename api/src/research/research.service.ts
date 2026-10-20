@@ -316,8 +316,17 @@ export class ResearchService {
             active: true,
         });
 
+        // Primeiro download de uma pesquisa publicada: ela passa a estar "em campo".
+        // Downloads seguintes (já em campo) não alteram o status.
+        let status = research.status;
+        if (status === ResearchStatus.PUBLISHED) {
+            await orm.Research.where({ id: research.id }).update({ status: ResearchStatus.IN_FIELD });
+            status = ResearchStatus.IN_FIELD;
+        }
+
         return {
             ...research,
+            status,
             // Interruptor de gravação: o app só inicia a coleta depois do consentimento quando isto é true
             recordInterview: research.recordInterview,
             sections: sectionsWithDetails,
