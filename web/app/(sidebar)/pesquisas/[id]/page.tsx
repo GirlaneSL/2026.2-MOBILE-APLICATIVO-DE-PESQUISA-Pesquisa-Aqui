@@ -9,7 +9,7 @@ import { getResearchById, publishResearch, type Research } from "@/lib/research"
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ArrowLeft, CalendarRange, Check, ClipboardList, FileText, Flag, ListChecks, Mic, MicOff, Quote, ShieldAlert, Target, UsersRound } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import ModalEditarPesquisa from "../components/ModalEditarPesquisa";
@@ -73,6 +73,10 @@ type PageState =
 export default function PesquisaDetalhePage() {
     const params = useParams<{ id: string }>();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    // Links do buscador global: ?aba=coletas&coleta=12
+    const openCollectionId = Number(searchParams.get('coleta')) || undefined;
+    const initialTab = searchParams.get('aba') === 'coletas' ? 'collections' : 'details';
     const [state, setState] = useState<PageState>({ status: 'loading' });
     const { user } = useCurrentUser();
     const [now] = useState(() => Date.now());
@@ -216,7 +220,7 @@ export default function PesquisaDetalhePage() {
                 </div>
             </article>
 
-            <Tabs defaultValue="details" className="w-full flex flex-col gap-5">
+            <Tabs defaultValue={initialTab} className="w-full flex flex-col gap-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <TabsList className="relative h-12 max-w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border border-border bg-white p-1 shadow-[0_14px_26px_-22px_rgba(10,20,16,0.4)]">
                         <TabsTrigger value="details" className="h-10 px-4 data-active:bg-ink data-active:text-white"><FileText />Visão Geral</TabsTrigger>
@@ -386,7 +390,7 @@ export default function PesquisaDetalhePage() {
 
                 {canSeeCollections && (
                     <TabsContent value="collections" className="mt-0">
-                        <ColetasPesquisa researchId={research.id} recordInterview={research.recordInterview} />
+                        <ColetasPesquisa researchId={research.id} recordInterview={research.recordInterview} openCollectionId={openCollectionId} />
                     </TabsContent>
                 )}
             </Tabs>

@@ -1,0 +1,319 @@
+/* Buscador global (components/ui/global-search.tsx) */
+
+/* ---------- botão no menu lateral ---------- */
+.pa-gs-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f6f8f6;
+  color: var(--muted-foreground);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.pa-gs-trigger:hover,
+.pa-gs-trigger:focus-visible {
+  background: #fff;
+  border-color: var(--green);
+  color: var(--ink);
+}
+
+.pa-gs-trigger svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+
+.pa-gs-trigger .l {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.pa-gs-trigger .k {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e9eee9;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.pa-side.c .pa-gs-trigger {
+  justify-content: center;
+  padding: 10px;
+}
+
+.pa-side.c .pa-gs-trigger .l,
+.pa-side.c .pa-gs-trigger .k {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .pa-side .pa-gs-trigger {
+    justify-content: center;
+    padding: 10px;
+  }
+  .pa-side .pa-gs-trigger .l,
+  .pa-side .pa-gs-trigger .k {
+    display: none;
+  }
+}
+
+/* ---------- painel ---------- */
+.pa-gs-back {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+  background: rgba(10, 20, 16, 0.45);
+  backdrop-filter: blur(3px);
+  animation: pa-gs-fade 0.12s ease-out;
+}
+
+.pa-gs {
+  width: 100%;
+  max-width: 640px;
+  max-height: min(560px, 76vh);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.55);
+  animation: pa-gs-pop 0.14s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+@keyframes pa-gs-fade {
+  from { opacity: 0; }
+}
+
+@keyframes pa-gs-pop {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-gs-back,
+  .pa-gs { animation: none; }
+}
+
+.pa-gs-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pa-gs-bar > svg {
+  width: 20px;
+  height: 20px;
+  color: var(--green);
+  flex: none;
+}
+
+.pa-gs-bar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.pa-gs-bar input::placeholder {
+  color: #8a968f;
+}
+
+.pa-gs-clear {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #eef1ee;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  flex: none;
+}
+
+.pa-gs-clear:hover { background: #e0e6e1; color: var(--ink); }
+.pa-gs-clear svg { width: 14px; height: 14px; }
+
+.pa-gs-esc,
+.pa-gs-foot kbd {
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f6f8f6;
+  color: var(--muted-foreground);
+  display: inline-flex;
+  align-items: center;
+}
+
+.pa-gs-esc { cursor: pointer; flex: none; }
+.pa-gs-foot kbd svg { width: 11px; height: 11px; }
+
+/* ---------- lista ---------- */
+.pa-gs-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px 8px;
+  overscroll-behavior: contain;
+}
+
+.pa-gs-gh {
+  margin: 0;
+  padding: 12px 10px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.pa-gs-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  scroll-margin: 8px;
+}
+
+.pa-gs-item.on {
+  background: var(--accent);
+}
+
+.pa-gs-ic {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 11px;
+  background: #eef1ee;
+  color: var(--green-deep);
+}
+
+.pa-gs-ic svg { width: 17px; height: 17px; }
+.pa-gs-ic.k-research,
+.pa-gs-ic.k-collection { background: var(--forest); color: var(--mint); }
+.pa-gs-ic.k-company,
+.pa-gs-ic.k-admin { background: #f3e0d9; color: var(--clay-ink); }
+
+.pa-gs-tx {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pa-gs-tx b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pa-gs-tx span {
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pa-gs mark {
+  background: rgba(191, 227, 208, 0.9);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.pa-gs-badge {
+  flex: none;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eef1ee;
+  color: var(--muted-foreground);
+}
+
+.pa-gs-badge.live { background: var(--secondary); color: var(--green-deep); }
+.pa-gs-badge.draft { background: #f3e0d9; color: var(--clay-ink); }
+
+.pa-gs-go {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--green);
+  opacity: 0;
+}
+
+.pa-gs-item.on .pa-gs-go { opacity: 1; }
+
+/* ---------- vazio, avisos e rodapé ---------- */
+.pa-gs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.pa-gs-empty svg { width: 28px; height: 28px; margin-bottom: 6px; }
+.pa-gs-empty p { margin: 0; color: var(--ink); font-weight: 500; }
+.pa-gs-empty span { font-size: 13px; }
+
+.pa-gs-note {
+  margin: 4px 10px 0;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  border-radius: 10px;
+  background: #f6f8f6;
+  color: var(--muted-foreground);
+}
+
+.pa-gs-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--line);
+  background: #fafbfa;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.pa-gs-foot span { display: inline-flex; align-items: center; gap: 5px; }
+.pa-gs-foot .r { margin-left: auto; }
+.pa-gs-foot .r svg { width: 13px; height: 13px; }
+
+@media (max-width: 640px) {
+  .pa-gs-back { padding-top: 6vh; }
+  .pa-gs-foot span:not(.r) { display: none; }
+  .pa-gs-esc { display: none; }
+}

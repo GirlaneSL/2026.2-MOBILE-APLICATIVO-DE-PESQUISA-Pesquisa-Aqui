@@ -1,6 +1,7 @@
 "use client"
 
 import { BrandMark, Contour } from "@/components/ui/contour"
+import { GlobalSearch } from "@/components/ui/global-search"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useFieldSnapshot } from "@/hooks/useFieldSnapshot"
 import { logout } from "@/lib/auth"
@@ -89,6 +90,12 @@ export function AppSidebar() {
                         <ChevronLeft />
                     </button>
                 </div>
+
+                <GlobalSearch
+                    profile={user?.profile}
+                    pages={items.map(({ href, label, icon }) => ({ href, label, icon }))}
+                    collapsed={collapsed}
+                />
 
                 <div className="pa-sgroup">
                     <p>Navegação</p>

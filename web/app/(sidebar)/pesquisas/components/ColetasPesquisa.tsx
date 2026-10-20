@@ -58,6 +58,8 @@ const AUDIO_ERRORS: Record<number, string> = {
 interface ColetasPesquisaProps {
     researchId: number;
     recordInterview: boolean;
+    /** Abre esta coleta assim que a lista carregar (vem do buscador global). */
+    openCollectionId?: number;
 }
 
 type ListState =
@@ -66,7 +68,7 @@ type ListState =
     | { status: 'error'; message: string }
     | { status: 'ready'; collections: CollectionSummary[] };
 
-export default function ColetasPesquisa({ researchId, recordInterview }: ColetasPesquisaProps) {
+export default function ColetasPesquisa({ researchId, recordInterview, openCollectionId }: ColetasPesquisaProps) {
     const [state, setState] = useState<ListState>({ status: 'loading' });
     const [loadingAudioId, setLoadingAudioId] = useState<number | null>(null);
     const [viewing, setViewing] = useState<CollectionSummary | null>(null);
@@ -85,7 +87,10 @@ export default function ColetasPesquisa({ researchId, recordInterview }: Coletas
 
         getCollections(researchId)
             .then((collections) => {
-                if (!cancelled) setState({ status: 'ready', collections });
+                if (cancelled) return;
+                setState({ status: 'ready', collections });
+                const target = openCollectionId === undefined ? undefined : collections.find((c) => c.id === openCollectionId);
+                if (target) setViewing(target);
             })
             .catch((err) => {
                 if (cancelled) return;
@@ -95,6 +100,7 @@ export default function ColetasPesquisa({ researchId, recordInterview }: Coletas
             });
 
         return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a coleta pedida só vale na primeira carga
     }, [researchId]);
 
     // Libera o arquivo em memória quando o player troca ou a tela fecha.
