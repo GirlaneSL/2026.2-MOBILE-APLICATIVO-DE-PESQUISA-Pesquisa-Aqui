@@ -53,10 +53,23 @@ const MEDIA_TYPES: Record<string, string> = {
     webm: 'audio/webm',
     wav: 'audio/wav',
     '3gp': 'audio/3gpp',
+    // O Cloudinary informa o formato que ele detectou, que nem sempre é o enviado
+    // (um .m4a costuma voltar como `mp4`). Sem estas entradas o arquivo era recusado como "não encontrado".
+    mp4: 'audio/mp4',
+    weba: 'audio/webm',
+    opus: 'audio/ogg',
+    oga: 'audio/ogg',
+    amr: 'audio/amr',
+    flac: 'audio/flac',
+    aiff: 'audio/aiff',
+    caf: 'audio/x-caf',
 };
 
 export function mediaTypeFor(fileName: string): string | null {
-    return MEDIA_TYPES[fileName.split('.').pop()?.toLowerCase() ?? ''] ?? null;
+    const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
+    if (!extension) return null;
+    // Foto tem extensão conhecida; qualquer outra coisa guardada pelo servidor é áudio de resposta.
+    return MEDIA_TYPES[extension] ?? 'audio/mp4';
 }
 
 export interface StoredFile {
@@ -187,6 +200,30 @@ export class AudioStorage {
         });
     }
 
+    // Link assinado (só a API o gera): o arquivo é `authenticated` e não abre sem a assinatura.
+    private signedUrl(ref: { publicId: string; kind: CloudinaryKind }, format: string): string {
+        return cloudinary.url(ref.publicId, {
+            resource_type: ref.kind,
+            type: 'authenticated',
+            format,
+            sign_url: true,
+            secure: true,
+        });
+    }
+
+    // Formato com que o Cloudinary guardou o arquivo (pode diferir da extensão enviada: .m4a -> mp4).
+    private async cloudStoredFormat(ref: { publicId: string; kind: CloudinaryKind }): Promise<string | null> {
+        try {
+            const info = (await cloudinary.api.resource(ref.publicId, {
+                resource_type: ref.kind,
+                type: 'authenticated',
+            })) as { format?: string };
+            return info.format?.toLowerCase() ?? null;
+        } catch {
+            return null;
+        }
+    }
+
     private async cloudOpen(relativePath: string): Promise<StoredFile | null> {
         let ref;
         try {
@@ -194,16 +231,18 @@ export class AudioStorage {
         } catch {
             return null;
         }
-        // Link assinado (só a API o gera): o arquivo é `authenticated` e não abre sem a assinatura.
-        const url = cloudinary.url(ref.publicId, {
-            resource_type: ref.kind,
-            type: 'authenticated',
-            format: ref.format,
-            sign_url: true,
-            secure: true,
-        });
 
-        const response = await fetch(url);
+        let response = await fetch(this.signedUrl(ref, ref.format));
+
+        // Áudio pedido com a extensão errada (ex.: .m4a, mas o Cloudinary guardou como mp4) não é entregue
+        // como original: consulta o formato real e tenta de novo com ele.
+        if (!response.ok && ref.kind === 'video') {
+            const stored = await this.cloudStoredFormat(ref);
+            if (stored && stored !== ref.format) {
+                response = await fetch(this.signedUrl(ref, stored));
+            }
+        }
+
         if (response.status === 404) return null;
         if (!response.ok || !response.body) throw new Error(`Cloudinary respondeu ${response.status} ao ler o arquivo.`);
 
@@ -231,7 +270,9 @@ export class AudioStorage {
                 for (const item of page.resources as Array<{ public_id: string; format?: string }>) {
                     const base = item.public_id.slice(prefix.length);
                     // só arquivos diretamente nesta pasta
-                    if (item.format && base && !base.includes('/')) names.push(`${base}.${item.format}`);
+                    // Áudio sem formato informado: assume m4a (o `open` descobre o formato real se precisar).
+                    const format = item.format ?? (kind === 'video' ? 'm4a' : undefined);
+                    if (format && base && !base.includes('/')) names.push(`${base}.${format.toLowerCase()}`);
                 }
                 cursor = page.next_cursor;
             } while (cursor);
