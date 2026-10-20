@@ -3,7 +3,7 @@
 import { Contour } from "@/components/ui/contour";
 import { Button } from "@/components/ui/button";
 import DialogLayout from "@/components/ui/dialogLayout";
-import { Spinner } from "@/components/ui/spinner";
+import { LoadingState } from "@/components/ui/loadingState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getResearchById, publishResearch, type Research } from "@/lib/research";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -90,11 +90,7 @@ export default function PesquisaDetalhePage() {
     }, [params.id]);
 
     if (state.status === 'loading') {
-        return (
-            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-2">
-                <Spinner /><p className="text-sm">Abrindo a pesquisa...</p>
-            </div>
-        );
+        return <LoadingState label="Abrindo a pesquisa..." shape="page" />;
     }
     if (state.status === 'forbidden') {
         return (

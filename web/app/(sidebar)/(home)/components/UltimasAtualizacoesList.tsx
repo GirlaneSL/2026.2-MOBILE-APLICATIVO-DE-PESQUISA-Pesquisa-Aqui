@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingState } from "@/components/ui/loadingState";
 import { formatRelativeTime, type ActivityItem } from "@/lib/dashboard";
 import { useState } from "react";
 
@@ -12,13 +12,7 @@ export default function UltimasAtualizacoesList({ items, loading = false }: Ulti
     const [now] = useState(() => Date.now());
 
     if (loading) {
-        return (
-            <div className="mt-5 flex flex-col gap-3" aria-busy="true">
-                {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-10 w-full bg-white/10" />
-                ))}
-            </div>
-        );
+        return <LoadingState label="Carregando atualizações..." shape="timeline" tone="dark" className="mt-5" />;
     }
 
     if (items.length === 0) {

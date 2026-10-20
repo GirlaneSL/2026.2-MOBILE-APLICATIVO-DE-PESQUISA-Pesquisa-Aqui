@@ -24,7 +24,7 @@ import {
     type FormQuestion,
     type FrontendQuestionType
 } from "@/lib/questionnaire";
-import { Spinner } from "@/components/ui/spinner";
+import { LoadingState } from "@/components/ui/loadingState";
 import { Button } from "@/components/ui/button";
 import { ChevronsDownUp, ChevronsUpDown, FolderPlus, Info } from "lucide-react";
 import { Contour } from "@/components/ui/contour";
@@ -457,25 +457,7 @@ export default function ListarQuestoesSalvas({ researchId }: { researchId: strin
     };
 
     if (isLoading) {
-        return (
-            <div className="space-y-4" aria-busy="true">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner /> Carregando questões...</div>
-                {[0, 1].map((i) => (
-                    <div key={i} className="animate-pulse overflow-hidden rounded-[26px] border border-border bg-white">
-                        <div className="h-[76px] bg-[var(--forest)]/90" />
-                        <div className="space-y-3 p-4">
-                            {[0, 1, 2].map((j) => (
-                                <div key={j} className="flex items-center gap-3">
-                                    <div className="size-7 rounded-full bg-muted" />
-                                    <div className="size-10 rounded-xl bg-muted" />
-                                    <div className="h-3.5 w-1/2 rounded-full bg-muted" />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        );
+        return <LoadingState label="Carregando questões..." shape="sections" />;
     }
 
     if (sections.length === 0) {

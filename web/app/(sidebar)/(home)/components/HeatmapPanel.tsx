@@ -1,4 +1,5 @@
 import { buildHeatmap, HEAT_DAY_NAMES, HEAT_DAYS, HEAT_FIRST_HOUR, HEAT_HOURS, type FieldCollection } from "@/lib/fieldData";
+import { LoadingState } from "@/components/ui/loadingState";
 import { useMemo, type ReactNode } from "react";
 import InfoCard from "./infoCards";
 
@@ -31,7 +32,7 @@ export default function HeatmapPanel({ collections, now, loading = false, error 
             cardDescription="Volume por dia e horário, últimas 4 semanas"
             cardContent={
                 loading ? (
-                    <div className="pa-empty" aria-busy="true">Carregando coletas...</div>
+                    <LoadingState label="Carregando coletas..." shape="heatmap" />
                 ) : error ? (
                     <div className="pa-empty">Não foi possível carregar as coletas.</div>
                 ) : heat.total === 0 ? (

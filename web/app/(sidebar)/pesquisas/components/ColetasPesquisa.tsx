@@ -2,6 +2,7 @@
 
 import { Contour } from "@/components/ui/contour";
 import { Spinner } from "@/components/ui/spinner";
+import { LoadingState } from "@/components/ui/loadingState";
 import { formatDuration, getCollectionAudio, getCollections, type CollectionSummary } from "@/lib/collection";
 import { Clock, FileText, Headphones, Mic, MicOff, Play, Search, SearchX, ShieldAlert, ShieldCheck, Inbox, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -114,7 +115,7 @@ export default function ColetasPesquisa({ researchId, recordInterview }: Coletas
     };
 
     if (state.status === 'loading') {
-        return <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground"><Spinner />Carregando coletas...</div>;
+        return <LoadingState label="Carregando coletas..." shape="collections" />;
     }
 
     if (state.status === 'forbidden') {

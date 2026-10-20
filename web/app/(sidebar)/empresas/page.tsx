@@ -13,7 +13,6 @@ import toast from "react-hot-toast";
 import InfoCard from "../(home)/components/infoCards";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
-import { Spinner } from "@/components/ui/spinner";
 import { Chart } from "../(home)/components/grafico";
 import CadastrarAdministradorForm from "./components/CadastrarAdministradorForm";
 import CadastrarEmpresaForm from "./components/CadastrarEmpresaForm";
@@ -82,7 +81,7 @@ export default function EmpresaPage() {
         };
     }, [companies, admins]);
 
-    const val = (n: number) => (loadingData ? <Spinner className="size-6" /> : n);
+    const val = (n: number) => (loadingData ? "–" : n);
 
     return (
         <section className="flex flex-col gap-5">

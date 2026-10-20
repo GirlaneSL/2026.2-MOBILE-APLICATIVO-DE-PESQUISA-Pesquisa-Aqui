@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Spinner } from "@/components/ui/spinner";
+import { LoadingState } from "@/components/ui/loadingState";
 import {
     formatAnswer,
     getCollection,
@@ -126,7 +126,7 @@ function MediaItem({ collectionId, file }: { collectionId: number; file: Collect
     }, [collectionId, file.name, file.mimeType]);
 
     if (state.status === 'loading') {
-        return <div className="flex items-center gap-2 text-xs text-muted-foreground"><Spinner />Carregando arquivo...</div>;
+        return <LoadingState label="Carregando arquivo..." shape="inline" />;
     }
 
     if (state.status === 'error') {
@@ -210,7 +210,7 @@ function RespostasConteudo({ collectionId }: { collectionId: number }) {
     }, [collectionId]);
 
     if (state.status === 'loading') {
-        return <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground"><Spinner />Carregando respostas...</div>;
+        return <LoadingState label="Carregando respostas..." shape="answers" />;
     }
 
     if (state.status === 'error') {

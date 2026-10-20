@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
+import { LoadingState } from "@/components/ui/loadingState";
 import { Input } from "@/components/ui/input";
 import { avatarTone, initialsOf } from "@/lib/fieldData";
 import { deleteUser, UserItem } from "@/lib/user";
@@ -127,28 +128,6 @@ function Segmented<T extends string>({
                     </button>
                 );
             })}
-        </div>
-    );
-}
-
-function SkeletonCards() {
-    return (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                    key={i}
-                    className="flex animate-pulse flex-col gap-4 rounded-[22px] border border-border bg-white p-4"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="size-12 rounded-full bg-muted" />
-                        <div className="flex-1 space-y-2">
-                            <div className="h-3.5 w-2/3 rounded-full bg-muted" />
-                            <div className="h-3 w-1/3 rounded-full bg-muted" />
-                        </div>
-                    </div>
-                    <div className="h-3 w-1/2 rounded-full bg-muted" />
-                </div>
-            ))}
         </div>
     );
 }
@@ -329,7 +308,7 @@ export default function ListaPesquisadores({
 
             {/* Conteúdo */}
             {loading ? (
-                <SkeletonCards />
+                <LoadingState label="Carregando pesquisadores..." shape="people" />
             ) : rows.length === 0 ? (
                 <EmptyState hasAny={researchers.length > 0} onClear={() => setSearch('')} />
             ) : view === 'table' ? (

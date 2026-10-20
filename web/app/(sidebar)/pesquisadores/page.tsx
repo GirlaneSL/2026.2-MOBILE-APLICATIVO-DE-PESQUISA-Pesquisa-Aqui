@@ -92,7 +92,7 @@ export default function PesquisadoresPage() {
     const maxWeek = Math.max(1, ...stats.weekly);
     const recentShare = stats.total ? Math.round((stats.recent / stats.total) * 100) : 0;
 
-    const statValue = (n: number) => (loading ? <Spinner className="size-6" /> : n);
+    const statValue = (n: number) => (loading ? "–" : n);
 
     return (
         <section className="flex flex-col gap-5">

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingState } from "@/components/ui/loadingState";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useFieldSnapshot } from "@/hooks/useFieldSnapshot";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
@@ -252,9 +252,7 @@ export default function Pesquisas() {
                     cardContent={<TabelaPesquisas refreshTrigger={refresh} onChange={forceRefresh} />}
                 />
             ) : loading ? (
-                <div className="pa-rc-grid" aria-busy="true">
-                    {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-72 rounded-3xl" />)}
-                </div>
+                <LoadingState label="Carregando pesquisas..." shape="research-cards" />
             ) : visible.length === 0 ? (
                 <div className="pa-rs-empty introduction-card">
                     <Contour seed={1.9} rings={9} cx={0.5} cy={0.5} size={1} width={600} height={260} />

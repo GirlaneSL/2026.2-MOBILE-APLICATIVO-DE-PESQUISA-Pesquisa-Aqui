@@ -1,4 +1,5 @@
 import type { Research } from "@/lib/research";
+import { LoadingState } from "@/components/ui/loadingState";
 import {
     avatarTone,
     daysUntilEnd,
@@ -70,7 +71,7 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
             </div>
 
             {loading ? (
-                <p className="pa-empty" aria-busy="true">Carregando pesquisas...</p>
+                <LoadingState label="Carregando pesquisas..." shape="table" columns={5} count={3} />
             ) : rows.length === 0 ? (
                 <p className="pa-empty">Nenhuma pesquisa cadastrada. Use &quot;Nova pesquisa&quot; para começar.</p>
             ) : (

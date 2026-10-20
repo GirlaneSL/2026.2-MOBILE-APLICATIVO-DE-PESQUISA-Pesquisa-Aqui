@@ -2,6 +2,7 @@
 
 import { Contour } from "@/components/ui/contour";
 import { Spinner } from "@/components/ui/spinner";
+import { LoadingState } from "@/components/ui/loadingState";
 import { getResearchLinkedResearchers, linkResearcher, unlinkResearcher } from "@/lib/research";
 import { getResearchers, type UserItem } from "@/lib/user";
 import { Check, Link2Off, Plus, Search, SearchX, UserRoundX, UsersRound, X } from "lucide-react";
@@ -91,22 +92,7 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
     }, [researchers, linked, search, filter]);
 
     if (loading) {
-        return (
-            <div className="flex flex-col gap-4" aria-busy="true">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />Carregando pesquisadores...</div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="flex animate-pulse items-center gap-3 rounded-[22px] border border-border bg-white p-4">
-                            <div className="size-12 rounded-full bg-muted" />
-                            <div className="flex-1 space-y-2">
-                                <div className="h-3.5 w-2/3 rounded-full bg-muted" />
-                                <div className="h-3 w-1/3 rounded-full bg-muted" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
+        return <LoadingState label="Carregando pesquisadores..." shape="people" />;
     }
 
     if (total === 0) {

@@ -5,7 +5,7 @@ import Link from "next/link";
 import BannerComponent from "@/components/ui/bannerComponent";
 import { Contour, Pin } from "@/components/ui/contour";
 import { getCompanies } from "@/lib/company";
-import { Spinner } from "@/components/ui/spinner";
+import { LoadingState } from "@/components/ui/loadingState";
 import {
     ArrowUpRight,
     Check,
@@ -150,17 +150,7 @@ export default function EmpresaPage() {
     }, []);
 
     if (loading) {
-        return (
-            <section className="flex flex-col gap-5">
-                <div className="pa-card dark introduction-card min-h-[220px]">
-                    <Contour seed={3} rings={12} cx={0.85} cy={0.3} size={1.1} />
-                    <div className="flex items-center gap-3 text-sm text-[var(--muted-dark)]">
-                        <Spinner />
-                        Abrindo os dados da empresa...
-                    </div>
-                </div>
-            </section>
-        );
+        return <LoadingState label="Abrindo os dados da empresa..." shape="profile" />;
     }
 
     if (error || !company) {

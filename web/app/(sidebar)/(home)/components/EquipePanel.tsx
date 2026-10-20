@@ -1,4 +1,5 @@
 import { avatarTone, initialsOf, type TeamRow } from "@/lib/fieldData";
+import { LoadingState } from "@/components/ui/loadingState";
 import { formatRelativeTime } from "@/lib/dashboard";
 import type { ReactNode } from "react";
 import InfoCard from "./infoCards";
@@ -27,7 +28,7 @@ export default function EquipePanel({ rows, now, loading = false, error = false,
             CardContentClassName="max-h-[22rem] overflow-auto"
             cardContent={
                 loading ? (
-                    <div className="pa-empty" aria-busy="true">Carregando equipe...</div>
+                    <LoadingState label="Carregando equipe..." shape="team" count={3} />
                 ) : error ? (
                     <div className="pa-empty">Não foi possível carregar as coletas da equipe.</div>
                 ) : rows.length === 0 ? (

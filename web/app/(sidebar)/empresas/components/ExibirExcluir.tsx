@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { deactivate, getCompanies } from '@/lib/company';
 import { deleteUser, getUsersAdmin } from '@/lib/user';
 import { Contour } from '@/components/ui/contour';
+import { LoadingState } from '@/components/ui/loadingState';
 import {
     Building2,
     Pencil,
@@ -125,23 +126,6 @@ function StatusPill({ active }: { active: boolean }) {
             <span className={`size-1.5 rounded-full ${active ? 'bg-[var(--green)]' : 'bg-[#ab6049]'}`} />
             {active ? 'Ativa' : 'Inativa'}
         </span>
-    );
-}
-
-function SkeletonRows() {
-    return (
-        <div className="flex flex-col gap-2.5">
-            {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex animate-pulse items-center gap-3 rounded-[20px] border border-border bg-white p-3">
-                    <div className="size-12 rounded-2xl bg-muted" />
-                    <div className="flex-1 space-y-2">
-                        <div className="h-3.5 w-1/3 rounded-full bg-muted" />
-                        <div className="h-3 w-1/4 rounded-full bg-muted" />
-                    </div>
-                    <div className="h-6 w-16 rounded-full bg-muted" />
-                </div>
-            ))}
-        </div>
     );
 }
 
@@ -392,7 +376,7 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
             {/* Empresas */}
             {tab === 'companies' &&
                 (loadingCompanies ? (
-                    <SkeletonRows />
+                    <LoadingState label="Carregando empresas..." shape="list" />
                 ) : companies.length === 0 ? (
                     <Empty filtered={hasFilter} text="Nenhuma empresa cadastrada ainda." onClear={clear} />
                 ) : (
@@ -453,7 +437,7 @@ export default function ExibirEditar({ allowActions = true }: ExibirEditarProps)
             {/* Administradores */}
             {tab === 'admins' &&
                 (loadingAdmins ? (
-                    <SkeletonRows />
+                    <LoadingState label="Carregando administradores..." shape="list" />
                 ) : admins.length === 0 ? (
                     <Empty filtered={hasFilter} text="Nenhum administrador cadastrado ainda." onClear={clear} />
                 ) : (
