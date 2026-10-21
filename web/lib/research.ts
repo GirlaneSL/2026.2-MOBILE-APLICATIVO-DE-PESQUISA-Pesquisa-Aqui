@@ -136,11 +136,21 @@ export interface ResearchResearcherLink {
     id: number;
     researchId: number;
     userId: number;
+    name?: string | null;
+    username?: string | null;
+    /** Meta de coletas deste pesquisador nesta pesquisa; null = sem meta definida. */
+    targetCount?: number | null;
+    /** Quantas coletas ele já entregou nesta pesquisa. */
+    collected?: number;
+    remaining?: number | null;
+    /** 0 a 100; null quando não há meta. */
+    progress?: number | null;
 }
 
 const readError = async (response: Response, fallback: string) => {
     const errorBody = await response.json().catch(() => null);
-    return new Error(errorBody?.message || fallback);
+    const message = Array.isArray(errorBody?.message) ? errorBody.message.join(', ') : errorBody?.message;
+    return new Error(message || fallback);
 };
 
 export const getResearchLinkedResearchers = async (researchId: number): Promise<ResearchResearcherLink[]> => {
@@ -149,9 +159,23 @@ export const getResearchLinkedResearchers = async (researchId: number): Promise<
     return response.json();
 };
 
-export const linkResearcher = async (researchId: number, userId: number): Promise<void> => {
-    const response = await apiFetch(`/research/${researchId}/researchers/${userId}`, { method: 'POST', credentials: 'include' });
+export const linkResearcher = async (researchId: number, userId: number, targetCount?: number): Promise<void> => {
+    const response = await apiFetch(`/research/${researchId}/researchers/${userId}`, {
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify(targetCount === undefined ? {} : { targetCount }),
+    });
     if (!response.ok) throw await readError(response, 'Falha ao vincular pesquisador');
+};
+
+/** Altera a meta de um pesquisador já vinculado (vale também com a pesquisa em campo). */
+export const updateResearcherTarget = async (researchId: number, userId: number, targetCount: number): Promise<void> => {
+    const response = await apiFetch(`/research/${researchId}/researchers/${userId}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        body: JSON.stringify({ targetCount }),
+    });
+    if (!response.ok) throw await readError(response, 'Falha ao alterar a meta');
 };
 
 export const unlinkResearcher = async (researchId: number, userId: number): Promise<void> => {

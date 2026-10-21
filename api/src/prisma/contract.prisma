@@ -198,6 +198,8 @@ model ResearchResearcher {
   research   Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
   userId     Int
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Meta de coletas deste pesquisador nesta pesquisa (ex.: 50, 120). Vazio = sem meta definida.
+  targetCount Int?
   createdAt  TimestamptzString @default(now())
 }
 

@@ -58,10 +58,45 @@ export class ResearchService {
         })
     }
 
+    // No token, `sub` é o username (não o id numérico).
+    private async currentUserRecord(currentUser: UserPayLoad) {
+        return this.prisma.client.orm.public.User.where({ username: String(currentUser.sub) }).first();
+    }
+
+    // Pesquisador só enxerga pesquisa publicada, da própria empresa e à qual esteja vinculado.
+    private async isVisibleToResearcher(
+        research: { id: number; status: string; companyId: number },
+        currentUser: UserPayLoad,
+    ): Promise<boolean> {
+        if (research.status === ResearchStatus.DRAFT) return false;
+        if (!currentUser.companyId || research.companyId !== currentUser.companyId) return false;
+
+        const user = await this.currentUserRecord(currentUser);
+        if (!user) return false;
+
+        const link = await this.prisma.client.orm.public.ResearchResearcher.where({ researchId: research.id, userId: user.id }).first();
+        return !!link;
+    }
+
     async findAll(currentUser: UserPayLoad) {
         if (currentUser.profile === 'SUPERADMINISTRATOR') return this.prisma.client.orm.public.Research.all()
 
         if (!currentUser.companyId) throw new ForbiddenException('User is not associated with a company');
+
+        if (currentUser.profile === 'RESEARCHER') {
+            const orm = this.prisma.client.orm.public;
+            const user = await this.currentUserRecord(currentUser);
+            if (!user) return [];
+
+            // Sem vínculo, a pesquisa não aparece: a lista parte dos vínculos do pesquisador.
+            const links = await orm.ResearchResearcher.where({ userId: user.id }).all();
+            const researches = await Promise.all(links.map((link) => orm.Research.where({ id: link.researchId }).first()));
+
+            return researches.filter(
+                (r): r is NonNullable<typeof r> =>
+                    !!r && r.status !== ResearchStatus.DRAFT && r.companyId === currentUser.companyId,
+            );
+        }
 
         return await this.prisma.client.orm.public.Research.where({ companyId: currentUser.companyId }).all()
     }
@@ -76,6 +111,11 @@ export class ResearchService {
         const research = await this.prisma.client.orm.public.Research.where({ id, companyId: currentUser.companyId }).first()
 
         if (!research) throw new ForbiddenException('Access denied: this research belongs to another company or does not exist');
+
+        // Pesquisador não vinculado não enxerga a pesquisa (nem sabe que ela existe).
+        if (currentUser.profile === 'RESEARCHER' && !(await this.isVisibleToResearcher(research, currentUser))) {
+            throw new NotFoundException('Research not found');
+        }
 
         return research;
     }
@@ -176,13 +216,50 @@ export class ResearchService {
 
     // ---------- vínculo pesquisador <-> pesquisa ----------
 
+    /**
+     * Quem está vinculado à pesquisa, com a meta e quanto cada um já entregou.
+     * `collected` conta as coletas recebidas do pesquisador nesta pesquisa; `remaining` e `progress`
+     * só existem quando há meta (`targetCount` nulo = sem meta definida).
+     */
     async listResearchers(researchId: number, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot list linked researchers');
+
         await this.findOne(researchId, currentUser);
-        const links = await this.prisma.client.orm.public.ResearchResearcher.where({ researchId }).all();
-        return links.map((l) => ({ id: l.id, researchId: l.researchId, userId: l.userId }));
+        const orm = this.prisma.client.orm.public;
+
+        const links = await orm.ResearchResearcher.where({ researchId }).all();
+        const collections = await orm.Collection.where({ researchId }).all();
+
+        const collectedBy = new Map<number, number>();
+        for (const c of collections) collectedBy.set(c.researcherId, (collectedBy.get(c.researcherId) ?? 0) + 1);
+
+        const rows = await Promise.all(
+            links.map(async (link) => {
+                const user = await orm.User.where({ id: link.userId }).first();
+                const collected = collectedBy.get(link.userId) ?? 0;
+                const targetCount = link.targetCount ?? null;
+
+                return {
+                    id: link.id,
+                    researchId: link.researchId,
+                    userId: link.userId,
+                    name: user?.name ?? null,
+                    username: user?.username ?? null,
+                    situation: user?.situation ?? null,
+                    targetCount,
+                    collected,
+                    remaining: targetCount === null ? null : Math.max(0, targetCount - collected),
+                    progress: targetCount === null ? null : Math.min(100, Math.round((collected / targetCount) * 100)),
+                    createdAt: link.createdAt,
+                };
+            }),
+        );
+
+        return rows.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'pt-BR', { sensitivity: 'base' }));
     }
 
-    async addResearcher(researchId: number, userId: number, currentUser: UserPayLoad) {
+    // Vincula o pesquisador à pesquisa, com a meta de coletas. Se já estava vinculado, só atualiza a meta (quando enviada).
+    async addResearcher(researchId: number, userId: number, currentUser: UserPayLoad, targetCount?: number) {
         if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot link researchers');
 
         const research = await this.findOne(researchId, currentUser);
@@ -193,11 +270,28 @@ export class ResearchService {
         if (user.companyId !== research.companyId) throw new BadRequestException('The researcher belongs to another company');
 
         const existing = await orm.ResearchResearcher.where({ researchId, userId }).first();
-        if (existing) return existing;
+        if (existing) {
+            if (targetCount === undefined || targetCount === existing.targetCount) return existing;
+            return await orm.ResearchResearcher.where({ id: existing.id }).update({ targetCount });
+        }
 
-        return await orm.ResearchResearcher.create({ researchId, userId });
+        return await orm.ResearchResearcher.create({ researchId, userId, targetCount: targetCount ?? null });
     }
 
+    // Altera a meta de um vínculo existente. Vale em qualquer fase: a pesquisa em campo não trava a meta.
+    async updateResearcherTarget(researchId: number, userId: number, targetCount: number, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot change targets');
+
+        await this.findOne(researchId, currentUser);
+        const orm = this.prisma.client.orm.public;
+
+        const link = await orm.ResearchResearcher.where({ researchId, userId }).first();
+        if (!link) throw new NotFoundException('The researcher is not linked to this research');
+
+        return await orm.ResearchResearcher.where({ id: link.id }).update({ targetCount });
+    }
+
+    // Desvincular remove só o vínculo: as coletas já recebidas do pesquisador (Collection) continuam na pesquisa.
     async removeResearcher(researchId: number, userId: number, currentUser: UserPayLoad) {
         if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot unlink researchers');
 

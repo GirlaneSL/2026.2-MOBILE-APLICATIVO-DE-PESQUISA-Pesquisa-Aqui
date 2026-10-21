@@ -1383,6 +1383,13 @@
                   "kind": "scalar"
                 }
               },
+              "targetCount": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "userId": {
                 "nullable": false,
                 "type": {
@@ -1433,6 +1440,9 @@
                 },
                 "researchId": {
                   "column": "researchId"
+                },
+                "targetCount": {
+                  "column": "targetCount"
                 },
                 "userId": {
                   "column": "userId"
@@ -2798,6 +2808,11 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
+                "targetCount": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
                 "userId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
@@ -3214,7 +3229,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "e60306dcee284b3963c6686a8abb694baebdab9baf72aa8bf8db4d5053a94b29"
+    "storageHash": "48ac31f9d635b05aaacc2d5e45fdeed27c86daebdb2f67978323899d1e73337c"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",

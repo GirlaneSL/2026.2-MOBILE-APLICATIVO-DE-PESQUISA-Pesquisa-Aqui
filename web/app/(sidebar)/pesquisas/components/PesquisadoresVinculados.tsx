@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/loadingState";
-import { getResearchLinkedResearchers, linkResearcher, unlinkResearcher } from "@/lib/research";
+import { Input } from "@/components/ui/input";
+import { getResearchLinkedResearchers, linkResearcher, unlinkResearcher, updateResearcherTarget, type ResearchResearcherLink } from "@/lib/research";
 import { getResearchers, type UserItem } from "@/lib/user";
-import { Link2Off, Plus, UserRoundX, UsersRound } from "lucide-react";
+import { Link2Off, Plus, Save, UserRoundX, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -41,11 +42,22 @@ const initialsOf = (name?: string) =>
         .map((p) => p[0]?.toUpperCase())
         .join('') || '?';
 
+const MAX_TARGET = 1_000_000;
+
+// Meta válida: número inteiro entre 1 e 1.000.000.
+const parseTarget = (raw: string): number | null => {
+    const value = Number(raw.trim());
+    return raw.trim() !== '' && Number.isInteger(value) && value >= 1 && value <= MAX_TARGET ? value : null;
+};
+
 const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 export default function PesquisadoresVinculados({ researchId, companyId }: { researchId: number; companyId: number }) {
     const [researchers, setResearchers] = useState<UserItem[]>([]);
     const [linked, setLinked] = useState<Set<number>>(new Set());
+    const [links, setLinks] = useState<Map<number, ResearchResearcherLink>>(new Map());
+    // Meta digitada por pesquisador (ainda não salva)
+    const [drafts, setDrafts] = useState<Record<number, string>>({});
     const [loading, setLoading] = useState(true);
     const [busyId, setBusyId] = useState<number | null>(null);
     const [search, setSearch] = useState('');
@@ -53,9 +65,11 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
 
     const load = useCallback(async () => {
         try {
-            const [users, links] = await Promise.all([getResearchers(), getResearchLinkedResearchers(researchId)]);
+            const [users, linkList] = await Promise.all([getResearchers(), getResearchLinkedResearchers(researchId)]);
             setResearchers(users.filter((u) => u.companyId === companyId));
-            setLinked(new Set(links.map((l) => l.userId)));
+            setLinked(new Set(linkList.map((l) => l.userId)));
+            setLinks(new Map(linkList.map((l) => [l.userId, l])));
+            setDrafts({});
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Erro ao carregar pesquisadores');
         } finally {
@@ -65,19 +79,55 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
 
     useEffect(() => { load(); }, [load]);
 
+    const draftOf = (user: UserItem) => {
+        if (drafts[user.id] !== undefined) return drafts[user.id];
+        const current = links.get(user.id)?.targetCount;
+        return current == null ? '' : String(current);
+    };
+
     const toggle = async (user: UserItem) => {
+        const isLinked = linked.has(user.id);
+        let target: number | undefined;
+
+        if (!isLinked) {
+            const parsed = parseTarget(draftOf(user));
+            if (parsed === null) {
+                toast.error('Informe a meta de coletas (número inteiro a partir de 1) antes de vincular.');
+                return;
+            }
+            target = parsed;
+        }
+
         setBusyId(user.id);
         try {
-            if (linked.has(user.id)) {
+            if (isLinked) {
                 await unlinkResearcher(researchId, user.id);
-                toast.success('Pesquisador desvinculado');
+                toast.success('Pesquisador desvinculado. As coletas já recebidas continuam na pesquisa.');
             } else {
-                await linkResearcher(researchId, user.id);
+                await linkResearcher(researchId, user.id, target);
                 toast.success('Pesquisador vinculado');
             }
             await load();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Erro ao atualizar vínculo');
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const saveTarget = async (user: UserItem) => {
+        const parsed = parseTarget(draftOf(user));
+        if (parsed === null) {
+            toast.error('A meta deve ser um número inteiro a partir de 1.');
+            return;
+        }
+        setBusyId(user.id);
+        try {
+            await updateResearcherTarget(researchId, user.id, parsed);
+            toast.success('Meta atualizada');
+            await load();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Erro ao alterar a meta');
         } finally {
             setBusyId(null);
         }
@@ -145,6 +195,68 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
             header: 'Situação',
             cell: (user) =>
                 linked.has(user.id) ? <TableChip tone="live">Na equipe</TableChip> : <TableChip tone="done">Disponível</TableChip>,
+        },
+        {
+            id: 'target',
+            header: 'Meta de coletas',
+            minWidth: '11rem',
+            cell: (user) => {
+                const isLinked = linked.has(user.id);
+                const busy = busyId === user.id;
+                const saved = links.get(user.id)?.targetCount;
+                const draft = draftOf(user);
+                const changed = isLinked && draft !== (saved == null ? '' : String(saved));
+                return (
+                    <div className="flex items-center gap-2">
+                        <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={MAX_TARGET}
+                            step={1}
+                            value={draft}
+                            placeholder="Ex.: 50"
+                            aria-label={`Meta de coletas de ${user.name}`}
+                            className="h-9 w-24"
+                            disabled={busy}
+                            onChange={(e) => setDrafts((prev) => ({ ...prev, [user.id]: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter' && changed) saveTarget(user); }}
+                        />
+                        {changed && (
+                            <Button variant="outline" size="sm" disabled={busy} onClick={() => saveTarget(user)}>
+                                <Save />Salvar
+                            </Button>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            id: 'delivered',
+            header: 'Entregue',
+            minWidth: '11rem',
+            cell: (user) => {
+                const link = links.get(user.id);
+                if (!link) return <span className="text-sm text-muted-foreground">-</span>;
+                const collected = link.collected ?? 0;
+                const target = link.targetCount ?? null;
+                const pct = target ? Math.min(100, Math.round((collected / target) * 100)) : 0;
+                return (
+                    <div className="flex min-w-[9rem] flex-col gap-1">
+                        <span className="text-sm font-medium">
+                            {collected}{target ? ` de ${target}` : ''} {collected === 1 ? 'coleta' : 'coletas'}
+                            {target ? <span className="ml-1 text-xs text-muted-foreground">({pct}%)</span> : null}
+                        </span>
+                        {target ? (
+                            <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+                                <div className="h-full rounded-full bg-[var(--green-deep)] transition-all duration-700" style={{ width: `${pct}%` }} />
+                            </div>
+                        ) : (
+                            <span className="text-xs text-muted-foreground">Sem meta definida</span>
+                        )}
+                    </div>
+                );
+            },
         },
         {
             id: 'actions',
@@ -247,7 +359,7 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
                     rows={visible}
                     getRowKey={(user) => user.id}
                     rowTone={(user) => (linked.has(user.id) ? 'on' : undefined)}
-                    minWidth="560px"
+                    minWidth="860px"
                     empty={
                         <TableEmpty
                             title="Nenhum pesquisador encontrado"

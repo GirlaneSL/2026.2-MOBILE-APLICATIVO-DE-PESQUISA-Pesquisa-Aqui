@@ -5,6 +5,8 @@ import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { AuthGuard } from '../auth/auth.guard.js';
 import { UpdateResearchDto } from './dto/update-research.dto.js';
+import { LinkResearcherDto } from './dto/link-researcher.dto.js';
+import { UpdateResearcherTargetDto } from './dto/update-researcher-target.dto.js';
 
 @UseGuards(AuthGuard)
 @Controller('research')
@@ -50,9 +52,20 @@ export class ResearchController {
     addResearcher(
         @Param('id', ParseIntPipe) id: number,
         @Param('userId', ParseIntPipe) userId: number,
+        @Body() body: LinkResearcherDto,
         @CurrentUser() currentUser: UserPayLoad,
     ) {
-        return this.researchService.addResearcher(id, userId, currentUser);
+        return this.researchService.addResearcher(id, userId, currentUser, body?.targetCount);
+    }
+
+    @Patch(':id/researchers/:userId')
+    updateResearcherTarget(
+        @Param('id', ParseIntPipe) id: number,
+        @Param('userId', ParseIntPipe) userId: number,
+        @Body() body: UpdateResearcherTargetDto,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.researchService.updateResearcherTarget(id, userId, body.targetCount, currentUser);
     }
 
     @Delete(':id/researchers/:userId')
