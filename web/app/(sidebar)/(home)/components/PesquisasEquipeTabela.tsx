@@ -10,7 +10,11 @@ import {
     TableChip,
     TableEmpty,
     TableSearch,
+    TableViewControls,
+    sortRows,
     type DataColumn,
+    type TableSort,
+    type TableView,
 } from "@/components/ui/data-table";
 import {
     avatarTone,
@@ -39,7 +43,6 @@ type PesquisasEquipeTabelaProps = {
 
 const SEGMENTS = 20;
 const MAX_AVATARS = 3;
-const ORDER: Record<Research["status"], number> = { IN_FIELD: 0, PUBLISHED: 1, DRAFT: 2, CLOSED: 3 };
 
 type Situation = { label: string; tone: "light" | "clay" | "gray"; endingSoon: boolean };
 
@@ -62,6 +65,8 @@ export function situationOf(research: Research, now: number): Situation {
 /** Tabela de pesquisas do painel: período, equipe, situação e andamento de cada pesquisa. */
 export default function PesquisasEquipeTabela({ researches, researchers, links, collections, now, loading = false, teamLoading = false }: PesquisasEquipeTabelaProps) {
     const [search, setSearch] = useState("");
+    const [sort, setSort] = useState<TableSort>("recent");
+    const [view, setView] = useState<TableView>("table");
     const byId = useMemo(() => new Map(researchers.map((r) => [r.id, r])), [researchers]);
 
     const collectionsByResearch = useMemo(() => {
@@ -71,13 +76,8 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
     }, [collections]);
 
     const sorted = useMemo(
-        () =>
-            [...researches].sort(
-                (a, b) =>
-                    ORDER[a.status] - ORDER[b.status] ||
-                    new Date(a.endDate).getTime() - new Date(b.endDate).getTime()
-            ),
-        [researches]
+        () => sortRows(researches, sort, { name: (r) => r.title, date: (r) => r.createdAt }),
+        [researches, sort]
     );
 
     const term = normalize(search.trim());
@@ -172,6 +172,9 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
             {!loading && researches.length > 0 && (
                 <DataTableToolbar>
                     <TableSearch value={search} onChange={setSearch} placeholder="Buscar por título ou público..." label="Buscar pesquisas" />
+                    <div className="grow flex flex-wrap items-center gap-2">
+                        <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} />
+                    </div>
                 </DataTableToolbar>
             )}
 
@@ -182,6 +185,7 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
                 getRowKey={(research) => research.id}
                 loading={loading}
                 loadingLabel="Carregando pesquisas..."
+                view={view}
                 empty={
                     researches.length === 0 ? (
                         <TableEmpty title="Nenhuma pesquisa cadastrada." text='Use "Nova pesquisa" para começar.' />

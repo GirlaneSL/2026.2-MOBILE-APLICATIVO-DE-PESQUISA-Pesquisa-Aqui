@@ -13,6 +13,7 @@ import {
     TableEmpty,
     TableFilters,
     TableSearch,
+    TableViewControls,
     type DataColumn,
 } from "@/components/ui/data-table";
 import { LoadingState } from "@/components/ui/loadingState";
@@ -20,7 +21,7 @@ import { avatarTone, initialsOf } from "@/lib/fieldData";
 import { deleteUser, setUserSituation, UserItem } from "@/lib/user";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import EditUserDialog from "@/components/ui/edit-user-dialog";
-import { ArrowDownAZ, Building2, CalendarClock, LayoutGrid, List, Pencil, Power, PowerOff, Sparkles, Trash2, UsersRound } from "lucide-react";
+import { Building2, CalendarClock, Pencil, Power, PowerOff, Sparkles, Trash2, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 type ViewMode = 'cards' | 'table';
@@ -317,24 +318,7 @@ export default function ListaPesquisadores({
                             ]}
                         />
                     )}
-                    <TableFilters<SortMode>
-                        label="Ordenar"
-                        value={sort}
-                        onChange={setSort}
-                        options={[
-                            { value: 'recent', label: 'Recentes', icon: <CalendarClock /> },
-                            { value: 'name', label: 'A–Z', icon: <ArrowDownAZ /> },
-                        ]}
-                    />
-                    <TableFilters<ViewMode>
-                        label="Modo de exibição"
-                        value={view}
-                        onChange={setView}
-                        options={[
-                            { value: 'table', label: 'Lista', icon: <List /> },
-                            { value: 'cards', label: 'Cards', icon: <LayoutGrid /> },
-                        ]}
-                    />
+                    <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} />
                 </div>
             </DataTableToolbar>
 

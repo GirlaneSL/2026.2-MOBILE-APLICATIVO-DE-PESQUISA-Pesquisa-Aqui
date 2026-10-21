@@ -16,7 +16,11 @@ import {
     TableFilters,
     TableSearch,
     TableTabs,
+    TableViewControls,
+    sortRows,
     type DataColumn,
+    type TableSort,
+    type TableView,
 } from '@/components/ui/data-table';
 import { Building2, UsersRound } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -88,6 +92,8 @@ export default function ExibirEditar({
     const [tab, setTab] = useState<Tab>('companies');
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState<StatusFilter>('ALL');
+    const [sort, setSort] = useState<TableSort>('recent');
+    const [view, setView] = useState<TableView>('table');
 
     const handleCompanySaved = (updated: CompanyItem) => {
         setRawCompanies((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
@@ -245,22 +251,30 @@ export default function ExibirEditar({
 
     const companies = useMemo(
         () =>
-            rawCompanies.filter(
-                (c) =>
-                    (status === 'ALL' || c.situation === status) &&
-                    (!term ||
-                        normalize(c.legalName).includes(term) ||
-                        normalize(c.contactInformation ?? '').includes(term))
+            sortRows(
+                rawCompanies.filter(
+                    (c) =>
+                        (status === 'ALL' || c.situation === status) &&
+                        (!term ||
+                            normalize(c.legalName).includes(term) ||
+                            normalize(c.contactInformation ?? '').includes(term))
+                ),
+                sort,
+                { name: (c) => c.legalName, date: (c) => c.createdAt }
             ),
-        [rawCompanies, status, term]
+        [rawCompanies, status, term, sort]
     );
 
     const admins = useMemo(
         () =>
-            rawAdmins.filter(
-                (a) => !term || normalize(a.name).includes(term) || normalize(a.username).includes(term)
+            sortRows(
+                rawAdmins.filter(
+                    (a) => !term || normalize(a.name).includes(term) || normalize(a.username).includes(term)
+                ),
+                sort,
+                { name: (a) => a.name, date: (a) => a.createdAt }
             ),
-        [rawAdmins, term]
+        [rawAdmins, term, sort]
     );
 
     const clear = () => {
@@ -431,6 +445,7 @@ export default function ExibirEditar({
                             ]}
                         />
                     )}
+                    <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} />
                 </div>
             </DataTableToolbar>
 
@@ -445,6 +460,7 @@ export default function ExibirEditar({
                     getRowKey={(c) => c.id}
                     loading={loadingCompanies}
                     loadingLabel="Carregando empresas..."
+                    view={view}
                     empty={
                         <TableEmpty
                             icon={hasFilter ? undefined : <Building2 />}
@@ -461,6 +477,7 @@ export default function ExibirEditar({
                     getRowKey={(a) => a.id}
                     loading={loadingAdmins}
                     loadingLabel="Carregando administradores..."
+                    view={view}
                     empty={
                         <TableEmpty
                             icon={hasFilter ? undefined : <UsersRound />}

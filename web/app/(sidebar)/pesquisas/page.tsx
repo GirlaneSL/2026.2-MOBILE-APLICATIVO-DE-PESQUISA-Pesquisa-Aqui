@@ -4,7 +4,7 @@ import BannerComponent from "@/components/ui/bannerComponent";
 import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
 import DialogLayout from "@/components/ui/dialogLayout";
-import { TableFilters } from "@/components/ui/data-table";
+import { TableFilters, TableViewControls, type TableView } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/ui/loadingState";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -13,7 +13,7 @@ import { isSessionExpiredError } from "@/lib/apiFetcher";
 import { daysUntilEnd } from "@/lib/fieldData";
 import { deleteResearch, getResearches, publishResearch, type Research } from "@/lib/research";
 import type { UserItem } from "@/lib/user";
-import { LayoutGrid, NotebookPen, Plus, Rows3, Search, SearchX } from "lucide-react";
+import { CalendarClock, ArrowDownAZ, NotebookPen, Plus, Search, SearchX, Timer } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import InfoCard from "../(home)/components/infoCards";
@@ -22,7 +22,7 @@ import PesquisaCard from "./components/PesquisaCard";
 import TabelaPesquisas from "./components/TabelaPesquisas";
 
 type Filter = "ALL" | Research["status"];
-type Sort = "recent" | "deadline";
+type Sort = "recent" | "name" | "deadline";
 
 const FILTERS: { value: Filter; label: string }[] = [
     { value: "ALL", label: "Todas" },
@@ -42,7 +42,7 @@ export default function Pesquisas() {
     const [filter, setFilter] = useState<Filter>("ALL");
     const [sort, setSort] = useState<Sort>("recent");
     const [query, setQuery] = useState("");
-    const [view, setView] = useState<"cards" | "table">("cards");
+    const [view, setView] = useState<TableView>("cards");
     const [now] = useState(() => Date.now());
 
     // Equipe e coletas da empresa só estão disponíveis para o administrador.
@@ -107,7 +107,9 @@ export default function Pesquisas() {
         return list.sort((a, b) =>
             sort === "deadline"
                 ? new Date(a.endDate).getTime() - new Date(b.endDate).getTime()
-                : new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime() || b.id - a.id
+                : sort === "name"
+                  ? a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base", numeric: true })
+                  : new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime() || b.id - a.id
         );
     }, [researches, filter, query, sort]);
 
@@ -228,24 +230,15 @@ export default function Pesquisas() {
                     options={FILTERS.map((f) => ({ value: f.value, label: f.label, count: counts[f.value] }))}
                 />
                 <div className="end">
-                    {view === "cards" && (
-                        <TableFilters<Sort>
-                            label="Ordenar"
-                            value={sort}
-                            onChange={setSort}
-                            options={[
-                                { value: "recent", label: "Recentes" },
-                                { value: "deadline", label: "Prazo" },
-                            ]}
-                        />
-                    )}
-                    <TableFilters<"cards" | "table">
-                        label="Modo de exibição"
-                        value={view}
-                        onChange={setView}
-                        options={[
-                            { value: "cards", label: "Cartões", icon: <LayoutGrid /> },
-                            { value: "table", label: "Tabela", icon: <Rows3 /> },
+                    <TableViewControls<Sort>
+                        sort={sort}
+                        onSortChange={setSort}
+                        view={view}
+                        onViewChange={setView}
+                        sortOptions={[
+                            { value: "recent", label: "Recentes", icon: <CalendarClock /> },
+                            { value: "name", label: "A-Z", icon: <ArrowDownAZ /> },
+                            { value: "deadline", label: "Prazo", icon: <Timer /> },
                         ]}
                     />
                 </div>
@@ -259,7 +252,7 @@ export default function Pesquisas() {
                     icon={<NotebookPen />}
                     cardTitle="Todas as pesquisas"
                     cardDescription="Abra uma pesquisa para ver as questões, a equipe e as coletas."
-                    cardContent={<TabelaPesquisas refreshTrigger={refresh} onChange={forceRefresh} />}
+                    cardContent={<TabelaPesquisas sort={sort} refreshTrigger={refresh} onChange={forceRefresh} />}
                 />
             ) : loading ? (
                 <LoadingState label="Carregando pesquisas..." shape="research-cards" />

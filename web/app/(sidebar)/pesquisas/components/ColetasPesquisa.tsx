@@ -12,7 +12,11 @@ import {
     TableEmpty,
     TableFilters,
     TableSearch,
+    TableViewControls,
+    sortRows,
     type DataColumn,
+    type TableSort,
+    type TableView,
 } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/loadingState";
@@ -79,6 +83,8 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
     const [viewing, setViewing] = useState<CollectionSummary | null>(null);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<Filter>('ALL');
+    const [sort, setSort] = useState<TableSort>('recent');
+    const [view, setView] = useState<TableView>('table');
     const [now] = useState(() => Date.now());
     const [player, setPlayer] = useState<{
         collectionId: number;
@@ -203,14 +209,16 @@ function ColetasView({
 
     const rows = useMemo(() => {
         const term = normalize(search.trim());
-        return collections
-            .filter((c) => {
+        return sortRows(
+            collections.filter((c) => {
                 if (filter === 'AUDIO' && !c.hasAudio) return false;
                 if (filter === 'NO_AUDIO' && c.hasAudio) return false;
                 return !term || normalize(c.researcherName ?? '').includes(term) || String(c.id).includes(term.replace('#', ''));
-            })
-            .sort((a, b) => timeOf(b.startedAt) - timeOf(a.startedAt));
-    }, [collections, search, filter]);
+            }),
+            sort,
+            { name: (c) => c.researcherName, date: (c) => timeOf(c.startedAt) }
+        );
+    }, [collections, search, filter, sort]);
 
     const columns: DataColumn<CollectionSummary>[] = [
         {
@@ -336,6 +344,7 @@ function ColetasView({
                             <TableChip tone={recordInterview ? 'soon' : 'done'}>
                                 Gravação {recordInterview ? 'ligada' : 'desligada'}
                             </TableChip>
+                            <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} />
                         </div>
                     </DataTableToolbar>
                 )}
@@ -346,6 +355,7 @@ function ColetasView({
                     rows={rows}
                     getRowKey={(c) => c.id}
                     minWidth="860px"
+                    view={view}
                     empty={
                         collections.length === 0 ? (
                             <TableEmpty

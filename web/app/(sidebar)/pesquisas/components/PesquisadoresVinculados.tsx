@@ -12,7 +12,11 @@ import {
     TableEmpty,
     TableFilters,
     TableSearch,
+    TableViewControls,
+    sortRows,
     type DataColumn,
+    type TableSort,
+    type TableView,
 } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/loadingState";
@@ -62,6 +66,8 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
     const [busyId, setBusyId] = useState<number | null>(null);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<Filter>('ALL');
+    const [sort, setSort] = useState<TableSort>('recent');
+    const [view, setView] = useState<TableView>('table');
 
     const load = useCallback(async () => {
         try {
@@ -137,22 +143,22 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
     const total = researchers.length;
     const pct = total ? Math.round((linkedCount / total) * 100) : 0;
 
-    // Vinculados primeiro; dentro de cada grupo, ordem alfabética.
+    // Vinculados primeiro; dentro de cada grupo, a ordem escolhida (Recentes ou A-Z).
     const visible = useMemo(() => {
         const term = normalize(search.trim());
-        return researchers
-            .filter((r) => {
+        const sorted = sortRows(
+            researchers.filter((r) => {
                 const isLinked = linked.has(r.id);
                 if (filter === 'LINKED' && !isLinked) return false;
                 if (filter === 'AVAILABLE' && isLinked) return false;
                 return !term || normalize(r.name).includes(term) || normalize(r.username).includes(term);
-            })
-            .sort((a, b) => {
-                const la = linked.has(a.id) ? 0 : 1;
-                const lb = linked.has(b.id) ? 0 : 1;
-                return la - lb || a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
-            });
-    }, [researchers, linked, search, filter]);
+            }),
+            sort,
+            { name: (r) => r.name, date: (r) => r.createdAt }
+        );
+        // Array.sort é estável: dentro de cada grupo a ordem acima é mantida.
+        return sorted.sort((a, b) => (linked.has(a.id) ? 0 : 1) - (linked.has(b.id) ? 0 : 1));
+    }, [researchers, linked, search, filter, sort]);
 
     if (loading) {
         return <LoadingState label="Carregando pesquisadores..." shape="people" />;
@@ -348,8 +354,9 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
                         placeholder="Buscar por nome ou usuário..."
                         label="Buscar pesquisadores"
                     />
-                    <div className="grow">
+                    <div className="grow flex flex-wrap items-center gap-2">
                         <TableFilters<Filter> label="Situação" value={filter} onChange={setFilter} options={filters} />
+                        <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} />
                     </div>
                 </DataTableToolbar>
 
@@ -360,6 +367,7 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
                     getRowKey={(user) => user.id}
                     rowTone={(user) => (linked.has(user.id) ? 'on' : undefined)}
                     minWidth="860px"
+                    view={view}
                     empty={
                         <TableEmpty
                             title="Nenhum pesquisador encontrado"

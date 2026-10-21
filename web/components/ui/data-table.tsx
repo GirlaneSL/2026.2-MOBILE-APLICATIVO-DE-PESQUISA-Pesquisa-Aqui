@@ -5,9 +5,9 @@ import { Contour } from "@/components/ui/contour"
 import { LoadingState } from "@/components/ui/loadingState"
 import { avatarTone, initialsOf } from "@/lib/fieldData"
 import { cn } from "@/lib/utils"
-import { Search, SearchX, X } from "lucide-react"
+import { ArrowDownAZ, CalendarClock, LayoutGrid, List, Search, SearchX, X } from "lucide-react"
 import Link from "next/link"
-import type { ReactNode } from "react"
+import { Fragment, type ReactNode } from "react"
 import "./data-table.css"
 
 // Padrão ÚNICO de tabela do painel. Toda listagem em linhas e colunas (pesquisas, pesquisadores,
@@ -17,7 +17,10 @@ import "./data-table.css"
 //   <DataTableHeader>   título da tabela + contador
 //   <TableTabs>         abas que trocam a tabela (sempre no topo, à esquerda)
 //   <DataTableToolbar>  busca (<TableSearch>), filtros (<TableFilters>) e controles extras
-//   <DataTable>         a tabela (cabeçalho fixo, rolagem, carregando e vazio já resolvidos)
+//   <TableViewControls> ordem (Recentes | A-Z) e modo de exibição (Lista | Cards): toda tabela tem
+//   <DataTable>         a tabela (cabeçalho fixo, rolagem, carregando e vazio já resolvidos);
+//                       com view="cards" desenha as MESMAS colunas como cartões
+//   sortRows()          ordena as linhas para Recentes / A-Z
 //   <PersonCell>        avatar + nome + @usuário (primeira coluna de qualquer pessoa)
 //   <CellTitle>         título + linha menor (primeira coluna dos demais registros)
 //   <RowActions>        coluna de ações, sempre alinhada à direita (botões <Button size="sm"> ou <RowLink>)
@@ -39,6 +42,12 @@ export type DataColumn<T> = {
     hideHeader?: boolean
 }
 
+/** Modo de exibição: tabela em linhas ("table", o botão "Lista") ou cartões ("cards"). */
+export type TableView = "table" | "cards"
+
+/** Ordem padrão: mais recentes primeiro ou alfabética. */
+export type TableSort = "recent" | "name"
+
 type DataTableProps<T> = {
     columns: readonly DataColumn<T>[]
     rows: readonly T[]
@@ -57,6 +66,11 @@ type DataTableProps<T> = {
     minWidth?: string
     /** Realça a linha (ex.: pesquisador já vinculado). */
     rowTone?: (row: T) => "on" | "off" | undefined
+    /**
+     * "table" (padrão) ou "cards". Nos cartões a primeira coluna vira o título, as colunas com
+     * `hideHeader` (ações) vão para o rodapé e as demais viram pares "nome: valor".
+     */
+    view?: TableView
 }
 
 export function DataTable<T>({
@@ -71,12 +85,52 @@ export function DataTable<T>({
     className,
     minWidth = "640px",
     rowTone,
+    view = "table",
 }: DataTableProps<T>) {
     if (loading) {
-        return <LoadingState label={loadingLabel} shape="table" columns={Math.min(columns.length, 6)} count={4} />
+        return view === "cards" ? (
+            <LoadingState label={loadingLabel} shape="people" />
+        ) : (
+            <LoadingState label={loadingLabel} shape="table" columns={Math.min(columns.length, 6)} count={4} />
+        )
     }
 
     if (rows.length === 0) return <>{empty ?? <TableEmpty title="Nada por aqui ainda." />}</>
+
+    if (view === "cards") {
+        const [titleColumn, ...others] = columns
+        const fields = others.filter((column) => !column.hideHeader)
+        const actions = others.filter((column) => column.hideHeader)
+
+        return (
+            <div className={`pa-dt-wrap ${className ?? ""}`} style={maxHeight ? { maxHeight } : undefined}>
+                <ul className="pa-dt-cards" aria-label={label}>
+                    {rows.map((row) => (
+                        <li key={getRowKey(row)} className={`pa-dt-card ${rowTone?.(row) ?? ""}`}>
+                            <div className="head">{titleColumn.cell(row)}</div>
+                            {fields.length > 0 && (
+                                <dl>
+                                    {fields.map((column) => (
+                                        <div key={column.id} className="f">
+                                            <dt>{column.header}</dt>
+                                            <dd>{column.cell(row)}</dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            )}
+                            {actions.length > 0 && (
+                                <div className="foot">
+                                    {actions.map((column) => (
+                                        <Fragment key={column.id}>{column.cell(row)}</Fragment>
+                                    ))}
+                                </div>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        )
+    }
 
     return (
         <div className={`pa-dt-wrap ${className ?? ""}`} style={maxHeight ? { maxHeight } : undefined}>
@@ -188,6 +242,73 @@ export function TableFilters<V extends string>({
                 </button>
             ))}
         </div>
+    )
+}
+
+type SortOption<S extends string> = { value: S; label: string; icon?: ReactNode }
+
+const DEFAULT_SORT_OPTIONS: SortOption<TableSort>[] = [
+    { value: "recent", label: "Recentes", icon: <CalendarClock /> },
+    { value: "name", label: "A-Z", icon: <ArrowDownAZ /> },
+]
+
+/**
+ * Os dois grupos de botões que TODA tabela tem: ordem (Recentes | A-Z) e modo de exibição
+ * (Lista | Cards). Vai dentro da <DataTableToolbar>, junto dos filtros da tela.
+ * Telas com uma ordem a mais (ex.: "Prazo") passam `sortOptions`.
+ */
+export function TableViewControls<S extends string = TableSort>({
+    sort,
+    onSortChange,
+    view,
+    onViewChange,
+    sortOptions,
+}: {
+    sort: S
+    onSortChange: (value: S) => void
+    view: TableView
+    onViewChange: (value: TableView) => void
+    sortOptions?: SortOption<S>[]
+}) {
+    return (
+        <>
+            <TableFilters<S>
+                label="Ordenar"
+                value={sort}
+                onChange={onSortChange}
+                options={sortOptions ?? (DEFAULT_SORT_OPTIONS as unknown as SortOption<S>[])}
+            />
+            <TableFilters<TableView>
+                label="Modo de exibição"
+                value={view}
+                onChange={onViewChange}
+                options={[
+                    { value: "table", label: "Lista", icon: <List /> },
+                    { value: "cards", label: "Cards", icon: <LayoutGrid /> },
+                ]}
+            />
+        </>
+    )
+}
+
+const collator = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true })
+
+/**
+ * Ordena para "Recentes" (data mais nova primeiro) ou "A-Z" (nome). Devolve uma cópia.
+ * `date` pode devolver texto ISO, milissegundos ou nada (vai para o fim).
+ */
+export function sortRows<T>(
+    rows: readonly T[],
+    sort: TableSort,
+    get: { name: (row: T) => string | null | undefined; date: (row: T) => string | number | null | undefined },
+): T[] {
+    const time = (row: T) => {
+        const value = get.date(row)
+        const ms = typeof value === "number" ? value : value ? new Date(value).getTime() : NaN
+        return Number.isNaN(ms) ? 0 : ms
+    }
+    return [...rows].sort((a, b) =>
+        sort === "name" ? collator.compare(get.name(a) ?? "", get.name(b) ?? "") : time(b) - time(a),
     )
 }
 

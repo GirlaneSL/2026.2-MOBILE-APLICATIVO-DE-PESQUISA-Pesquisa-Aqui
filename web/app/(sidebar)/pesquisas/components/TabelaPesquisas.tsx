@@ -11,6 +11,7 @@ import {
     TableChip,
     TableEmpty,
     TableSearch,
+    sortRows,
     type DataColumn,
 } from '@/components/ui/data-table';
 import { formatPeriod } from '@/lib/fieldData';
@@ -38,13 +39,17 @@ const CHIP_TONE = { light: 'live', clay: 'soon', gray: 'done' } as const;
 
 const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
+/** Ordem da tabela: Recentes, A-Z ou Prazo (quem encerra primeiro). Vem dos botões da página. */
+export type PesquisaSort = 'recent' | 'name' | 'deadline';
+
 interface TabelaPesquisasProps {
+    sort?: PesquisaSort;
     allowActions?: boolean;
     refreshTrigger?: number;
     onChange?: () => void;
 }
 
-export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 0, onChange }: TabelaPesquisasProps) {
+export default function TabelaPesquisas({ sort = 'recent', allowActions = true, refreshTrigger = 0, onChange }: TabelaPesquisasProps) {
     const [rawResearches, setRawResearches] = useState<Research[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -181,13 +186,17 @@ export default function TabelaPesquisas({ allowActions = true, refreshTrigger = 
     };
 
     const term = normalize(search.trim());
-    const researches = useMemo(
-        () =>
-            term
-                ? rawResearches.filter((r) => normalize(`${r.title} ${r.objective ?? ''} ${r.targetAudience ?? ''}`).includes(term))
-                : rawResearches,
-        [rawResearches, term]
-    );
+    const researches = useMemo(() => {
+        const matching = term
+            ? rawResearches.filter((r) => normalize(`${r.title} ${r.objective ?? ''} ${r.targetAudience ?? ''}`).includes(term))
+            : rawResearches;
+
+        if (sort === 'deadline') {
+            const endsAt = (r: Research) => (r.endDate ? new Date(r.endDate).getTime() : Infinity);
+            return [...matching].sort((a, b) => endsAt(a) - endsAt(b));
+        }
+        return sortRows(matching, sort, { name: (r) => r.title, date: (r) => r.createdAt });
+    }, [rawResearches, term, sort]);
 
     const columns: DataColumn<Research>[] = [
         {
