@@ -4,32 +4,31 @@ import BannerComponent from "@/components/ui/bannerComponent";
 import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
 import DialogLayout from "@/components/ui/dialogLayout";
-import { TableFilters, TableViewControls, type TableView } from "@/components/ui/data-table";
-import { Input } from "@/components/ui/input";
+import { TableSearch, TableViewControls, type TableView } from "@/components/ui/data-table";
 import { LoadingState } from "@/components/ui/loadingState";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useFieldSnapshot } from "@/hooks/useFieldSnapshot";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
-import { daysUntilEnd } from "@/lib/fieldData";
 import { deleteResearch, getResearches, publishResearch, type Research } from "@/lib/research";
 import type { UserItem } from "@/lib/user";
-import { CalendarClock, ArrowDownAZ, NotebookPen, Plus, Search, SearchX, Timer } from "lucide-react";
+import { ArrowDownAZ, CalendarClock, Plus, SearchX, Timer } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import InfoCard from "../(home)/components/infoCards";
 import CadastrarPesquisaForm from "./components/CadastrarPesquisaForm";
+import CalendarioCampo, { type LegendItem } from "./components/CalendarioCampo";
 import PesquisaCard from "./components/PesquisaCard";
-import TabelaPesquisas from "./components/TabelaPesquisas";
+import PesquisaLinha, { ListaPesquisas } from "./components/PesquisaLinha";
+import type { Filter } from "./components/pesquisaView";
+import "./pesquisas.css";
 
-type Filter = "ALL" | Research["status"];
 type Sort = "recent" | "name" | "deadline";
 
-const FILTERS: { value: Filter; label: string }[] = [
-    { value: "ALL", label: "Todas" },
-    { value: "IN_FIELD", label: "Em campo" },
-    { value: "PUBLISHED", label: "Publicadas" },
-    { value: "DRAFT", label: "Rascunhos" },
-    { value: "CLOSED", label: "Encerradas" },
+const FILTERS: { value: Filter; label: string; kind: LegendItem["kind"] }[] = [
+    { value: "ALL", label: "Todas", kind: "all" },
+    { value: "IN_FIELD", label: "Em campo", kind: "live" },
+    { value: "PUBLISHED", label: "Publicadas", kind: "pub" },
+    { value: "DRAFT", label: "Rascunhos", kind: "draft" },
+    { value: "CLOSED", label: "Encerradas", kind: "closed" },
 ];
 
 const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -48,8 +47,9 @@ export default function Pesquisas() {
     // Equipe e coletas da empresa só estão disponíveis para o administrador.
     const { user } = useCurrentUser();
     const isAdmin = user?.profile === "ADMINISTRATOR";
-    const { snapshot, loading: snapshotLoading } = useFieldSnapshot(isAdmin);
-    const teamLoading = !isAdmin || snapshotLoading;
+    const { snapshot } = useFieldSnapshot(isAdmin);
+    const teamReady = isAdmin && !!snapshot;
+    const teamLoading = !teamReady;
 
     const forceRefresh = useCallback(() => setRefresh((n) => n + 1), []);
 
@@ -79,16 +79,6 @@ export default function Pesquisas() {
         return c;
     }, [researches]);
 
-    const endingSoon = useMemo(
-        () =>
-            researches.filter((r) => {
-                if (r.status !== "PUBLISHED" && r.status !== "IN_FIELD") return false;
-                const d = daysUntilEnd(r.endDate, now);
-                return d !== null && d >= 0 && d <= 7;
-            }).length,
-        [researches, now]
-    );
-
     const collectionsByResearch = useMemo(() => {
         const map = new Map<number, number>();
         for (const c of snapshot?.collections ?? []) map.set(c.researchId, (map.get(c.researchId) ?? 0) + 1);
@@ -113,7 +103,13 @@ export default function Pesquisas() {
         );
     }, [researches, filter, query, sort]);
 
-    /* ---------- ações (as mesmas da tabela: publicar e excluir pedem confirmação) ---------- */
+    // "Publicadas" só aparece na legenda quando existe alguma (ou quando é o filtro escolhido).
+    const legend: LegendItem[] = FILTERS.filter((f) => f.value !== "PUBLISHED" || counts.PUBLISHED > 0 || filter === "PUBLISHED").map((f) => ({
+        ...f,
+        count: loading ? null : counts[f.value],
+    }));
+
+    /* ---------- ações (publicar e excluir pedem confirmação) ---------- */
 
     const confirmToast = (id: string, message: string, label: string, destructive: boolean, onConfirm: () => void) =>
         toast(
@@ -173,18 +169,30 @@ export default function Pesquisas() {
     const handleUpdated = (updated: Research) =>
         setResearches((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
 
-    const active = counts.IN_FIELD + counts.PUBLISHED;
-    const totalCollections = snapshot?.collections.length;
-    const dash = (value: number | undefined) => (loading || value === undefined ? "–" : value);
+    const itemProps = (research: Research) => ({
+        research,
+        team: (snapshot?.links[research.id] ?? []).map((id) => researchersById.get(id)).filter((u): u is UserItem => !!u),
+        collections: collectionsByResearch.get(research.id) ?? 0,
+        teamLoading,
+        now,
+        onPublish: handlePublish,
+        onDelete: handleDelete,
+        onUpdated: handleUpdated,
+    });
+
+    const clearFilters = () => {
+        setQuery("");
+        setFilter("ALL");
+    };
 
     return (
-        <section className="flex flex-col gap-5">
+        <section className="pa-pesq flex flex-col gap-6">
             <BannerComponent
                 title="Pesquisas"
                 description="Monte questionários, publique para o campo e acompanhe cada pesquisa."
                 actions={
                     <DialogLayout
-                        triggerButtonSize="sm"
+                        triggerButtonSize="default"
                         dialogTrigger={<><Plus />Nova pesquisa</>}
                         dialogTitle="Nova pesquisa"
                         dialogDescription="Informe os dados principais. As questões entram na próxima etapa."
@@ -193,43 +201,30 @@ export default function Pesquisas() {
                 }
             />
 
-            {/* Faixa de resumo */}
-            <div className="pa-rs-hero introduction-card">
-                <Contour seed={3.3} rings={12} cx={0.92} cy={0.5} size={1} width={900} height={200} />
-                <div className="lead">
-                    <p>Em andamento</p>
-                    <b>{dash(active)}</b>
-                    <span>{active === 1 ? "pesquisa ativa" : "pesquisas ativas"}</span>
-                    {!loading && endingSoon > 0 && (
-                        <span className="pa-chip clay"><i />{endingSoon} {endingSoon === 1 ? "encerra" : "encerram"} em até 7 dias</span>
-                    )}
-                </div>
-                <dl className="tiles">
-                    <div><dt>Em campo</dt><dd>{dash(counts.IN_FIELD)}</dd></div>
-                    <div><dt>Rascunhos</dt><dd>{dash(counts.DRAFT)}</dd></div>
-                    <div><dt>Encerradas</dt><dd>{dash(counts.CLOSED)}</dd></div>
-                    <div><dt>Coletas</dt><dd>{teamLoading ? "–" : totalCollections ?? "–"}</dd></div>
-                </dl>
-            </div>
+            {/* Calendário de campo: também é o filtro de situação */}
+            <CalendarioCampo
+                rows={visible}
+                all={researches}
+                legend={legend}
+                filter={filter}
+                onFilter={setFilter}
+                now={now}
+                loading={loading}
+                collectionsByResearch={collectionsByResearch}
+                collectionsReady={teamReady}
+                totalCollections={snapshot?.collections.length}
+            />
 
-            {/* Barra de ferramentas */}
-            <div className="pa-rs-bar introduction-card">
-                <div className="search">
-                    <Search aria-hidden="true" />
-                    <Input
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Buscar por título, objetivo ou público..."
-                        aria-label="Buscar pesquisas"
-                    />
-                </div>
-                <TableFilters<Filter>
-                    label="Filtrar por situação"
-                    value={filter}
-                    onChange={setFilter}
-                    options={FILTERS.map((f) => ({ value: f.value, label: f.label, count: counts[f.value] }))}
+            {/* Ferramentas */}
+            <div className="pq-tools introduction-card">
+                <TableSearch
+                    value={query}
+                    onChange={setQuery}
+                    placeholder="Buscar por título, objetivo ou público..."
+                    label="Buscar pesquisas"
                 />
-                <div className="end">
+                {!loading && <span className="pq-found">{visible.length} {visible.length === 1 ? "pesquisa" : "pesquisas"}</span>}
+                <div className="grow">
                     <TableViewControls<Sort>
                         sort={sort}
                         onSortChange={setSort}
@@ -246,47 +241,37 @@ export default function Pesquisas() {
 
             {error && <p role="alert" className="text-sm text-destructive">Erro: {error}</p>}
 
-            {view === "table" ? (
-                <InfoCard
-                    animationDelayN={2}
-                    icon={<NotebookPen />}
-                    cardTitle="Todas as pesquisas"
-                    cardDescription="Abra uma pesquisa para ver as questões, a equipe e as coletas."
-                    cardContent={<TabelaPesquisas sort={sort} refreshTrigger={refresh} onChange={forceRefresh} />}
-                />
-            ) : loading ? (
-                <LoadingState label="Carregando pesquisas..." shape="research-cards" />
+            {loading ? (
+                <LoadingState label="Carregando pesquisas..." shape={view === "table" ? "table" : "research-cards"} columns={5} />
             ) : visible.length === 0 ? (
-                <div className="pa-rs-empty introduction-card">
+                <div className="pq-empty">
                     <Contour seed={1.9} rings={9} cx={0.5} cy={0.5} size={1} width={600} height={260} />
                     <SearchX aria-hidden="true" />
                     {researches.length === 0 ? (
                         <>
-                            <h3>Nenhuma pesquisa ainda</h3>
-                            <p>Crie a primeira com &quot;Nova pesquisa&quot; e ela aparece aqui.</p>
+                            <b>Nenhuma pesquisa ainda</b>
+                            Crie a primeira com &quot;Nova pesquisa&quot; e ela aparece aqui.
                         </>
                     ) : (
                         <>
-                            <h3>Nada encontrado</h3>
-                            <p>Nenhuma pesquisa combina com a busca e o filtro escolhidos.</p>
-                            <Button variant="outline" size="sm" onClick={() => { setQuery(""); setFilter("ALL"); }}>Limpar filtros</Button>
+                            <b>Nada encontrado</b>
+                            Nenhuma pesquisa combina com a busca e a situação escolhidas.
+                            <div className="pq-empty-act">
+                                <Button variant="outline" size="sm" onClick={clearFilters}>Limpar filtros</Button>
+                            </div>
                         </>
                     )}
                 </div>
-            ) : (
-                <div className="pa-rc-grid">
+            ) : view === "table" ? (
+                <ListaPesquisas>
                     {visible.map((research) => (
-                        <PesquisaCard
-                            key={research.id}
-                            research={research}
-                            team={(snapshot?.links[research.id] ?? []).map((id) => researchersById.get(id)).filter((u): u is UserItem => !!u)}
-                            collections={collectionsByResearch.get(research.id) ?? 0}
-                            teamLoading={teamLoading}
-                            now={now}
-                            onPublish={handlePublish}
-                            onDelete={handleDelete}
-                            onUpdated={handleUpdated}
-                        />
+                        <PesquisaLinha key={research.id} {...itemProps(research)} />
+                    ))}
+                </ListaPesquisas>
+            ) : (
+                <div className="pq-grid">
+                    {visible.map((research) => (
+                        <PesquisaCard key={research.id} {...itemProps(research)} />
                     ))}
                 </div>
             )}
