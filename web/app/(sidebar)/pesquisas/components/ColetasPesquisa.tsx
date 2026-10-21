@@ -165,6 +165,10 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
             setSearch={setSearch}
             filter={filter}
             setFilter={setFilter}
+            sort={sort}
+            setSort={setSort}
+            view={view}
+            setView={setView}
             now={now}
             loadingAudioId={loadingAudioId}
             onListen={handleListen}
@@ -187,6 +191,10 @@ interface ColetasViewProps {
     setSearch: (v: string) => void;
     filter: Filter;
     setFilter: (f: Filter) => void;
+    sort: TableSort;
+    setSort: (s: TableSort) => void;
+    view: TableView;
+    setView: (v: TableView) => void;
     now: number;
     loadingAudioId: number | null;
     onListen: (id: number) => void;
@@ -198,7 +206,7 @@ interface ColetasViewProps {
 }
 
 function ColetasView({
-    collections, withAudio, recordInterview, search, setSearch, filter, setFilter, now,
+    collections, withAudio, recordInterview, search, setSearch, filter, setFilter, sort, setSort, view, setView, now,
     loadingAudioId, onListen, onView, viewing, onCloseView, player, onPlayerError,
 }: ColetasViewProps) {
     const researchersCount = new Set(collections.map((c) => c.researcherName).filter(Boolean)).size;
