@@ -2,12 +2,13 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LoadingState } from "@/components/ui/loadingState";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { getResearchCopies, revokeResearchCopy, unblockResearchDevice, type ResearchCopies, type ResearchCopy } from "@/lib/research";
-import { Lock, LockOpen, ShieldCheck, ShieldOff, Smartphone, TriangleAlert, Undo2 } from "lucide-react";
+import { Lock, LockOpen, Search, ShieldCheck, ShieldOff, Smartphone, TriangleAlert, Undo2, UserX } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -24,6 +25,16 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 // Aparelhos têm um identificador longo (device_<hora>_<sufixo>): mostra o fim, que é o que os diferencia.
 const shortDevice = (id: string) => (id.length > 18 ? `…${id.slice(-12)}` : id);
+
+// Busca sem diferenciar maiúsculas nem acentos ("joao" acha "João").
+const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+type HistoryFilter = 'ALL' | 'RETURNED' | 'REVOKED';
+const FILTERS: { value: HistoryFilter; label: string }[] = [
+    { value: 'ALL', label: 'Todas' },
+    { value: 'RETURNED', label: 'Devolvidas' },
+    { value: 'REVOKED', label: 'Revogadas' },
+];
 
 interface CopiasEmCampoProps {
     researchId: number;
@@ -53,6 +64,10 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
     }, [researchId]);
 
     useEffect(() => { load(); }, [load]);
+
+    // Busca e filtro do histórico.
+    const [query, setQuery] = useState('');
+    const [filter, setFilter] = useState<HistoryFilter>('ALL');
 
     // Desbloqueio de aparelho em andamento.
     const [unblocking, setUnblocking] = useState<ResearchCopy | null>(null);
@@ -111,6 +126,44 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
 
     const active = data.copies.filter((c) => c.status === 'ACTIVE');
     const history = data.copies.filter((c) => c.status !== 'ACTIVE');
+
+    // Histórico filtrado: por situação e por texto (pesquisador, usuário, aparelho, motivo, quem revogou).
+    const terms = normalize(query.trim()).split(/\s+/).filter(Boolean);
+    const filteredHistory = history.filter((c) => {
+        if (filter !== 'ALL' && c.status !== filter) return false;
+        if (terms.length === 0) return true;
+        const haystack = normalize(
+            [c.researcherName, c.researcherUsername, c.deviceId, c.revokeReason, c.revokedByName, c.unblockedByName]
+                .filter(Boolean)
+                .join(' '),
+        );
+        return terms.every((t) => haystack.includes(t));
+    });
+
+    // Usuários revogados: quem teve ao menos uma cópia revogada, com os aparelhos e a situação de cada um.
+    interface RevokedUser {
+        key: string;
+        name: string | null;
+        username: string | null;
+        devices: ResearchCopy[]; // a revogação mais recente de cada aparelho
+        blocked: number;
+        revocations: number;
+    }
+    const revokedUsers = new Map<string, RevokedUser>();
+    for (const c of data.copies) {
+        if (c.status !== 'REVOKED') continue;
+        const key = c.userId != null ? `u${c.userId}` : `d${c.deviceId}`;
+        const entry = revokedUsers.get(key) ?? {
+            key, name: c.researcherName, username: c.researcherUsername, devices: [], blocked: 0, revocations: 0,
+        };
+        entry.revocations += 1;
+        if (!entry.devices.some((d) => d.deviceId === c.deviceId)) {
+            entry.devices.push(c);
+            if (c.deviceBlocked) entry.blocked += 1;
+        }
+        revokedUsers.set(key, entry);
+    }
+    const revokedList = [...revokedUsers.values()].sort((a, b) => b.blocked - a.blocked || (a.name ?? '').localeCompare(b.name ?? ''));
     // Um aparelho pode ter várias cópias revogadas: o botão aparece só na mais recente de cada aparelho bloqueado.
     const unblockableIds = new Set<number>();
     const seenDevices = new Set<string>();
@@ -207,6 +260,59 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                 )}
             </article>
 
+            {/* Usuários revogados */}
+            {revokedList.length > 0 && (
+                <article className="pa-card">
+                    <header className="pa-card-h">
+                        <div className="pa-ic"><UserX /></div>
+                        <div className="grow">
+                            <h3>Usuários revogados</h3>
+                            <p className="desc">
+                                {plural(revokedList.length, 'pesquisador teve', 'pesquisadores tiveram')} o acesso revogado nesta pesquisa.
+                                {' '}Desbloqueie o aparelho para ele voltar a baixar.
+                            </p>
+                        </div>
+                    </header>
+
+                    <ul className="mt-5 flex flex-col gap-3">
+                        {revokedList.map((user) => (
+                            <li key={user.key} className="rounded-2xl bg-muted/60 p-4">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-[15px] font-semibold tracking-tight">{user.name ?? 'Pesquisador removido'}</span>
+                                    {user.username && <span className="text-sm text-muted-foreground">@{user.username}</span>}
+                                    <Badge variant={user.blocked > 0 ? 'destructive' : 'default'}>
+                                        {user.blocked > 0 ? `${plural(user.blocked, 'aparelho bloqueado', 'aparelhos bloqueados')}` : 'Todos desbloqueados'}
+                                    </Badge>
+                                    {user.revocations > 1 && (
+                                        <span className="text-xs text-muted-foreground">{user.revocations} revogações</span>
+                                    )}
+                                </div>
+
+                                <ul className="mt-3 flex flex-col gap-2">
+                                    {user.devices.map((copy) => (
+                                        <li key={copy.deviceId} className="flex flex-col gap-2 border-t border-border pt-2.5 sm:flex-row sm:items-center">
+                                            <div className="grow text-[13px] text-muted-foreground">
+                                                <span title={copy.deviceId} className="font-mono">Aparelho {shortDevice(copy.deviceId)}</span>
+                                                {' · '}revogado em {fmtDateTime(copy.revokedAt)}{copy.revokedByName ? ` por ${copy.revokedByName}` : ''}
+                                                {copy.revokeReason && <> · Motivo: {copy.revokeReason}</>}
+                                                {!copy.deviceBlocked && copy.unblockedAt && (
+                                                    <span className="text-[var(--green-deep)]"> · desbloqueado em {fmtDateTime(copy.unblockedAt)}</span>
+                                                )}
+                                            </div>
+                                            {copy.deviceBlocked && (
+                                                <Button variant="outline" size="sm" className="shrink-0" onClick={() => setUnblocking(copy)}>
+                                                    <ShieldCheck />Desbloquear aparelho
+                                                </Button>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </li>
+                        ))}
+                    </ul>
+                </article>
+            )}
+
             {/* Histórico: tudo registrado */}
             {history.length > 0 && (
                 <article className="pa-card">
@@ -218,8 +324,44 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                         </div>
                     </header>
 
-                    <ul className="mt-5 flex flex-col gap-2.5">
-                        {history.map((copy) => (
+                    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="relative grow">
+                            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Buscar por pesquisador, usuário, aparelho ou motivo"
+                                aria-label="Buscar no histórico"
+                                className="pl-10"
+                            />
+                        </div>
+                        <div role="group" aria-label="Filtrar histórico por situação" className="flex shrink-0 gap-1.5">
+                            {FILTERS.map((f) => (
+                                <Button
+                                    key={f.value}
+                                    variant={filter === f.value ? 'default' : 'outline'}
+                                    size="sm"
+                                    aria-pressed={filter === f.value}
+                                    onClick={() => setFilter(f.value)}
+                                >
+                                    {f.label}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {(query.trim() || filter !== 'ALL') && (
+                        <p className="mt-3 text-[13px] text-muted-foreground" aria-live="polite">
+                            {plural(filteredHistory.length, 'registro encontrado', 'registros encontrados')} de {history.length}.
+                            {filteredHistory.length === 0 && (
+                                <button type="button" className="ml-2 underline" onClick={() => { setQuery(''); setFilter('ALL'); }}>Limpar filtros</button>
+                            )}
+                        </p>
+                    )}
+
+                    <ul className="mt-4 flex flex-col gap-2.5">
+                        {filteredHistory.map((copy) => (
                             <li key={copy.id} className="flex flex-col gap-1 rounded-2xl border border-border p-3.5">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-sm font-semibold">{copy.researcherName ?? 'Pesquisador removido'}</span>
