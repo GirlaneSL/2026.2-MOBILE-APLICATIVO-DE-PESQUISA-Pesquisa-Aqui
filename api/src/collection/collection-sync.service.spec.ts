@@ -37,6 +37,7 @@ function makeDb() {
     Collection: [],
     Answer: [],
     SyncLog: [],
+    ResearchDownload: [],
   };
   let nextId = 1;
   let activeSnapshot: typeof tables | null = null;
@@ -344,6 +345,44 @@ describe('CollectionSyncService.sync', () => {
         'RESEARCH_NOT_FOUND',
         'NOT_LINKED',
       ]);
+    });
+
+    it('aparelho com a cópia revogada pelo administrador: coleta nova é recusada (definitivo); outro aparelho segue', async () => {
+      const { db, service } = setup();
+      db.tables.ResearchDownload.push({
+        id: 1, researchId: 5, userId: 1, deviceId: 'aparelho-perdido',
+        active: false, revokedAt: '2026-10-10T12:00:00.000Z', revokedById: 2,
+      });
+
+      const revoked = await service.sync(batch([item(1)], 'aparelho-perdido'), researcher);
+      expect(revoked.results[0]).toMatchObject({ status: 'REJECTED', code: 'COPY_REVOKED', retryable: false });
+      expect(db.tables.Collection).toHaveLength(0);
+
+      // a revogação é do aparelho nessa pesquisa: o mesmo pesquisador em outro aparelho continua enviando
+      const other = await service.sync(batch([item(2)], 'aparelho-novo'), researcher);
+      expect(other.results[0]).toMatchObject({ status: 'ACCEPTED' });
+    });
+
+    it('cópia apenas devolvida (não revogada) não bloqueia o aparelho', async () => {
+      const { db, service } = setup();
+      db.tables.ResearchDownload.push({
+        id: 1, researchId: 5, userId: 1, deviceId: 'aparelho-1',
+        active: false, returnedAt: '2026-10-10T12:00:00.000Z',
+      });
+      const response = await service.sync(batch([item(1)]), researcher);
+      expect(response.results[0]).toMatchObject({ status: 'ACCEPTED' });
+    });
+
+    it('coleta já recebida antes da revogação continua reconhecida (não é recusada nem duplicada)', async () => {
+      const { db, service } = setup();
+      await service.sync(batch([item(1)], 'aparelho-perdido'), researcher);
+      db.tables.ResearchDownload.push({
+        id: 1, researchId: 5, userId: 1, deviceId: 'aparelho-perdido',
+        active: false, revokedAt: '2026-10-10T12:00:00.000Z', revokedById: 2,
+      });
+      const again = await service.sync(batch([item(1)], 'aparelho-perdido'), researcher);
+      expect(again.results[0]).toMatchObject({ status: 'ALREADY_EXISTS' });
+      expect(db.tables.Collection).toHaveLength(1);
     });
   });
 

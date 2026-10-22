@@ -10,6 +10,7 @@ import DraftPickerModal from './_components/DraftPickerModal';
 import { getCachedResearches, syncResearches, downloadResearchPackage, type Research } from '@/lib/researchCache';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { listCollections, type LocalCollection } from '@/lib/collectionStore';
+import { returnResearchSafely } from '@/lib/researchReturn';
 
 export default function Pesquisas() {
     const [pesquisas, setPesquisas] = useState<Research[]>([]);
@@ -19,6 +20,19 @@ export default function Pesquisas() {
     // Pesquisa cujos rascunhos o pesquisador está escolhendo (null = lista fechada)
     const [pickingResearch, setPickingResearch] = useState<Research | null>(null);
     const isOnline = useNetworkStatus();
+
+    // Atualiza a lista e avisa se o administrador revogou o acesso deste aparelho a alguma pesquisa
+    // (a cópia local já foi apagada pela sincronização).
+    const syncAndWarn = useCallback(async () => {
+        const revoked = await syncResearches();
+        if (revoked.length > 0) {
+            const nomes = revoked.map((r) => `"${r.title}"`).join(', ');
+            Alert.alert(
+                'Acesso revogado',
+                `O administrador revogou o acesso deste aparelho a ${nomes}. A pesquisa foi removida do aparelho e não pode mais ser baixada aqui.`,
+            );
+        }
+    }, []);
 
     const loadFromCache = useCallback(async () => {
         const cached = await getCachedResearches();
@@ -31,23 +45,49 @@ export default function Pesquisas() {
         useCallback(() => {
             const run = async () => {
                 if (isOnline) {
-                    try { await syncResearches(); } 
+                    try { await syncAndWarn(); } 
                     catch (error) { console.log('Falha ao sincronizar pesquisas:', error); }
                 }
                 await loadFromCache();
             };
             run();
-        }, [isOnline, loadFromCache])
+        }, [isOnline, loadFromCache, syncAndWarn])
     );
 
     const handleRefresh = async () => {
         setRefreshing(true);
         if (isOnline) {
-            try { await syncResearches(); } 
+            try { await syncAndWarn(); } 
             catch (error) { console.log('Falha ao sincronizar no refresh:', error); }
         }
         await loadFromCache();
         setRefreshing(false);
+    };
+
+    // Devolver a cópia: o contador do servidor cai e, se for a última, o questionário destrava.
+    const handleReturn = (id: number, title: string) => {
+        if (!isOnline) {
+            Alert.alert('Sem conexão', 'Conecte-se à internet para devolver esta pesquisa.');
+            return;
+        }
+        Alert.alert(
+            'Devolver pesquisa?',
+            `"${title}" sai deste aparelho. Para coletar de novo você precisará baixá-la outra vez.`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Devolver',
+                    onPress: async () => {
+                        try {
+                            await returnResearchSafely(id);
+                            await loadFromCache();
+                        } catch (error) {
+                            Alert.alert('Não foi possível devolver', error instanceof Error ? error.message : 'Tente de novo.');
+                        }
+                    },
+                },
+            ],
+        );
     };
 
     const handleDownload = async (id: number, title: string) => {
@@ -133,7 +173,9 @@ export default function Pesquisas() {
                             isDownloading={downloadingIds.has(item.id)}
                             coletasCount={collections.filter((c) => c.researchId === item.id && c.status === 'FINISHED').length}
                             draftCount={collections.filter((c) => c.researchId === item.id && c.status === 'IN_PROGRESS').length}
+                            revoked={!!item.revoked}
                             onDownload={() => handleDownload(item.id, item.title)}
+                            onReturn={() => handleReturn(item.id, item.title)}
                             onStart={() => startCollection(item.id)}
                             onResume={() => resumeDraft(item)}
                         />

@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma.service.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { AudioStorage, audioExtensionFor, imageExtensionFor, mediaTypeFor } from './audio-storage.js';
 import { assertValidConsent } from './consent.js';
+import { copyRevokedException, isDeviceRevoked } from '../research/research-copies.js';
 import type { CollectionPayloadDto } from './dto/create-collection.dto.js';
 import type { UploadCollectionFileDto } from './dto/upload-collection-file.dto.js';
 import {
@@ -88,6 +89,11 @@ export class CollectionService {
 
         const link = await orm.ResearchResearcher.where({ researchId: research.id, userId: user.id }).first();
         if (!link) throw new ForbiddenException('Você não está vinculado a esta pesquisa.');
+
+        // Aparelho com a cópia revogada pelo administrador não envia coleta nova.
+        if (await isDeviceRevoked(orm, research.id, payload.deviceId)) {
+            throw copyRevokedException('O administrador revogou o acesso deste aparelho a esta pesquisa. A coleta não foi aceita.');
+        }
 
         // Reenvio da mesma coleta (conexão caiu depois de o servidor receber): devolve a já gravada.
         if (payload.clientId) {
@@ -315,6 +321,11 @@ export class CollectionService {
                 'Esta coleta ainda não chegou ao servidor. Envie a coleta antes dos arquivos.',
                 true,
             );
+        }
+
+        // Aparelho com a cópia revogada pelo administrador também não envia mais arquivos.
+        if (await isDeviceRevoked(orm, collection.researchId, collection.deviceId)) {
+            throw copyRevokedException('O administrador revogou o acesso deste aparelho a esta pesquisa. O arquivo não foi aceito.');
         }
 
         const name = dto.name.trim();

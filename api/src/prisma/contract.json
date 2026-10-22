@@ -1310,6 +1310,48 @@
                   "kind": "scalar"
                 }
               },
+              "returnedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "revokeReason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "revokedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "revokedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "unblockedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "unblockedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "userId": {
                 "nullable": true,
                 "type": {
@@ -1351,6 +1393,24 @@
                 },
                 "researchId": {
                   "column": "researchId"
+                },
+                "returnedAt": {
+                  "column": "returnedAt"
+                },
+                "revokeReason": {
+                  "column": "revokeReason"
+                },
+                "revokedAt": {
+                  "column": "revokedAt"
+                },
+                "revokedById": {
+                  "column": "revokedById"
+                },
+                "unblockedAt": {
+                  "column": "unblockedAt"
+                },
+                "unblockedById": {
+                  "column": "unblockedById"
                 },
                 "userId": {
                   "column": "userId"
@@ -2741,6 +2801,36 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
+                "returnedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "revokeReason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "revokedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "revokedById": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "unblockedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "unblockedById": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
                 "userId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
@@ -3229,7 +3319,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "48ac31f9d635b05aaacc2d5e45fdeed27c86daebdb2f67978323899d1e73337c"
+    "storageHash": "8f048c3f63de36ae3c67396cfb9a93b8ada505b38c9d234374e50d8c429eecc1"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",

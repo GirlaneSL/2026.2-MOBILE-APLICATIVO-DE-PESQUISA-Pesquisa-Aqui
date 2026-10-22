@@ -15,6 +15,10 @@ export interface Research {
     targetAudience: string;
     recordInterview?: boolean;
     isDownloaded?: boolean;
+    // Situação da cópia DESTE aparelho no servidor (só vem com o X-Device-ID): ACTIVE, RETURNED ou REVOKED.
+    copyStatus?: 'ACTIVE' | 'RETURNED' | 'REVOKED' | null;
+    // O administrador revogou o acesso deste aparelho a esta pesquisa: não baixa mais.
+    revoked?: boolean;
 }
 
 // Gera ou recupera um ID único do dispositivo para controle de download
@@ -27,10 +31,20 @@ export async function getDeviceId(): Promise<string> {
     return id;
 }
 
-export async function syncResearches(): Promise<void> {
+// Apaga o pacote da pesquisa do aparelho (a cópia deixou de valer ou foi devolvida).
+async function removeLocalPackage(id: number): Promise<void> {
+    await AsyncStorage.removeItem(`research_pkg_${id}`);
+}
+
+/**
+ * Atualiza a lista de pesquisas. O servidor informa a situação da cópia deste aparelho: se o administrador
+ * revogou (REVOKED) ou ela já consta como devolvida (RETURNED), o pacote local é apagado, para não
+ * sobrar versão do formulário circulando fora do controle. Devolve as pesquisas cujo acesso foi revogado agora.
+ */
+export async function syncResearches(): Promise<Research[]> {
     try {
-        const response = await apiFetch('/research');
-        if (!response.ok) return;
+        const response = await apiFetch('/research', { headers: { 'X-Device-ID': await getDeviceId() } });
+        if (!response.ok) return [];
 
         const data: Research[] = await response.json();
 
@@ -38,14 +52,29 @@ export async function syncResearches(): Promise<void> {
         const currentCache = await getCachedResearches();
         const downloadedIds = new Set(currentCache.filter(r => r.isDownloaded).map(r => r.id));
 
-        const mergedData = data.map(item => ({
-            ...item,
-            isDownloaded: downloadedIds.has(item.id)
-        }));
+        const newlyRevoked: Research[] = [];
+        const mergedData: Research[] = [];
+        for (const item of data) {
+            const wasDownloaded = downloadedIds.has(item.id);
+            const copyInvalid = item.copyStatus === 'REVOKED' || item.copyStatus === 'RETURNED';
+
+            if (wasDownloaded && copyInvalid) {
+                await removeLocalPackage(item.id);
+                if (item.copyStatus === 'REVOKED') newlyRevoked.push(item);
+            }
+
+            mergedData.push({
+                ...item,
+                isDownloaded: wasDownloaded && !copyInvalid,
+                revoked: item.copyStatus === 'REVOKED',
+            });
+        }
 
         await AsyncStorage.setItem(RESEARCHES_CACHE_KEY, JSON.stringify(mergedData));
+        return newlyRevoked;
     } catch (error) {
         console.log('Sync de pesquisas falhou:', error);
+        return [];
     }
 }
 
@@ -82,6 +111,30 @@ export async function downloadResearchPackage(id: number): Promise<void> {
     const list = await getCachedResearches();
     const updatedList = list.map(r => r.id === id ? { ...r, isDownloaded: true } : r);
     await AsyncStorage.setItem(RESEARCHES_CACHE_KEY, JSON.stringify(updatedList));
+}
+
+/**
+ * Devolve a cópia ao servidor: registra a data, o contador de cópias cai e, quando a última volta, o
+ * questionário destrava. Só depois da confirmação do servidor o pacote sai do aparelho.
+ * Quem chama confere antes que não há coleta pendente (ver researchReturn.ts).
+ */
+export async function returnResearchCopy(id: number): Promise<void> {
+    const response = await apiFetch(`/research/${id}/return`, {
+        method: 'POST',
+        headers: { 'X-Device-ID': await getDeviceId() },
+    });
+
+    if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message || 'Não foi possível devolver a pesquisa. Tente de novo com internet.');
+    }
+
+    await removeLocalPackage(id);
+    const list = await getCachedResearches();
+    await AsyncStorage.setItem(
+        RESEARCHES_CACHE_KEY,
+        JSON.stringify(list.map(r => (r.id === id ? { ...r, isDownloaded: false } : r))),
+    );
 }
 
 // Pacote baixado no aparelho (seções, questões, opções e regras de exibição).

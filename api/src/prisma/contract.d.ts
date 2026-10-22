@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'48ac31f9d635b05aaacc2d5e45fdeed27c86daebdb2f67978323899d1e73337c'>;
+  StorageHashBase<'8f048c3f63de36ae3c67396cfb9a93b8ada505b38c9d234374e50d8c429eecc1'>;
 export type ExecutionHash =
   ExecutionHashBase<'89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09'>;
 export type ProfileHash =
@@ -342,6 +342,12 @@ export type FieldOutputTypes = {
       readonly userId: CodecTypes['pg/int4@1']['output'] | null;
       readonly active: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly returnedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly revokedById: CodecTypes['pg/int4@1']['output'] | null;
+      readonly revokeReason: CodecTypes['pg/text@1']['output'] | null;
+      readonly unblockedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly unblockedById: CodecTypes['pg/int4@1']['output'] | null;
     };
     readonly ResearchResearcher: {
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -485,6 +491,12 @@ export type FieldInputTypes = {
       readonly userId: CodecTypes['pg/int4@1']['input'] | null;
       readonly active: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly returnedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly revokedById: CodecTypes['pg/int4@1']['input'] | null;
+      readonly revokeReason: CodecTypes['pg/text@1']['input'] | null;
+      readonly unblockedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly unblockedById: CodecTypes['pg/int4@1']['input'] | null;
     };
     readonly ResearchResearcher: {
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -627,6 +639,12 @@ export type StorageColumnTypes = {
       readonly deviceId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly researchId: CodecTypes['pg/int4@1']['output'];
+      readonly returnedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly revokedById: CodecTypes['pg/int4@1']['output'] | null;
+      readonly revokeReason: CodecTypes['pg/text@1']['output'] | null;
+      readonly unblockedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly unblockedById: CodecTypes['pg/int4@1']['output'] | null;
       readonly userId: CodecTypes['pg/int4@1']['output'] | null;
     };
     readonly researchResearcher: {
@@ -770,6 +788,12 @@ export type StorageColumnInputTypes = {
       readonly deviceId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly researchId: CodecTypes['pg/int4@1']['input'];
+      readonly returnedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly revokedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly revokedById: CodecTypes['pg/int4@1']['input'] | null;
+      readonly revokeReason: CodecTypes['pg/text@1']['input'] | null;
+      readonly unblockedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly unblockedById: CodecTypes['pg/int4@1']['input'] | null;
       readonly userId: CodecTypes['pg/int4@1']['input'] | null;
     };
     readonly researchResearcher: {
@@ -1531,6 +1555,36 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly returnedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly revokedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly revokedById: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly revokeReason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly unblockedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly unblockedById: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
@@ -2652,6 +2706,39 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
+              readonly returnedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly revokedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly revokedById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly revokeReason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly unblockedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly unblockedById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
             };
             readonly relations: {
               readonly research: {
@@ -2676,6 +2763,12 @@ type ContractBase = Omit<
                 readonly userId: { readonly column: 'userId' };
                 readonly active: { readonly column: 'active' };
                 readonly createdAt: { readonly column: 'createdAt' };
+                readonly returnedAt: { readonly column: 'returnedAt' };
+                readonly revokedAt: { readonly column: 'revokedAt' };
+                readonly revokedById: { readonly column: 'revokedById' };
+                readonly revokeReason: { readonly column: 'revokeReason' };
+                readonly unblockedAt: { readonly column: 'unblockedAt' };
+                readonly unblockedById: { readonly column: 'unblockedById' };
               };
             };
           };

@@ -11,8 +11,14 @@ export interface Research {
     endDate: string;
     targetAudience: string;
     recordInterview: boolean;
-    /** true quando publicada ou já baixada por um pesquisador: não pode mais ser editada. */
+    /** true enquanto há cópia ativa (pesquisa baixada em algum aparelho) ou a pesquisa está encerrada: a estrutura do questionário não muda. */
     locked?: boolean;
+    /** Por que está travada: ACTIVE_COPIES (há aparelho com a pesquisa) ou CLOSED (encerrada). null = editável. */
+    lockReason?: "ACTIVE_COPIES" | "CLOSED" | null;
+    /** Texto pronto, vindo do servidor, explicando a trava. */
+    lockMessage?: string | null;
+    /** Quantos aparelhos estão com a pesquisa baixada agora. */
+    activeCopies?: number;
     companyId: number;
     createdAt?: string;
     updatedAt?: string;
@@ -181,4 +187,66 @@ export const updateResearcherTarget = async (researchId: number, userId: number,
 export const unlinkResearcher = async (researchId: number, userId: number): Promise<void> => {
     const response = await apiFetch(`/research/${researchId}/researchers/${userId}`, { method: 'DELETE', credentials: 'include' });
     if (!response.ok) throw await readError(response, 'Falha ao desvincular pesquisador');
+};
+
+// ---------- cópias em campo (W11) ----------
+
+export type ResearchCopyStatus = "ACTIVE" | "RETURNED" | "REVOKED";
+
+export interface ResearchCopy {
+    id: number;
+    researchId: number;
+    status: ResearchCopyStatus;
+    userId: number | null;
+    researcherName: string | null;
+    researcherUsername: string | null;
+    deviceId: string;
+    /** Data do download (ou do último "atualizar" feito nesse aparelho). */
+    downloadedAt: string;
+    returnedAt: string | null;
+    revokedAt: string | null;
+    revokedByName: string | null;
+    revokeReason: string | null;
+    /** Quando o administrador desbloqueou o aparelho (a revogação continua no histórico). */
+    unblockedAt: string | null;
+    unblockedByName: string | null;
+    /** O aparelho desta cópia está bloqueado agora: dá para desbloquear. */
+    deviceBlocked: boolean;
+}
+
+export interface ResearchCopies {
+    researchId: number;
+    locked: boolean;
+    lockReason: "ACTIVE_COPIES" | "CLOSED" | null;
+    lockMessage: string | null;
+    activeCopies: number;
+    /** Ativas primeiro; depois devolvidas e revogadas (histórico). */
+    copies: ResearchCopy[];
+}
+
+/** Quem está com a pesquisa baixada, o motivo da trava e o histórico de devoluções e revogações. */
+export const getResearchCopies = async (researchId: number): Promise<ResearchCopies> => {
+    const response = await apiFetch(`/research/${researchId}/copies`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw await readError(response, 'Falha ao carregar as cópias em campo');
+    return response.json();
+};
+
+/** Revogação forçada (aparelho perdido, quebrado, pesquisador que saiu): libera o contador e invalida o acesso do aparelho. */
+export const revokeResearchCopy = async (researchId: number, copyId: number, reason?: string): Promise<void> => {
+    const response = await apiFetch(`/research/${researchId}/copies/${copyId}/revoke`, {
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify(reason?.trim() ? { reason: reason.trim() } : {}),
+    });
+    if (!response.ok) throw await readError(response, 'Falha ao revogar a cópia');
+};
+
+/** Desbloquear aparelho: desfaz a revogação para o aparelho voltar a baixar a pesquisa. O histórico fica. */
+export const unblockResearchDevice = async (researchId: number, copyId: number): Promise<void> => {
+    const response = await apiFetch(`/research/${researchId}/copies/${copyId}/unblock`, {
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify({}),
+    });
+    if (!response.ok) throw await readError(response, 'Falha ao desbloquear o aparelho');
 };

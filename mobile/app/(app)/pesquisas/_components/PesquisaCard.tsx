@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Download, PlayCircle, RefreshCw, WifiOff } from 'lucide-react-native';
+import { Download, PlayCircle, RefreshCw, Undo2, WifiOff } from 'lucide-react-native';
 import Chip from '@/components/Chip';
 import { Brand } from '@/constants/brand';
 
@@ -14,7 +14,9 @@ interface PesquisaCardProps {
     isDownloading: boolean;
     coletasCount?: number;
     draftCount?: number;
+    revoked?: boolean;
     onDownload: () => void;
+    onReturn?: () => void;
     onStart?: () => void;
     onResume?: () => void;
 }
@@ -34,12 +36,14 @@ export default function PesquisaCard({
     isDownloading,
     coletasCount = 0,
     draftCount = 0,
+    revoked = false,
     onDownload,
+    onReturn,
     onStart,
     onResume,
 }: PesquisaCardProps) {
     const period = `${formatDate(startDate)} a ${formatDate(endDate)}`;
-    const canDownload = isOnline && !isDownloading;
+    const canDownload = isOnline && !isDownloading && !revoked;
 
     return (
         <View style={styles.card}>
@@ -49,7 +53,10 @@ export default function PesquisaCard({
                     <Text style={styles.info}>Vigente de {period}</Text>
                     {targetAudience ? <Text style={styles.info}>Público: {targetAudience}</Text> : null}
                 </View>
-                <Chip label={isDownloaded ? 'No aparelho' : 'Não baixada'} tone={isDownloaded ? 'light' : 'gray'} />
+                <Chip
+                    label={revoked ? 'Acesso revogado' : isDownloaded ? 'No aparelho' : 'Não baixada'}
+                    tone={revoked ? 'clay' : isDownloaded ? 'light' : 'gray'}
+                />
             </View>
 
             {isDownloaded ? (
@@ -101,6 +108,18 @@ export default function PesquisaCard({
                             </Pressable>
                         ) : null}
                     </View>
+
+                    {onReturn ? (
+                        <Pressable
+                            onPress={onReturn}
+                            style={({ pressed }) => [styles.returnLink, pressed && styles.pressed]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Devolver a pesquisa ${titulo}`}
+                        >
+                            <Undo2 size={15} color={Brand.muted} strokeWidth={1.8} />
+                            <Text style={styles.returnLinkText}>Devolver pesquisa</Text>
+                        </Pressable>
+                    ) : null}
                 </>
             ) : (
                 <Pressable
@@ -126,7 +145,7 @@ export default function PesquisaCard({
                                 <Download size={18} color={Brand.forest} strokeWidth={1.8} />
                             )}
                             <Text style={[styles.buttonMintText, !isOnline && styles.buttonDisabledText]}>
-                                {!isOnline ? 'Precisa de internet para baixar' : 'Baixar pesquisa'}
+                                {revoked ? 'Acesso revogado neste aparelho' : !isOnline ? 'Precisa de internet para baixar' : 'Baixar pesquisa'}
                             </Text>
                         </>
                     )}
@@ -182,6 +201,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    returnLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6, borderRadius: 999 },
+    returnLinkText: { fontSize: 13.5, color: Brand.muted },
     pressed: { backgroundColor: '#e9ede9' },
     pressedDark: { backgroundColor: '#26332c' },
 });

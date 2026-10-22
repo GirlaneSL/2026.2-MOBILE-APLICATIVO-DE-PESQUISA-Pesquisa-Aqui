@@ -182,14 +182,27 @@ model SyncLog {
   details       String
 }
 
+// Cópia ativa da pesquisa: uma linha por download (pesquisador + aparelho). Enquanto existir
+// alguma com `active = true`, a estrutura do questionário fica travada (W11).
+// Devolvida ou revogada, a linha NÃO é apagada: fica como histórico (quem, onde, quando, por quê).
 model ResearchDownload {
-  id         Int      @id @default(autoincrement())
-  researchId Int
-  research   Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
-  deviceId   String
-  userId     Int?
-  active     Boolean  @default(true)
-  createdAt  TimestamptzString @default(now())
+  id           Int      @id @default(autoincrement())
+  researchId   Int
+  research     Research @relation(fields: [researchId], references: [id], onDelete: Cascade)
+  deviceId     String
+  userId       Int?
+  active       Boolean  @default(true)
+  // Data do download (e do último "atualizar" feito no mesmo aparelho).
+  createdAt    TimestamptzString @default(now())
+  // Devolução feita pelo próprio aparelho.
+  returnedAt   TimestamptzString?
+  // Revogação forçada feita pelo administrador (aparelho perdido, quebrado, pesquisador que saiu).
+  revokedAt    TimestamptzString?
+  revokedById  Int?
+  revokeReason String?
+  // Desbloqueio do aparelho pelo administrador: a revogação continua no histórico, mas o aparelho volta a poder baixar.
+  unblockedAt  TimestamptzString?
+  unblockedById Int?
 }
 
 model ResearchResearcher {

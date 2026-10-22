@@ -4,6 +4,19 @@ import { AudioStorage } from '../collection/audio-storage.js';
 import { CreateResearchDto, ResearchStatus } from './dto/create-research.dto.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { UpdateResearchDto } from './dto/update-research.dto.js';
+import {
+    assertStructureEditable,
+    copyRevokedException,
+    copyStatus,
+    copyStatusOf,
+    getLockState,
+    isDeviceRevoked,
+    registerCopy,
+    returnCopy,
+    revokeCopy,
+    unblockDevice,
+    type CopyRow,
+} from './research-copies.js';
 
 const ALLOWED_TRANSITIONS: Record<ResearchStatus, ResearchStatus[]> = {
     [ResearchStatus.DRAFT]: [ResearchStatus.PUBLISHED],
@@ -23,9 +36,6 @@ function assertValidTransition(current: ResearchStatus, next: ResearchStatus) {
         );
     }
 }
-
-export const RESEARCH_LOCKED_MESSAGE =
-    'Esta pesquisa já foi publicada ou baixada por um pesquisador e não pode mais ser editada.';
 
 @Injectable()
 export class ResearchService {
@@ -78,7 +88,7 @@ export class ResearchService {
         return !!link;
     }
 
-    async findAll(currentUser: UserPayLoad) {
+    async findAll(currentUser: UserPayLoad, deviceId?: string) {
         if (currentUser.profile === 'SUPERADMINISTRATOR') return this.prisma.client.orm.public.Research.all()
 
         if (!currentUser.companyId) throw new ForbiddenException('User is not associated with a company');
@@ -92,9 +102,16 @@ export class ResearchService {
             const links = await orm.ResearchResearcher.where({ userId: user.id }).all();
             const researches = await Promise.all(links.map((link) => orm.Research.where({ id: link.researchId }).first()));
 
-            return researches.filter(
+            const visible = researches.filter(
                 (r): r is NonNullable<typeof r> =>
                     !!r && r.status !== ResearchStatus.DRAFT && r.companyId === currentUser.companyId,
+            );
+
+            // Com o aparelho identificado, cada pesquisa diz se a cópia dele ainda vale (ACTIVE) ou foi
+            // devolvida/revogada: é assim que o app descobre que o administrador revogou o acesso.
+            if (!deviceId) return visible;
+            return Promise.all(
+                visible.map(async (r) => ({ ...r, copyStatus: await copyStatusOf(orm, r.id, user.id, deviceId) })),
             );
         }
 
@@ -120,28 +137,35 @@ export class ResearchService {
         return research;
     }
 
-    /** Detalhe para a tela: a pesquisa + `locked` (para esconder os controles de edição). */
+    /** Detalhe para a tela: a pesquisa + estado da trava (`locked`, motivo e quantas cópias ativas). */
     async findOneWithLock(id: number, currentUser: UserPayLoad) {
         const research = await this.findOne(id, currentUser);
-        return { ...research, locked: await this.isLocked(research) };
+        const lock = await getLockState(this.prisma.client.orm.public, research);
+        return {
+            ...research,
+            locked: lock.locked,
+            lockReason: lock.reason,
+            lockMessage: lock.message,
+            activeCopies: lock.activeCopies,
+        };
     }
 
     /**
-     * Pesquisa travada: depois de publicada pelo administrador (status != DRAFT) ou de
-     * baixada por um pesquisador (existe cópia em ResearchDownload), o conteúdo não pode
-     * mais ser editado: dados, seções, questões, opções e regras.
-     * Só o ciclo de vida (status) e o vínculo de pesquisadores continuam permitidos.
+     * Estrutura travada = há ao menos uma cópia ativa (ou a pesquisa está encerrada).
+     * É calculado na hora a partir das cópias: devolvida a última, destrava sozinho.
      */
     async isLocked(research: { id: number; status: string }): Promise<boolean> {
-        if (research.status !== ResearchStatus.DRAFT) return true;
-        const download = await this.prisma.client.orm.public.ResearchDownload.where({ researchId: research.id }).first();
-        return !!download;
+        return (await getLockState(this.prisma.client.orm.public, research)).locked;
     }
 
-    /** Lança 403 se a pesquisa estiver travada. Retorna a pesquisa para quem quiser reaproveitar. */
+    /**
+     * Porta única de toda escrita na ESTRUTURA do questionário (seção, questão, opção, validação, ordem,
+     * regra de pulo, gravação). Lança 403 se travada; devolve a pesquisa para quem quiser reaproveitar.
+     * O que NÃO passa por aqui continua liberado: vincular pesquisador, meta, prazo, status, relatórios.
+     */
     async assertEditable(researchId: number, currentUser: UserPayLoad) {
         const research = await this.findOne(researchId, currentUser);
-        if (await this.isLocked(research)) throw new ForbiddenException(RESEARCH_LOCKED_MESSAGE);
+        await assertStructureEditable(this.prisma.client.orm.public, research);
         return research;
     }
 
@@ -150,24 +174,14 @@ export class ResearchService {
 
         if (research.status === ResearchStatus.CLOSED) throw new BadRequestException('Closed research cannot be modified');
 
-        // Travada (publicada/baixada): só é aceita a mudança de status (PUBLISHED -> IN_FIELD -> CLOSED).
-        const contentFields = Object.keys(updateResearchDto).filter(
-            (key) => key !== 'status' && (updateResearchDto as Record<string, unknown>)[key] !== undefined,
-        );
-        if (contentFields.length > 0 && (await this.isLocked(research))) {
-            throw new ForbiddenException(RESEARCH_LOCKED_MESSAGE);
-        }
-
-        // Gravar a entrevista é decisão de estrutura (muda o que o aplicativo exige e coleta):
-        // depois de publicada, e enquanto estiver em campo, não pode ser ligada nem desligada.
+        // Só a configuração de gravação é estrutura do questionário (muda o que o aplicativo exige e coleta):
+        // com cópia ativa ela não pode ser ligada nem desligada. Título, descrição, público, datas (prorrogar
+        // o prazo) e status não mexem na estrutura e continuam liberados com a trava ligada.
         if (
             updateResearchDto.recordInterview !== undefined &&
-            updateResearchDto.recordInterview !== research.recordInterview &&
-            research.status !== ResearchStatus.DRAFT
+            updateResearchDto.recordInterview !== research.recordInterview
         ) {
-            throw new BadRequestException(
-                'A gravação da entrevista não pode ser ligada ou desligada depois que a pesquisa foi publicada ou está em campo.'
-            );
+            await assertStructureEditable(this.prisma.client.orm.public, research);
         }
 
         if (updateResearchDto.startDate && updateResearchDto.endDate) {
@@ -315,6 +329,178 @@ export class ResearchService {
         return deleted;
     }
 
+    // ---------- cópias em campo (W11) ----------
+
+    private async copyView(copy: CopyRow, names: Map<number, { name: string; username: string }>, deviceBlocked = false) {
+        const owner = copy.userId != null ? names.get(copy.userId) : undefined;
+        const revoker = copy.revokedById != null ? names.get(copy.revokedById) : undefined;
+        const unblocker = copy.unblockedById != null ? names.get(copy.unblockedById) : undefined;
+        return {
+            id: copy.id,
+            researchId: copy.researchId,
+            status: copyStatus(copy),
+            userId: copy.userId,
+            researcherName: owner?.name ?? null,
+            researcherUsername: owner?.username ?? null,
+            deviceId: copy.deviceId,
+            downloadedAt: copy.createdAt,
+            returnedAt: copy.returnedAt ?? null,
+            revokedAt: copy.revokedAt ?? null,
+            revokedById: copy.revokedById ?? null,
+            revokedByName: revoker?.name ?? null,
+            revokeReason: copy.revokeReason ?? null,
+            unblockedAt: copy.unblockedAt ?? null,
+            unblockedByName: unblocker?.name ?? null,
+            // O aparelho desta cópia está bloqueado agora (revogado e ainda não desbloqueado): dá para desbloquear.
+            deviceBlocked,
+        };
+    }
+
+    /**
+     * Quem está com a pesquisa: contador de cópias ativas, o motivo da trava e o histórico completo
+     * (ativas primeiro; devolvidas e revogadas ficam registradas com data).
+     */
+    async listCopies(researchId: number, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot list copies');
+
+        const research = await this.findOne(researchId, currentUser);
+        const orm = this.prisma.client.orm.public;
+        const rows = (await orm.ResearchDownload.where({ researchId }).all()) as CopyRow[];
+
+        const names = new Map<number, { name: string; username: string }>();
+        const ids = new Set<number>();
+        for (const row of rows) {
+            if (row.userId != null) ids.add(row.userId);
+            if (row.revokedById != null) ids.add(row.revokedById);
+            if (row.unblockedById != null) ids.add(row.unblockedById);
+        }
+        for (const id of ids) {
+            const u = await orm.User.where({ id }).first();
+            if (u) names.set(id, { name: u.name, username: u.username });
+        }
+
+        const blockedDevices = new Set<string>();
+        for (const row of rows) {
+            if (row.revokedAt && !row.unblockedAt && !row.active) blockedDevices.add(row.deviceId);
+        }
+        const copies = await Promise.all(rows.map((row) => this.copyView(row, names, blockedDevices.has(row.deviceId))));
+        const rank = { ACTIVE: 0, REVOKED: 1, RETURNED: 1 } as const;
+        copies.sort(
+            (a, b) =>
+                rank[a.status] - rank[b.status] ||
+                String(b.revokedAt ?? b.returnedAt ?? b.downloadedAt).localeCompare(String(a.revokedAt ?? a.returnedAt ?? a.downloadedAt)),
+        );
+
+        const lock = await getLockState(orm, research);
+        return {
+            researchId,
+            locked: lock.locked,
+            lockReason: lock.reason,
+            lockMessage: lock.message,
+            activeCopies: lock.activeCopies,
+            copies,
+        };
+    }
+
+    /**
+     * Devolução: o aparelho informa que não tem mais a pesquisa. Registra a data e o contador cai;
+     * na última, a pesquisa volta a ser editável sozinha. Idempotente (devolver de novo não falha).
+     */
+    async returnOwnCopy(researchId: number, deviceId: string, currentUser: UserPayLoad) {
+        if (currentUser.profile !== 'RESEARCHER') throw new ForbiddenException('Only researchers return copies');
+
+        const orm = this.prisma.client.orm.public;
+        const research = await orm.Research.where({ id: researchId }).first();
+        if (!research || research.companyId !== currentUser.companyId) throw new NotFoundException('Pesquisa não encontrada.');
+
+        const user = await this.currentUserRecord(currentUser);
+        if (!user) throw new ForbiddenException('Usuário não encontrado.');
+
+        const { returned, copy } = await returnCopy(orm, { researchId, userId: user.id, deviceId });
+        const lock = await getLockState(orm, research);
+
+        return {
+            returned,
+            returnedAt: copy?.returnedAt ?? null,
+            // `revoked`: o administrador já tinha revogado este aparelho; o app deve apagar a pesquisa local.
+            revoked: !returned && (await isDeviceRevoked(orm, researchId, deviceId)),
+            activeCopies: lock.activeCopies,
+            locked: lock.locked,
+        };
+    }
+
+    /**
+     * Revogação forçada (aparelho perdido, quebrado, pesquisador que saiu): a cópia deixa de contar,
+     * o contador é liberado e o aparelho perde o acesso à pesquisa (não baixa, não envia coletas
+     * novas nem arquivos). Registra quem revogou, quando e por quê.
+     */
+    async revokeActiveCopy(researchId: number, copyId: number, reason: string | undefined, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot revoke copies');
+
+        const research = await this.findOne(researchId, currentUser);
+        const orm = this.prisma.client.orm.public;
+
+        const copy = (await orm.ResearchDownload.where({ id: copyId, researchId }).first()) as CopyRow | null;
+        if (!copy) throw new NotFoundException('Cópia não encontrada nesta pesquisa.');
+
+        if (!copy.active) {
+            if (copy.revokedAt) return this.revocationResult(copy, research, orm); // já revogada: nada a refazer
+            throw new BadRequestException('Esta cópia já foi devolvida pelo aparelho: não há o que revogar.');
+        }
+
+        const admin = await this.currentUserRecord(currentUser);
+        if (!admin) throw new ForbiddenException('Usuário não encontrado.');
+
+        const revoked = await revokeCopy(orm, copy, { revokedById: admin.id, reason });
+        this.logger.warn(
+            `Cópia ${copy.id} da pesquisa ${researchId} (aparelho ${copy.deviceId}) revogada por ${admin.username}` +
+                (reason ? `: ${reason}` : ''),
+        );
+        return this.revocationResult(revoked, research, orm);
+    }
+
+    /**
+     * Desbloquear aparelho: desfaz a revogação. O histórico da revogação fica (com quem desbloqueou e quando)
+     * e o aparelho volta a poder baixar a pesquisa, o que cria uma cópia nova e trava o questionário de novo.
+     * Idempotente: desbloquear um aparelho que não está bloqueado não faz nada.
+     */
+    async unblockCopyDevice(researchId: number, copyId: number, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot unblock devices');
+
+        const research = await this.findOne(researchId, currentUser);
+        const orm = this.prisma.client.orm.public;
+
+        const copy = (await orm.ResearchDownload.where({ id: copyId, researchId }).first()) as CopyRow | null;
+        if (!copy) throw new NotFoundException('Cópia não encontrada nesta pesquisa.');
+        if (!copy.revokedAt) throw new BadRequestException('Só aparelhos com a cópia revogada podem ser desbloqueados.');
+
+        const admin = await this.currentUserRecord(currentUser);
+        if (!admin) throw new ForbiddenException('Usuário não encontrado.');
+
+        const changed = await unblockDevice(orm, researchId, copy.deviceId, { unblockedById: admin.id });
+        if (changed > 0) {
+            this.logger.warn(`Aparelho ${copy.deviceId} desbloqueado na pesquisa ${researchId} por ${admin.username}`);
+        }
+
+        const fresh = (await orm.ResearchDownload.where({ id: copyId }).first()) as CopyRow;
+        return this.revocationResult(fresh, research, orm);
+    }
+
+    private async revocationResult(copy: CopyRow, research: { id: number; status: string }, orm: any) {
+        const names = new Map<number, { name: string; username: string }>();
+        for (const id of [copy.userId, copy.revokedById, copy.unblockedById]) {
+            if (id == null) continue;
+            const u = await orm.User.where({ id }).first();
+            if (u) names.set(id, { name: u.name, username: u.username });
+        }
+        const lock = await getLockState(orm, research);
+        return {
+            copy: await this.copyView(copy, names, await isDeviceRevoked(orm, copy.researchId, copy.deviceId)),
+            activeCopies: lock.activeCopies,
+            locked: lock.locked,
+        };
+    }
+
     // Pacote completo da pesquisa para o app móvel (uma única resposta)
     async downloadPackage(researchId: number, deviceId: string, currentUser: UserPayLoad) {
         const orm = this.prisma.client.orm.public;
@@ -336,6 +522,9 @@ export class ResearchService {
 
         const link = await orm.ResearchResearcher.where({ researchId, userId: user.id }).first();
         if (!link) throw new ForbiddenException('Você não está vinculado a esta pesquisa.');
+
+        // Aparelho com a cópia revogada pelo administrador não baixa de novo (o acesso dele foi invalidado).
+        if (await isDeviceRevoked(orm, research.id, deviceId)) throw copyRevokedException();
 
         if (research.status === ResearchStatus.CLOSED) {
             throw new ForbiddenException('Pesquisa encerrada: não está disponível para download.');
@@ -397,18 +586,10 @@ export class ResearchService {
             targetQuestionId: rule.targetQuestionId,
         }));
 
-        // Registra a cópia ativa: a cópia anterior deste pesquisador para esta pesquisa deixa de ser ativa
-        // (regra completa em W11).
-        const previous = await orm.ResearchDownload.where({ researchId: research.id, userId: user.id, active: true }).all();
-        for (const old of previous) {
-            await orm.ResearchDownload.where({ id: old.id }).update({ active: false });
-        }
-        const copy = await orm.ResearchDownload.create({
-            researchId: research.id,
-            deviceId,
-            userId: user.id,
-            active: true,
-        });
+        // Registra a cópia ativa (pesquisador + aparelho + data). O mesmo aparelho baixando de novo renova a
+        // própria cópia; o mesmo pesquisador em outro aparelho cria outra cópia (conta duas). Com a primeira
+        // cópia a estrutura do questionário trava (W11).
+        const copy = await registerCopy(orm, { researchId: research.id, userId: user.id, deviceId });
 
         // Primeiro download de uma pesquisa publicada: ela passa a estar "em campo".
         // Downloads seguintes (já em campo) não alteram o status.

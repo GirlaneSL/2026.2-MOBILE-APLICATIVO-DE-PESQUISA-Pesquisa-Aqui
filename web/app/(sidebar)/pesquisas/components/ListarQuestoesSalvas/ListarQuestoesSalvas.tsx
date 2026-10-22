@@ -36,7 +36,7 @@ import { QuestionActions, OptionActions, hasOptions } from "./QuestionCard";
 import type { RulesContext } from "./RegrasExibicao";
 import { ReadOnlyProvider } from "./ReadOnlyContext";
 
-export default function ListarQuestoesSalvas({ researchId, readOnly = false }: { researchId: string | number; readOnly?: boolean }) {
+export default function ListarQuestoesSalvas({ researchId, readOnly = false, readOnlyMessage }: { researchId: string | number; readOnly?: boolean; readOnlyMessage?: string }) {
     const [sections, setSections] = useState<FormSection[]>([]);
     const [rules, setRules] = useState<DisplayRule[]>([]);
     // Questões abertas para edição (as demais aparecem só como linha-resumo).
@@ -544,7 +544,7 @@ export default function ListarQuestoesSalvas({ researchId, readOnly = false }: {
             {readOnly ? (
                 <p className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground">
                     <Lock className="size-3.5 shrink-0" />
-                    Esta pesquisa já foi publicada ou baixada por um pesquisador. O questionário não pode mais ser editado.
+                    {readOnlyMessage ?? 'O questionário está travado e não pode ser editado.'}
                 </p>
             ) : (
                 <p className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground">

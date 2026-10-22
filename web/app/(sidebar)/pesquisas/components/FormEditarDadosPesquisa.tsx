@@ -25,8 +25,9 @@ export default function FormEditarDadosPesquisa({ research, onSuccess }: FormEdi
     );
     const [targetAudience, setTargetAudience] = useState(research.targetAudience || '');
     const [recordInterview, setRecordInterview] = useState<boolean>(!!research.recordInterview);
-    // Gravar a entrevista é decisão de estrutura: só se muda enquanto a pesquisa é rascunho.
-    const canChangeRecording = research.status === 'DRAFT';
+    // Gravar a entrevista é estrutura do questionário: trava enquanto houver aparelho com a pesquisa baixada
+    // (research.locked vem da API; o servidor recusa a mudança de qualquer jeito). Rascunho nunca trava.
+    const canChangeRecording = research.status === 'DRAFT' || research.locked !== true;
     const [isLoading, setIsLoading] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -182,7 +183,7 @@ export default function FormEditarDadosPesquisa({ research, onSuccess }: FormEdi
                     <p className="text-xs text-muted-foreground">
                         {canChangeRecording
                             ? 'O aplicativo grava o áudio da coleta inteira e exige o consentimento do entrevistado antes de começar.'
-                            : 'Não pode ser alterada: a pesquisa já foi publicada e o aplicativo pode estar com ela em campo.'}
+                            : 'Não pode ser alterada agora: há aparelhos com a pesquisa baixada. Fica liberada quando todas as cópias forem devolvidas ou revogadas.'}
                     </p>
                 </div>
                 <Switch

@@ -1,6 +1,7 @@
 import { API_BASE_URL, apiFetch } from './api';
 import { saveToken, getToken, clearToken } from './secureStorage';
 import { clearResearchesCache } from './researchCache';
+import { returnAllCopies } from './researchReturn';
 
 export interface CurrentUser {
     sub: string;
@@ -52,6 +53,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 }
 
 export async function logout(): Promise<void> {
+    // Antes de apagar o token (a API precisa dele): devolve as cópias, para o contador de cópias do servidor cair.
+    await returnAllCopies().catch(() => undefined);
     await clearToken();
     await clearResearchesCache();
 }

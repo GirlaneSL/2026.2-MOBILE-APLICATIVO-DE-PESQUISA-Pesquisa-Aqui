@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma.service.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { assertValidConsent, CONSENT_REQUIRED } from './consent.js';
 import { SyncCollectionItemDto, type SyncCollectionsDto } from './dto/sync-collections.dto.js';
+import { COPY_REVOKED_CODE, isDeviceRevoked } from '../research/research-copies.js';
 
 // Códigos de recusa que o aplicativo recebe, por coleta. `retryable` diz se vale tentar de novo:
 // recusa definitiva sai da fila do aparelho; falha temporária continua nela.
@@ -14,6 +15,7 @@ export const SYNC_REJECTION = {
     RESEARCH_NOT_FOUND: 'RESEARCH_NOT_FOUND',
     NOT_LINKED: 'NOT_LINKED',
     RESEARCH_CLOSED: 'RESEARCH_CLOSED',
+    COPY_REVOKED: COPY_REVOKED_CODE,
     CONSENT_REQUIRED,
     QUESTION_NOT_FOUND: 'QUESTION_NOT_FOUND',
     INTERNAL_ERROR: 'INTERNAL_ERROR',
@@ -145,6 +147,19 @@ export class CollectionSyncService {
                 clientId,
                 SYNC_REJECTION.RESEARCH_CLOSED,
                 `A pesquisa "${research.title}" está encerrada e não recebe mais coletas.`,
+                false,
+            );
+        }
+
+        // 3b. Aparelho com a cópia revogada pelo administrador: não entra coleta nova feita nele
+        //     (a versão do formulário que ele guarda pode ter ficado para trás ou o aparelho estar extraviado).
+        //     Coleta já recebida segue reconhecida no passo 2.
+        if (await isDeviceRevoked(orm, research.id, deviceId)) {
+            return rejected(
+                index,
+                clientId,
+                SYNC_REJECTION.COPY_REVOKED,
+                'O administrador revogou o acesso deste aparelho a esta pesquisa. A coleta não foi aceita.',
                 false,
             );
         }

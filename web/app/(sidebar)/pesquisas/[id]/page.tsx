@@ -7,15 +7,16 @@ import { LoadingState } from "@/components/ui/loadingState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getResearchById, publishResearch, type Research } from "@/lib/research";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, CalendarRange, Check, ClipboardList, FileText, Flag, ListChecks, Lock, Mic, MicOff, Quote, ShieldAlert, Target, UsersRound } from "lucide-react";
+import { ArrowLeft, CalendarRange, Check, ClipboardList, FileText, Flag, ListChecks, Lock, Mic, MicOff, Quote, ShieldAlert, Smartphone, Target, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import ModalEditarPesquisa from "../components/ModalEditarPesquisa";
 import PesquisadoresVinculados from "../components/PesquisadoresVinculados";
 import ListarQuestoesSalvas from "../components/ListarQuestoesSalvas/ListarQuestoesSalvas";
 import ColetasPesquisa from "../components/ColetasPesquisa";
+import CopiasEmCampo from "../components/CopiasEmCampo";
 
 const STEPS: { key: Research["status"]; label: string }[] = [
     { key: "DRAFT", label: "Rascunho" },
@@ -80,6 +81,18 @@ export default function PesquisaDetalhePage() {
     const [state, setState] = useState<PageState>({ status: 'loading' });
     const { user } = useCurrentUser();
     const [now] = useState(() => Date.now());
+    const [tab, setTab] = useState(initialTab);
+
+    // Recarrega só o estado da pesquisa (trava, contador de cópias) sem piscar a tela de carregamento:
+    // chamado depois de revogar uma cópia ou de editar os dados.
+    const refreshResearch = useCallback(async () => {
+        try {
+            const research = await getResearchById(params.id);
+            setState({ status: 'success', research });
+        } catch {
+            // mantém o que já está na tela; o próximo carregamento mostra o erro, se houver
+        }
+    }, [params.id]);
 
     useEffect(() => {
         setState({ status: 'loading' });
@@ -127,7 +140,7 @@ export default function PesquisaDetalhePage() {
     const handlePublish = async () => {
         try {
             const updated = await publishResearch(research.id);
-            setState({ status: 'success', research: { ...research, status: updated.status, locked: true } });
+            setState({ status: 'success', research: { ...research, status: updated.status, locked: false, lockReason: null, lockMessage: null, activeCopies: 0 } });
             toast.success('Pesquisa publicada! Ela já está visível para o aplicativo.');
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Erro ao publicar pesquisa');
@@ -138,8 +151,12 @@ export default function PesquisaDetalhePage() {
 
     const stepIndex = Math.max(0, STEPS.findIndex((st) => st.key === research.status));
     const closed = research.status === 'CLOSED';
-    // Publicada pelo administrador ou baixada por um pesquisador: só leitura (a API também bloqueia).
-    const locked = research.locked ?? research.status !== 'DRAFT';
+    // Estrutura travada enquanto houver aparelho com a pesquisa baixada (ou a pesquisa estiver encerrada).
+    // A decisão é do servidor: a API recusa a edição de qualquer jeito; aqui só escondemos os controles.
+    const locked = research.locked ?? false;
+    const activeCopies = research.activeCopies ?? 0;
+    const lockReason = research.lockReason ?? null;
+    const canSeeCopies = user?.profile === 'ADMINISTRATOR' || user?.profile === 'SUPERADMINISTRATOR';
     const vig = vigencia(research.startDate, research.endDate, now);
     const audience = (research.targetAudience || "")
         .split(/[;\n]|,(?![^(]*\))/)
@@ -222,22 +239,34 @@ export default function PesquisaDetalhePage() {
                 </div>
             </article>
 
-            <Tabs defaultValue={initialTab} className="w-full flex flex-col gap-5">
+            <Tabs value={tab} onValueChange={(value) => setTab(String(value))} className="w-full flex flex-col gap-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <TabsList className="relative h-12 max-w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border border-border bg-white p-1 shadow-[0_14px_26px_-22px_rgba(10,20,16,0.4)]">
                         <TabsTrigger value="details" className="h-10 px-4 data-active:bg-ink data-active:text-white"><FileText />Visão Geral</TabsTrigger>
                         <TabsTrigger value="questions" className="h-10 px-4 data-active:bg-ink data-active:text-white"><ListChecks />Questões</TabsTrigger>
                         <TabsTrigger value="researchers" className="h-10 px-4 data-active:bg-ink data-active:text-white"><UsersRound />Pesquisadores</TabsTrigger>
                         {canSeeCollections && <TabsTrigger value="collections" className="h-10 px-4 data-active:bg-ink data-active:text-white"><ClipboardList />Coletas</TabsTrigger>}
+                        {canSeeCopies && research.status !== 'DRAFT' && (
+                            <TabsTrigger value="copies" className="h-10 px-4 data-active:bg-ink data-active:text-white">
+                                <Smartphone />Em campo{activeCopies > 0 && <span className="ml-1 rounded-full bg-[#f3e0d9] px-1.5 text-[11px] font-semibold text-[#8a432f]">{activeCopies}</span>}
+                            </TabsTrigger>
+                        )}
                     </TabsList>
 
                     <div className="flex items-center gap-2">
-                        {locked ? (
-                            <Button variant="outline" size="sm" disabled title="Pesquisa publicada ou baixada: não pode mais ser editada"><Lock />Edição bloqueada</Button>
+                        {locked && lockReason === 'ACTIVE_COPIES' && (
+                            <Button variant="outline" size="sm" onClick={() => setTab('copies')} title={research.lockMessage ?? undefined}>
+                                <Lock />Questionário travado · {plural(activeCopies, 'cópia', 'cópias')}
+                            </Button>
+                        )}
+                        {closed ? (
+                            <Button variant="outline" size="sm" disabled title="Pesquisa encerrada: não pode mais ser editada"><Lock />Edição bloqueada</Button>
                         ) : (
+                            // Título, descrição, público e prazo (prorrogar) seguem editáveis com a trava ligada;
+                            // só a gravação da entrevista, que é estrutura, fica travada dentro do formulário.
                             <DialogLayout
                                 dialogTrigger="Editar" triggerButtonVariant="outline" triggerButtonSize="sm" dialogTitle="Editar dados da pesquisa" dialogDescription="Atualize os dados principais."
-                                dialogContent={<ModalEditarPesquisa isMontagem={false} research={research} onSuccess={() => toast.success('Pesquisa atualizada!')} />}
+                                dialogContent={<ModalEditarPesquisa isMontagem={false} research={research} onSuccess={() => { refreshResearch(); }} />}
                             />
                         )}
                         {research.status === 'DRAFT' && (
@@ -387,12 +416,31 @@ export default function PesquisaDetalhePage() {
                 </TabsContent>
 
                 <TabsContent value="questions" className="mt-0">
-                    <ListarQuestoesSalvas researchId={params.id} readOnly={locked} />
+                    {locked && (
+                        <div role="status" className="mb-4 flex flex-col gap-3 rounded-[22px] border border-[#ecd0c5] bg-[#f3e0d9]/60 p-4 sm:flex-row sm:items-center">
+                            <Lock className="size-5 shrink-0 text-[#8a432f]" />
+                            <p className="grow text-sm text-[#5d2d1f]">
+                                {research.lockMessage ?? 'O questionário não pode ser alterado.'}
+                            </p>
+                            {canSeeCopies && lockReason === 'ACTIVE_COPIES' && (
+                                <Button variant="outline" size="sm" onClick={() => setTab('copies')}>
+                                    <Smartphone />Ver quem está com a pesquisa
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                    <ListarQuestoesSalvas researchId={params.id} readOnly={locked} readOnlyMessage={research.lockMessage ?? undefined} />
                 </TabsContent>
 
                 <TabsContent value="researchers" className="mt-0">
                     <PesquisadoresVinculados researchId={research.id} companyId={research.companyId} />
                 </TabsContent>
+
+                {canSeeCopies && research.status !== 'DRAFT' && (
+                    <TabsContent value="copies" className="mt-0">
+                        <CopiasEmCampo researchId={research.id} onChanged={refreshResearch} />
+                    </TabsContent>
+                )}
 
                 {canSeeCollections && (
                     <TabsContent value="collections" className="mt-0">
