@@ -215,103 +215,106 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                 </div>
             </article>
 
-            {/* Quem está com a pesquisa */}
-            <article className="pa-card">
-                <header className="pa-card-h">
-                    <div className="pa-ic"><Smartphone /></div>
-                    <div className="grow">
-                        <h3>Quem está com a pesquisa</h3>
-                        <p className="desc">Cada aparelho que baixou conta uma cópia. O mesmo pesquisador em dois celulares conta duas.</p>
-                    </div>
-                </header>
-
-                {active.length === 0 ? (
-                    <p className="mt-5 rounded-2xl bg-muted/60 p-4 text-sm text-muted-foreground">
-                        Ninguém está com a pesquisa baixada agora.
-                    </p>
-                ) : (
-                    <ul className="mt-5 flex flex-col gap-3">
-                        {active.map((copy) => (
-                            <li key={copy.id} className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4 sm:flex-row sm:items-center">
-                                <div className="min-w-0 grow">
-                                    <p className="truncate text-[15px] font-semibold tracking-tight">
-                                        {copy.researcherName ?? 'Pesquisador removido'}
-                                        {copy.researcherUsername && (
-                                            <span className="ml-2 text-sm font-normal text-muted-foreground">@{copy.researcherUsername}</span>
-                                        )}
-                                    </p>
-                                    <p className="mt-0.5 text-[13px] text-muted-foreground">
-                                        <span title={copy.deviceId} className="font-mono">Aparelho {shortDevice(copy.deviceId)}</span>
-                                        {' · '}baixada em {fmtDateTime(copy.downloadedAt)}
-                                    </p>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="shrink-0 text-[#8a432f]"
-                                    onClick={() => { setRevoking(copy); setReason(''); }}
-                                    title="Para aparelho perdido, quebrado ou pesquisador que saiu"
-                                >
-                                    <ShieldOff />Revogar acesso
-                                </Button>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </article>
-
-            {/* Usuários revogados */}
-            {revokedList.length > 0 && (
+            {/* Quem está com a pesquisa e usuários revogados, lado a lado */}
+            <div className={`grid items-stretch gap-5 ${revokedList.length > 0 ? 'lg:grid-cols-2' : ''}`}>
+                {/* Quem está com a pesquisa */}
                 <article className="pa-card">
                     <header className="pa-card-h">
-                        <div className="pa-ic"><UserX /></div>
+                        <div className="pa-ic"><Smartphone /></div>
                         <div className="grow">
-                            <h3>Usuários revogados</h3>
-                            <p className="desc">
-                                {plural(revokedList.length, 'pesquisador teve', 'pesquisadores tiveram')} o acesso revogado nesta pesquisa.
-                                {' '}Desbloqueie o aparelho para ele voltar a baixar.
-                            </p>
+                            <h3>Quem está com a pesquisa</h3>
+                            <p className="desc">Cada aparelho que baixou conta uma cópia. O mesmo pesquisador em dois celulares conta duas.</p>
                         </div>
                     </header>
 
-                    <ul className="mt-5 flex flex-col gap-3">
-                        {revokedList.map((user) => (
-                            <li key={user.key} className="rounded-2xl bg-muted/60 p-4">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-[15px] font-semibold tracking-tight">{user.name ?? 'Pesquisador removido'}</span>
-                                    {user.username && <span className="text-sm text-muted-foreground">@{user.username}</span>}
-                                    <Badge variant={user.blocked > 0 ? 'destructive' : 'default'}>
-                                        {user.blocked > 0 ? `${plural(user.blocked, 'aparelho bloqueado', 'aparelhos bloqueados')}` : 'Todos desbloqueados'}
-                                    </Badge>
-                                    {user.revocations > 1 && (
-                                        <span className="text-xs text-muted-foreground">{user.revocations} revogações</span>
-                                    )}
-                                </div>
-
-                                <ul className="mt-3 flex flex-col gap-2">
-                                    {user.devices.map((copy) => (
-                                        <li key={copy.deviceId} className="flex flex-col gap-2 border-t border-border pt-2.5 sm:flex-row sm:items-center">
-                                            <div className="grow text-[13px] text-muted-foreground">
-                                                <span title={copy.deviceId} className="font-mono">Aparelho {shortDevice(copy.deviceId)}</span>
-                                                {' · '}revogado em {fmtDateTime(copy.revokedAt)}{copy.revokedByName ? ` por ${copy.revokedByName}` : ''}
-                                                {copy.revokeReason && <> · Motivo: {copy.revokeReason}</>}
-                                                {!copy.deviceBlocked && copy.unblockedAt && (
-                                                    <span className="text-[var(--green-deep)]"> · desbloqueado em {fmtDateTime(copy.unblockedAt)}</span>
-                                                )}
-                                            </div>
-                                            {copy.deviceBlocked && (
-                                                <Button variant="outline" size="sm" className="shrink-0" onClick={() => setUnblocking(copy)}>
-                                                    <ShieldCheck />Desbloquear aparelho
-                                                </Button>
+                    {active.length === 0 ? (
+                        <p className="mt-5 rounded-2xl bg-muted/60 p-4 text-sm text-muted-foreground">
+                            Ninguém está com a pesquisa baixada agora.
+                        </p>
+                    ) : (
+                        <ul className="mt-5 flex flex-col gap-3">
+                            {active.map((copy) => (
+                                <li key={copy.id} className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4 sm:flex-row sm:items-center">
+                                    <div className="min-w-0 grow">
+                                        <p className="truncate text-[15px] font-semibold tracking-tight">
+                                            {copy.researcherName ?? 'Pesquisador removido'}
+                                            {copy.researcherUsername && (
+                                                <span className="ml-2 text-sm font-normal text-muted-foreground">@{copy.researcherUsername}</span>
                                             )}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </li>
-                        ))}
-                    </ul>
+                                        </p>
+                                        <p className="mt-0.5 text-[13px] text-muted-foreground">
+                                            <span title={copy.deviceId} className="font-mono">Aparelho {shortDevice(copy.deviceId)}</span>
+                                            {' · '}baixada em {fmtDateTime(copy.downloadedAt)}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="shrink-0 text-[#8a432f]"
+                                        onClick={() => { setRevoking(copy); setReason(''); }}
+                                        title="Para aparelho perdido, quebrado ou pesquisador que saiu"
+                                    >
+                                        <ShieldOff />Revogar acesso
+                                    </Button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </article>
-            )}
+
+                {/* Usuários revogados */}
+                {revokedList.length > 0 && (
+                    <article className="pa-card">
+                        <header className="pa-card-h">
+                            <div className="pa-ic"><UserX /></div>
+                            <div className="grow">
+                                <h3>Usuários revogados</h3>
+                                <p className="desc">
+                                    {plural(revokedList.length, 'pesquisador teve', 'pesquisadores tiveram')} o acesso revogado nesta pesquisa.
+                                    {' '}Desbloqueie o aparelho para ele voltar a baixar.
+                                </p>
+                            </div>
+                        </header>
+
+                        <ul className="mt-5 flex flex-col gap-3">
+                            {revokedList.map((user) => (
+                                <li key={user.key} className="rounded-2xl bg-muted/60 p-4">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-[15px] font-semibold tracking-tight">{user.name ?? 'Pesquisador removido'}</span>
+                                        {user.username && <span className="text-sm text-muted-foreground">@{user.username}</span>}
+                                        <Badge variant={user.blocked > 0 ? 'destructive' : 'default'}>
+                                            {user.blocked > 0 ? `${plural(user.blocked, 'aparelho bloqueado', 'aparelhos bloqueados')}` : 'Todos desbloqueados'}
+                                        </Badge>
+                                        {user.revocations > 1 && (
+                                            <span className="text-xs text-muted-foreground">{user.revocations} revogações</span>
+                                        )}
+                                    </div>
+
+                                    <ul className="mt-3 flex flex-col gap-2">
+                                        {user.devices.map((copy) => (
+                                            <li key={copy.deviceId} className="flex flex-col gap-2 border-t border-border pt-2.5 sm:flex-row sm:items-center">
+                                                <div className="grow text-[13px] text-muted-foreground">
+                                                    <span title={copy.deviceId} className="font-mono">Aparelho {shortDevice(copy.deviceId)}</span>
+                                                    {' · '}revogado em {fmtDateTime(copy.revokedAt)}{copy.revokedByName ? ` por ${copy.revokedByName}` : ''}
+                                                    {copy.revokeReason && <> · Motivo: {copy.revokeReason}</>}
+                                                    {!copy.deviceBlocked && copy.unblockedAt && (
+                                                        <span className="text-[var(--green-deep)]"> · desbloqueado em {fmtDateTime(copy.unblockedAt)}</span>
+                                                    )}
+                                                </div>
+                                                {copy.deviceBlocked && (
+                                                    <Button variant="outline" size="sm" className="shrink-0" onClick={() => setUnblocking(copy)}>
+                                                        <ShieldCheck />Desbloquear aparelho
+                                                    </Button>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </li>
+                            ))}
+                        </ul>
+                    </article>
+                )}
+            </div>
 
             {/* Histórico: tudo registrado */}
             {history.length > 0 && (
