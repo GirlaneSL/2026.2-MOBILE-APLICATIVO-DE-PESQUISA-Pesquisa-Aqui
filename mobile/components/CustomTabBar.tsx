@@ -1,5 +1,6 @@
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { FileText, Home, User, CloudSync } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +8,7 @@ import { Brand } from '@/constants/brand';
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const insets = useSafeAreaInsets();
+    const router = useRouter();
 
     return (
         <View pointerEvents="box-none" style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -22,9 +24,19 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                     const isFocused = state.index === index;
 
                     const onPress = () => {
-                        const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-                        if (!isFocused && !event.defaultPrevented) {
+                        // `navigation` pode não chegar em algumas versões do expo-router; por isso é opcional
+                        const event = navigation?.emit?.({
+                            type: 'tabPress',
+                            target: route.key,
+                            canPreventDefault: true,
+                        });
+                        if (isFocused || event?.defaultPrevented) return;
+
+                        if (navigation?.navigate) {
                             navigation.navigate(route.name);
+                        } else {
+                            // "(home)/index" -> "/(app)/(home)", "pesquisas/index" -> "/(app)/pesquisas"
+                            router.navigate(`/(app)/${route.name.replace(/\/index$/, '')}` as any);
                         }
                     };
 
