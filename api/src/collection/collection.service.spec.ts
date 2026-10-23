@@ -72,6 +72,15 @@ function setup(research: Row = baseResearch) {
 }
 
 describe('CollectionService.create', () => {
+  it('pesquisa encerrada não recebe coleta nova (resultado congelado)', async () => {
+    const { db, storage, service } = setup({ ...baseResearch, status: 'CLOSED', title: 'Encerrada' });
+    await expect(service.create(payload({ clientId: '11111111-1111-4111-8111-111111111111' }) as any, audio, researcher)).rejects.toMatchObject({
+      response: { code: 'RESEARCH_CLOSED' },
+    });
+    expect(db.tables.Collection).toHaveLength(0);
+    expect(storage.save).not.toHaveBeenCalled();
+  });
+
   it('grava a coleta com o consentimento (data, hora e quem confirmou) e o áudio', async () => {
     const { db, storage, service } = setup();
     const result = await service.create(payload() as any, audio, researcher);

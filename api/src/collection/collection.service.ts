@@ -90,6 +90,18 @@ export class CollectionService {
         const link = await orm.ResearchResearcher.where({ researchId: research.id, userId: user.id }).first();
         if (!link) throw new ForbiddenException('Você não está vinculado a esta pesquisa.');
 
+        // Reenvio de coleta que já chegou continua reconhecido; coleta nova de pesquisa encerrada não entra (resultado congelado).
+        const alreadyReceived = payload.clientId
+            ? await orm.Collection.where({ researchId: research.id, researcherId: user.id, clientId: payload.clientId }).first()
+            : null;
+        if (research.status === 'CLOSED' && !alreadyReceived) {
+            throw new ForbiddenException({
+                statusCode: 403,
+                code: 'RESEARCH_CLOSED',
+                message: `A pesquisa "${research.title}" está encerrada e não recebe mais coletas.`,
+            });
+        }
+
         // Aparelho com a cópia revogada pelo administrador não envia coleta nova.
         if (await isDeviceRevoked(orm, research.id, payload.deviceId)) {
             throw copyRevokedException('O administrador revogou o acesso deste aparelho a esta pesquisa. A coleta não foi aceita.');

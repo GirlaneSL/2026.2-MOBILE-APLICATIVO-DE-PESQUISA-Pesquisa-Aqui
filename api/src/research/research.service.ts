@@ -215,6 +215,27 @@ export class ResearchService {
         return await this.prisma.client.orm.public.Research.where({ id }).update({ status: ResearchStatus.PUBLISHED });
     }
 
+    /**
+     * Encerrar (W12): a pesquisa vira CLOSED, estado final. A partir daqui a API recusa coleta nova
+     * (sincronização e envio direto) e a pesquisa não é mais editada nem baixada: o resultado fica congelado.
+     * Vale para pesquisa publicada ou em campo; rascunho nunca foi a campo, então não há o que encerrar.
+     * Idempotente: encerrar de novo devolve a pesquisa como está.
+     */
+    async close(id: number, currentUser: UserPayLoad) {
+        if (currentUser.profile !== 'ADMINISTRATOR') throw new ForbiddenException('Somente o administrador da empresa encerra a pesquisa.');
+
+        const research = await this.findOne(id, currentUser);
+
+        if (research.status === ResearchStatus.CLOSED) return research;
+        if (research.status === ResearchStatus.DRAFT) {
+            throw new BadRequestException('Uma pesquisa em rascunho não pode ser encerrada: publique-a ou exclua-a.');
+        }
+
+        const closed = await this.prisma.client.orm.public.Research.where({ id }).update({ status: ResearchStatus.CLOSED });
+        this.logger.warn(`Pesquisa ${id} encerrada por ${currentUser.username ?? currentUser.sub}`);
+        return closed;
+    }
+
     // Pesquisa sem nenhuma questão não pode ser publicada
     private async assertHasQuestions(researchId: number) {
         const orm = this.prisma.client.orm.public;

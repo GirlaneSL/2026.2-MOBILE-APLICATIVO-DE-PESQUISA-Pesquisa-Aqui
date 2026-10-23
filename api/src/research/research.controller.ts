@@ -1,5 +1,6 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, UseGuards, Headers } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, UseGuards, Headers, Header, Query, StreamableFile } from '@nestjs/common';
 import { ResearchService } from './research.service.js';
+import { ResearchReportService } from './research-report.service.js';
 import { CreateResearchDto } from './dto/create-research.dto.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
@@ -12,7 +13,7 @@ import { RevokeCopyDto } from './dto/revoke-copy.dto.js';
 @UseGuards(AuthGuard)
 @Controller('research')
 export class ResearchController {
-    constructor(private researchService: ResearchService) { }
+    constructor(private researchService: ResearchService, private reportService: ResearchReportService) { }
 
     @Post()
     create(@Body() createResearchDto: CreateResearchDto, @CurrentUser() currentUser: UserPayLoad) {
@@ -43,6 +44,39 @@ export class ResearchController {
     @Post(':id/publish')
     publish(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
         return this.researchService.publish(id, currentUser);
+    }
+
+    // Encerrar: bloqueia coleta nova e congela o resultado. Só administrador.
+    @Post(':id/close')
+    @HttpCode(200)
+    close(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+        return this.researchService.close(id, currentUser);
+    }
+
+    // Painel quase em tempo real (total, por pesquisador, meta, última sincronização, tempo médio). Filtros: from, to, researcherId.
+    @Get(':id/panel')
+    @Header('Cache-Control', 'private, no-store')
+    panel(@Param('id', ParseIntPipe) id: number, @Query() query: ReportQueryDto, @CurrentUser() currentUser: UserPayLoad) {
+        return this.reportService.panel(id, toReportQuery(query), currentUser);
+    }
+
+    // Relatório: um gráfico por questão de escolha e sim/não, com os mesmos filtros do painel.
+    @Get(':id/report')
+    @Header('Cache-Control', 'private, no-store')
+    report(@Param('id', ParseIntPipe) id: number, @Query() query: ReportQueryDto, @CurrentUser() currentUser: UserPayLoad) {
+        return this.reportService.report(id, toReportQuery(query), currentUser);
+    }
+
+    // CSV com uma linha por coleta e uma coluna por questão, com os mesmos filtros.
+    @Get(':id/export.csv')
+    @Header('Cache-Control', 'private, no-store')
+    @Header('X-Content-Type-Options', 'nosniff')
+    async exportCsv(@Param('id', ParseIntPipe) id: number, @Query() query: ReportQueryDto, @CurrentUser() currentUser: UserPayLoad) {
+        const { fileName, content } = await this.reportService.exportCsv(id, toReportQuery(query), currentUser);
+        return new StreamableFile(Buffer.from(content, 'utf8'), {
+            type: 'text/csv; charset=utf-8',
+            disposition: `attachment; filename="${fileName}"`,
+        });
     }
 
     @Get(':id/researchers')
@@ -127,6 +161,17 @@ export class ResearchController {
     ) {
         return this.researchService.downloadPackage(id, requireDeviceId(deviceId), currentUser);
     }
+}
+
+type ReportQueryDto = { from?: string; to?: string; researcherId?: string };
+
+function toReportQuery(query: ReportQueryDto) {
+    let researcherId: number | undefined;
+    if (query.researcherId !== undefined && query.researcherId !== '') {
+        researcherId = Number(query.researcherId);
+        if (!Number.isInteger(researcherId)) throw new BadRequestException('researcherId inválido.');
+    }
+    return { from: query.from || undefined, to: query.to || undefined, researcherId };
 }
 
 // A cópia é registrada por pesquisador + aparelho: sem aparelho identificado não há como registrá-la.

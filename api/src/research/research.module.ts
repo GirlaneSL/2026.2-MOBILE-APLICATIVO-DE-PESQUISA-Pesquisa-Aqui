@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ResearchController } from './research.controller.js';
 import { ResearchService } from './research.service.js';
+import { ResearchReportService } from './research-report.service.js';
 import { PrismaModule } from '../prisma.module.js';
 import { StorageModule } from '../collection/storage.module.js';
 
 @Module({
   imports: [PrismaModule, StorageModule],
   controllers: [ResearchController],
-  providers: [ResearchService],
+  providers: [ResearchService, ResearchReportService],
   exports: [ResearchService],
 })
 export class ResearchModule { }

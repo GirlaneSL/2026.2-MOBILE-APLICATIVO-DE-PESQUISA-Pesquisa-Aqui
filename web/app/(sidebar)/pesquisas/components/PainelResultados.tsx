@@ -1,0 +1,366 @@
+'use client'
+
+import { Button } from "@/components/ui/button";
+import { LoadingState } from "@/components/ui/loadingState";
+import { Spinner } from "@/components/ui/spinner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+import {
+    closeResearch,
+    downloadResearchCsv,
+    formatSeconds,
+    getResearchPanel,
+    getResearchReport,
+    type QuestionChart,
+    type ReportFilters,
+    type ResearchPanel,
+    type ResearchReport,
+} from "@/lib/report";
+import { BarChart3, Clock, Download, Gauge, Lock, PieChart as PieIcon, RefreshCw, TriangleAlert, Users, Wifi } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
+import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+
+// "Quase em tempo real": o painel se atualiza sozinho a cada 30 s enquanto a aba está aberta e visível.
+const REFRESH_MS = 30_000;
+
+const COLORS = ["#447762", "#e0917a", "#6b8fb5", "#c9a94b", "#8d6bb5", "#5aa5a5", "#b5666b", "#7a8a52"];
+
+const fmtDateTime = (iso?: string | null) => {
+    const t = iso ? new Date(iso) : null;
+    return t && !Number.isNaN(t.getTime())
+        ? t.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : 'Nunca sincronizou';
+};
+
+const fmtTime = (d: Date) => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+interface PainelResultadosProps {
+    researchId: number;
+    status: "DRAFT" | "PUBLISHED" | "IN_FIELD" | "CLOSED";
+    /** Chamado depois de encerrar: a página recarrega o estado da pesquisa. */
+    onClosed?: () => void;
+}
+
+export default function PainelResultados({ researchId, status, onClosed }: PainelResultadosProps) {
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
+    const [researcherId, setResearcherId] = useState<number | undefined>(undefined);
+
+    const [panel, setPanel] = useState<ResearchPanel | null>(null);
+    const [report, setReport] = useState<ResearchReport | null>(null);
+    // Lista de pesquisadores para o filtro: vem do painel SEM filtro, para o seletor não encolher ao filtrar.
+    const [people, setPeople] = useState<{ userId: number; name: string }[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+    const [exporting, setExporting] = useState(false);
+    const [closing, setClosing] = useState(false);
+
+    const closed = (panel?.status ?? status) === 'CLOSED';
+    const invalidRange = !!from && !!to && to < from;
+
+    const filters = useMemo<ReportFilters>(
+        () => ({ from: from || undefined, to: to || undefined, researcherId }),
+        [from, to, researcherId],
+    );
+
+    const load = useCallback(async () => {
+        if (invalidRange) return;
+        try {
+            const [p, r] = await Promise.all([getResearchPanel(researchId, filters), getResearchReport(researchId, filters)]);
+            setPanel(p);
+            setReport(r);
+            setUpdatedAt(new Date());
+            setError(null);
+            if (researcherId === undefined) setPeople(p.researchers.map((x) => ({ userId: x.userId, name: x.name })));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erro ao carregar o painel');
+        } finally {
+            setLoading(false);
+        }
+    }, [researchId, filters, researcherId, invalidRange]);
+
+    // Carrega na abertura e a cada mudança de filtro (a tela anterior continua visível até a nova chegar).
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- busca de dados: o estado é atualizado quando a resposta chega
+        load();
+    }, [load]);
+
+    // Atualização automática. Pesquisa encerrada está congelada: não há o que atualizar.
+    useEffect(() => {
+        if (closed) return;
+        const timer = setInterval(() => {
+            if (document.visibilityState === 'visible') load();
+        }, REFRESH_MS);
+        return () => clearInterval(timer);
+    }, [closed, load]);
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            await downloadResearchCsv(researchId, filters);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Erro ao exportar');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleClose = async () => {
+        const ok = await confirmDialog({
+            title: 'Encerrar a pesquisa',
+            description: 'Depois de encerrada, a pesquisa não recebe mais nenhuma coleta (nem as que ainda estão nos aparelhos) e o resultado fica congelado. Isso não pode ser desfeito.',
+            confirmLabel: 'Encerrar pesquisa',
+            variant: 'destructive',
+        });
+        if (!ok) return;
+        setClosing(true);
+        try {
+            await closeResearch(researchId);
+            toast.success('Pesquisa encerrada. O resultado está congelado.');
+            await load();
+            onClosed?.();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Erro ao encerrar a pesquisa');
+        } finally {
+            setClosing(false);
+        }
+    };
+
+    if (loading && !panel) return <LoadingState label="Carregando o painel..." shape="collections" />;
+
+    if (error && !panel) {
+        return (
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+                <p className="font-medium">Não foi possível carregar o painel</p>
+                <p>{error}</p>
+            </div>
+        );
+    }
+    if (!panel || !report) return null;
+
+    const filtered = !!(from || to || researcherId !== undefined);
+
+    return (
+        <div className="flex flex-col gap-5">
+            {/* Filtros e ações */}
+            <article className="pa-card flex flex-col gap-4 lg:flex-row lg:items-end">
+                <div className="grid grow grid-cols-1 gap-3 sm:grid-cols-3">
+                    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                        De
+                        <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-foreground" />
+                    </label>
+                    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                        Até
+                        <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-foreground" />
+                    </label>
+                    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                        Pesquisador
+                        <select
+                            value={researcherId ?? ''}
+                            onChange={(e) => setResearcherId(e.target.value === '' ? undefined : Number(e.target.value))}
+                            className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-foreground"
+                        >
+                            <option value="">Todos</option>
+                            {people.map((p) => <option key={p.userId} value={p.userId}>{p.name}</option>)}
+                        </select>
+                    </label>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    {filtered && (
+                        <Button variant="ghost" size="sm" onClick={() => { setFrom(''); setTo(''); setResearcherId(undefined); }}>Limpar filtros</Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => load()} title="Atualizar agora"><RefreshCw />Atualizar</Button>
+                    <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+                        {exporting ? <Spinner /> : <Download />}Exportar CSV
+                    </Button>
+                    {!closed && status !== 'DRAFT' && (
+                        <Button variant="destructive" size="sm" onClick={handleClose} disabled={closing}>
+                            {closing ? <Spinner /> : <Lock />}Encerrar
+                        </Button>
+                    )}
+                </div>
+            </article>
+
+            {invalidRange && (
+                <p role="alert" className="flex items-center gap-2 text-sm text-destructive"><TriangleAlert className="size-4" />O fim do período não pode ser anterior ao início.</p>
+            )}
+
+            {closed ? (
+                <div role="status" className="flex items-center gap-3 rounded-[22px] border border-[#ecd0c5] bg-[#f3e0d9]/60 p-4 text-sm text-[#5d2d1f]">
+                    <Lock className="size-5 shrink-0 text-[#8a432f]" />
+                    <p>
+                        Pesquisa encerrada{panel.closedAt ? ` em ${fmtDateTime(panel.closedAt)}` : ''}: não recebe mais coletas e o resultado está congelado.
+                    </p>
+                </div>
+            ) : (
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Wifi className="size-3.5" />
+                    Atualiza sozinho a cada 30 segundos{updatedAt ? ` · última atualização às ${fmtTime(updatedAt)}` : ''}
+                    {filtered && ' · com filtros aplicados'}
+                </p>
+            )}
+
+            {/* Números principais */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <Stat icon={<Users />} label="Coletas recebidas" value={String(panel.totalCollections)} />
+                <Stat
+                    icon={<Gauge />}
+                    label="Meta atingida"
+                    value={panel.goalPercent === null ? 'Sem meta' : `${panel.goalPercent}%`}
+                    hint={panel.targetTotal ? `meta total de ${panel.targetTotal} coletas` : 'defina a meta na aba Pesquisadores'}
+                    progress={panel.goalPercent}
+                />
+                <Stat icon={<Clock />} label="Tempo médio de coleta" value={formatSeconds(panel.averageSeconds)} hint="do início ao fim da entrevista" />
+                <Stat icon={<RefreshCw />} label="Última sincronização" value={panel.lastSyncAt ? fmtDateTime(panel.lastSyncAt) : 'Nenhuma'} small />
+            </div>
+
+            {/* Por pesquisador */}
+            <article className="pa-card">
+                <header className="pa-card-h">
+                    <div className="pa-ic"><Users /></div>
+                    <div className="grow">
+                        <h3>Por pesquisador</h3>
+                        <p className="desc">Coletas, meta, última sincronização e tempo médio de cada um</p>
+                    </div>
+                </header>
+
+                <div className="mt-5 overflow-x-auto">
+                    <table className="w-full min-w-[720px] text-left text-sm">
+                        <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                            <tr>
+                                <th className="pb-2 font-medium">Pesquisador</th>
+                                <th className="pb-2 font-medium">Coletas</th>
+                                <th className="pb-2 font-medium">Meta</th>
+                                <th className="pb-2 font-medium">Última sincronização</th>
+                                <th className="pb-2 font-medium">Tempo médio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {panel.researchers.length === 0 && (
+                                <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">Nenhum pesquisador vinculado.</td></tr>
+                            )}
+                            {panel.researchers.map((r) => (
+                                <tr key={r.userId} className="border-t border-border">
+                                    <td className="py-3 font-medium">
+                                        {r.name}
+                                        {!r.linked && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">desvinculado</span>}
+                                    </td>
+                                    <td className="py-3 tabular-nums">{r.collected}{r.targetCount ? ` / ${r.targetCount}` : ''}</td>
+                                    <td className="py-3">
+                                        {r.progress === null ? <span className="text-muted-foreground">Sem meta</span> : (
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-2 w-24 rounded-full bg-muted"><div className="h-full rounded-full bg-[var(--green-deep)]" style={{ width: `${r.progress}%` }} /></div>
+                                                <span className="tabular-nums">{r.progress}%</span>
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="py-3">{fmtDateTime(r.lastSyncAt)}</td>
+                                    <td className="py-3 tabular-nums">
+                                        {formatSeconds(r.averageSeconds)}
+                                        {r.suspiciouslyFast && (
+                                            <span title="Média bem abaixo da dos colegas: vale conferir essas coletas" className="ml-2 inline-flex items-center gap-1 rounded-full bg-[#f3e0d9] px-2 py-0.5 text-[11px] font-semibold text-[#8a432f]">
+                                                <TriangleAlert className="size-3" />rápido demais
+                                            </span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            {/* Gráfico por questão */}
+            <div className="flex flex-col gap-4">
+                <h3 className="flex items-center gap-2 text-base font-semibold"><BarChart3 className="size-4" />Resultado por questão</h3>
+                {report.questions.length === 0 ? (
+                    <p className="rounded-2xl bg-muted/50 p-6 text-center text-sm text-muted-foreground">Esta pesquisa não tem questões de escolha ou sim/não para exibir em gráfico.</p>
+                ) : (
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        {report.questions.map((q) => <QuestionCard key={q.questionId} question={q} />)}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function Stat({ icon, label, value, hint, progress, small }: { icon: React.ReactNode; label: string; value: string; hint?: string; progress?: number | null; small?: boolean }) {
+    return (
+        <article className="pa-card">
+            <header className="pa-card-h">
+                <div className="pa-ic">{icon}</div>
+                <div className="grow"><p className="desc">{label}</p></div>
+            </header>
+            <p className={`mt-4 font-semibold tracking-tight tabular-nums ${small ? 'text-lg' : 'text-3xl'}`}>{value}</p>
+            {progress !== undefined && progress !== null && (
+                <div className="mt-3 h-2 rounded-full bg-muted"><div className="h-full rounded-full bg-[var(--green-deep)] transition-all" style={{ width: `${progress}%` }} /></div>
+            )}
+            {hint && <p className="mt-2 text-xs text-muted-foreground">{hint}</p>}
+        </article>
+    );
+}
+
+function QuestionCard({ question }: { question: QuestionChart }) {
+    // Barras por padrão (contagem); pizza mostra a proporção.
+    const [mode, setMode] = useState<'bar' | 'pie'>('bar');
+    const hasData = question.data.some((d) => d.count > 0);
+    const multiple = question.type === 'MULTIPLE_CHOICE';
+
+    return (
+        <article className="pa-card">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h4 className="break-words text-[15px] font-semibold leading-snug">{question.statement}</h4>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {question.answered} de {question.totalCollections} {question.totalCollections === 1 ? 'coleta respondeu' : 'coletas responderam'}
+                        {multiple && ' · pode marcar mais de uma'}
+                    </p>
+                </div>
+                <div className="flex shrink-0 rounded-full border border-border p-0.5" role="group" aria-label="Tipo de gráfico">
+                    <button type="button" onClick={() => setMode('bar')} aria-pressed={mode === 'bar'} title="Barras" className={`grid size-8 place-items-center rounded-full ${mode === 'bar' ? 'bg-ink text-white' : 'text-muted-foreground'}`}><BarChart3 className="size-4" /></button>
+                    <button type="button" onClick={() => setMode('pie')} aria-pressed={mode === 'pie'} title="Pizza (proporção)" className={`grid size-8 place-items-center rounded-full ${mode === 'pie' ? 'bg-ink text-white' : 'text-muted-foreground'}`}><PieIcon className="size-4" /></button>
+                </div>
+            </div>
+
+            {!hasData ? (
+                <p className="mt-6 py-8 text-center text-sm text-muted-foreground">Nenhuma resposta ainda.</p>
+            ) : mode === 'bar' ? (
+                <div className="mt-4" style={{ height: Math.max(160, question.data.length * 44) }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={question.data} layout="vertical" margin={{ left: 0, right: 24 }}>
+                            <XAxis type="number" allowDecimals={false} hide />
+                            <YAxis type="category" dataKey="label" width={110} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                            <Tooltip formatter={(value, _n, item) => [`${value} (${(item.payload as { percent: number }).percent}%)`, 'Respostas']} />
+                            <Bar dataKey="count" radius={4} label={{ position: 'right', fontSize: 12 }}>
+                                {question.data.map((d, i) => <Cell key={d.key} fill={COLORS[i % COLORS.length]} />)}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            ) : (
+                <div className="mt-4 h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie data={question.data.filter((d) => d.count > 0)} dataKey="count" nameKey="label" innerRadius={45} outerRadius={80} paddingAngle={2}>
+                                {question.data.filter((d) => d.count > 0).map((d) => <Cell key={d.key} fill={COLORS[question.data.indexOf(d) % COLORS.length]} />)}
+                            </Pie>
+                            <Tooltip formatter={(value, name, item) => [`${value} (${(item.payload as { percent: number }).percent}%)`, name]} />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
+
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {question.data.map((d, i) => (
+                    <li key={d.key} className="flex items-center gap-1.5">
+                        <span className="size-2.5 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
+                        {d.label}: <strong className="text-foreground">{d.count}</strong> ({d.percent}%)
+                    </li>
+                ))}
+            </ul>
+        </article>
+    );
+}

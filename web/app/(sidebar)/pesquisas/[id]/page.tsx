@@ -7,7 +7,7 @@ import { LoadingState } from "@/components/ui/loadingState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getResearchById, publishResearch, type Research } from "@/lib/research";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, CalendarRange, Check, ClipboardList, FileText, Flag, ListChecks, Lock, Mic, MicOff, Quote, ShieldAlert, Smartphone, Target, UsersRound } from "lucide-react";
+import { ArrowLeft, CalendarRange, Check, BarChart3, ClipboardList, FileText, Flag, ListChecks, Lock, Mic, MicOff, Quote, ShieldAlert, Smartphone, Target, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -17,6 +17,7 @@ import PesquisadoresVinculados from "../components/PesquisadoresVinculados";
 import ListarQuestoesSalvas from "../components/ListarQuestoesSalvas/ListarQuestoesSalvas";
 import ColetasPesquisa from "../components/ColetasPesquisa";
 import CopiasEmCampo from "../components/CopiasEmCampo";
+import PainelResultados from "../components/PainelResultados";
 
 const STEPS: { key: Research["status"]; label: string }[] = [
     { key: "DRAFT", label: "Rascunho" },
@@ -77,7 +78,7 @@ export default function PesquisaDetalhePage() {
     const searchParams = useSearchParams();
     // Links do buscador global: ?aba=coletas&coleta=12
     const openCollectionId = Number(searchParams.get('coleta')) || undefined;
-    const initialTab = searchParams.get('aba') === 'coletas' ? 'collections' : 'details';
+    const initialTab = searchParams.get('aba') === 'coletas' ? 'collections' : searchParams.get('aba') === 'painel' ? 'panel' : 'details';
     const [state, setState] = useState<PageState>({ status: 'loading' });
     const { user } = useCurrentUser();
     const [now] = useState(() => Date.now());
@@ -245,6 +246,7 @@ export default function PesquisaDetalhePage() {
                         <TabsTrigger value="details" className="h-10 px-4 data-active:bg-ink data-active:text-white"><FileText />Visão Geral</TabsTrigger>
                         <TabsTrigger value="questions" className="h-10 px-4 data-active:bg-ink data-active:text-white"><ListChecks />Questões</TabsTrigger>
                         <TabsTrigger value="researchers" className="h-10 px-4 data-active:bg-ink data-active:text-white"><UsersRound />Pesquisadores</TabsTrigger>
+                        {canSeeCollections && research.status !== 'DRAFT' && <TabsTrigger value="panel" className="h-10 px-4 data-active:bg-ink data-active:text-white"><BarChart3 />Painel</TabsTrigger>}
                         {canSeeCollections && <TabsTrigger value="collections" className="h-10 px-4 data-active:bg-ink data-active:text-white"><ClipboardList />Coletas</TabsTrigger>}
                         {canSeeCopies && research.status !== 'DRAFT' && (
                             <TabsTrigger value="copies" className="h-10 px-4 data-active:bg-ink data-active:text-white">
@@ -439,6 +441,12 @@ export default function PesquisaDetalhePage() {
                 {canSeeCopies && research.status !== 'DRAFT' && (
                     <TabsContent value="copies" className="mt-0">
                         <CopiasEmCampo researchId={research.id} onChanged={refreshResearch} />
+                    </TabsContent>
+                )}
+
+                {canSeeCollections && research.status !== 'DRAFT' && (
+                    <TabsContent value="panel" className="mt-0">
+                        <PainelResultados researchId={research.id} status={research.status} onClosed={refreshResearch} />
                     </TabsContent>
                 )}
 
