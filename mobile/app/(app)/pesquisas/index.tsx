@@ -10,7 +10,7 @@ import DraftPickerModal from './_components/DraftPickerModal';
 import { getCachedResearches, syncResearches, downloadResearchPackage, type Research } from '@/lib/researchCache';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { listCollections, type LocalCollection } from '@/lib/collectionStore';
-import { returnResearchSafely } from '@/lib/researchReturn';
+import { useRemoveResearch } from '@/hooks/useRemoveResearch';
 
 export default function Pesquisas() {
     const [pesquisas, setPesquisas] = useState<Research[]>([]);
@@ -64,31 +64,9 @@ export default function Pesquisas() {
         setRefreshing(false);
     };
 
-    // Devolver a cópia: o contador do servidor cai e, se for a última, o questionário destrava.
-    const handleReturn = (id: number, title: string) => {
-        if (!isOnline) {
-            Alert.alert('Sem conexão', 'Conecte-se à internet para devolver esta pesquisa.');
-            return;
-        }
-        Alert.alert(
-            'Devolver pesquisa?',
-            `"${title}" sai deste aparelho. Para coletar de novo você precisará baixá-la outra vez.`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Devolver',
-                    onPress: async () => {
-                        try {
-                            await returnResearchSafely(id);
-                            await loadFromCache();
-                        } catch (error) {
-                            Alert.alert('Não foi possível devolver', error instanceof Error ? error.message : 'Tente de novo.');
-                        }
-                    },
-                },
-            ],
-        );
-    };
+    // Remover do aparelho: bloqueado com coleta pendente, pede confirmação e avisa o servidor (a cópia deixa de
+    // contar como ativa). Depois, a pesquisa volta à lista como "Não baixada".
+    const removeResearch = useRemoveResearch(isOnline, loadFromCache);
 
     const handleDownload = async (id: number, title: string) => {
         if (!isOnline) {
@@ -175,7 +153,7 @@ export default function Pesquisas() {
                             draftCount={collections.filter((c) => c.researchId === item.id && c.status === 'IN_PROGRESS').length}
                             revoked={!!item.revoked}
                             onDownload={() => handleDownload(item.id, item.title)}
-                            onReturn={() => handleReturn(item.id, item.title)}
+                            onReturn={() => void removeResearch(item.id, item.title)}
                             onStart={() => startCollection(item.id)}
                             onResume={() => resumeDraft(item)}
                         />

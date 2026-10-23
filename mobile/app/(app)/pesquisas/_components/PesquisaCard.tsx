@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Download, PlayCircle, RefreshCw, Undo2, WifiOff } from 'lucide-react-native';
+import { Download, PlayCircle, RefreshCw, Trash2, WifiOff } from 'lucide-react-native';
 import Chip from '@/components/Chip';
 import { Brand } from '@/constants/brand';
 
@@ -114,10 +114,10 @@ export default function PesquisaCard({
                             onPress={onReturn}
                             style={({ pressed }) => [styles.returnLink, pressed && styles.pressed]}
                             accessibilityRole="button"
-                            accessibilityLabel={`Devolver a pesquisa ${titulo}`}
+                            accessibilityLabel={`Remover a pesquisa ${titulo} do aparelho`}
                         >
-                            <Undo2 size={15} color={Brand.muted} strokeWidth={1.8} />
-                            <Text style={styles.returnLinkText}>Devolver pesquisa</Text>
+                            <Trash2 size={15} color={Brand.muted} strokeWidth={1.8} />
+                            <Text style={styles.returnLinkText}>Remover do aparelho</Text>
                         </Pressable>
                     ) : null}
                 </>

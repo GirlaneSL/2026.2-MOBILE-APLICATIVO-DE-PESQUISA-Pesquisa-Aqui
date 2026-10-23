@@ -10,6 +10,8 @@ interface SyncCardProps {
     identificador: string;
     pesquisa: string;
     data: string;
+    // Só nas enviadas: quando o servidor confirmou o recebimento
+    enviadaEm?: string;
     status: SyncCardStatus;
     // Só na falha: por que o servidor não confirmou, quantas vezes já falhou e o botão de reenviar
     motivo?: string;
@@ -22,6 +24,7 @@ export default function SyncCard({
     identificador,
     pesquisa,
     data,
+    enviadaEm,
     status,
     motivo,
     tentativas,
@@ -55,6 +58,7 @@ export default function SyncCard({
                     <Text style={styles.itemTitle}>{identificador}</Text>
                     <Text style={styles.itemSubtitle}>{pesquisa}</Text>
                     <Text style={styles.itemDate}>Coletada em {data}</Text>
+                    {enviadaEm ? <Text style={styles.itemSent}>Enviada em {enviadaEm}</Text> : null}
                 </View>
                 {renderStatus()}
             </View>
@@ -100,6 +104,7 @@ const styles = StyleSheet.create({
     itemTitle: { fontSize: 16, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink },
     itemSubtitle: { fontSize: 14, color: Brand.greenDeep, fontWeight: '500' },
     itemDate: { fontSize: 12.5, color: Brand.muted, marginTop: 2 },
+    itemSent: { fontSize: 12.5, color: Brand.greenDeep },
     sending: {
         flexDirection: 'row',
         alignItems: 'center',

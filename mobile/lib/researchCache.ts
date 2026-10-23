@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { apiFetch } from "./api";
 import type { ResearchPackage } from "./displayRules";
+import { SENT_HISTORY_KEY } from "./sentHistory";
 
 const RESEARCHES_CACHE_KEY = 'cached_researches';
 const DEVICE_ID_KEY = 'device_id';
@@ -19,6 +20,11 @@ export interface Research {
     copyStatus?: 'ACTIVE' | 'RETURNED' | 'REVOKED' | null;
     // O administrador revogou o acesso deste aparelho a esta pesquisa: não baixa mais.
     revoked?: boolean;
+    // Meta do pesquisador nesta pesquisa (nulo = sem meta) e quantas coletas dele o servidor já recebeu,
+    // como estavam em `progressSyncedAt` (a última atualização da lista com internet).
+    targetCount?: number | null;
+    collected?: number;
+    progressSyncedAt?: string;
 }
 
 // Gera ou recupera um ID único do dispositivo para controle de download
@@ -43,6 +49,8 @@ async function removeLocalPackage(id: number): Promise<void> {
  */
 export async function syncResearches(): Promise<Research[]> {
     try {
+        // Tirado antes do pedido: o que for enviado depois disto ainda não está na contagem do servidor.
+        const syncedAt = new Date().toISOString();
         const response = await apiFetch('/research', { headers: { 'X-Device-ID': await getDeviceId() } });
         if (!response.ok) return [];
 
@@ -67,6 +75,7 @@ export async function syncResearches(): Promise<Research[]> {
                 ...item,
                 isDownloaded: wasDownloaded && !copyInvalid,
                 revoked: item.copyStatus === 'REVOKED',
+                progressSyncedAt: syncedAt,
             });
         }
 
@@ -150,7 +159,7 @@ export async function getCachedResearchPackage(id: number): Promise<ResearchPack
 
 export async function clearResearchesCache(): Promise<void> {
     const keys = await AsyncStorage.getAllKeys();
-    const researchKeys = keys.filter(k => k.startsWith('research_pkg_') || k === RESEARCHES_CACHE_KEY);
+    const researchKeys = keys.filter(k => k.startsWith('research_pkg_') || k === RESEARCHES_CACHE_KEY || k === SENT_HISTORY_KEY);
     if (researchKeys.length > 0) {
         await AsyncStorage.multiRemove(researchKeys);
     }

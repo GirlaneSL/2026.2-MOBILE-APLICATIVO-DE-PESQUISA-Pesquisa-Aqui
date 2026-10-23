@@ -14,6 +14,7 @@ import { releaseConfirmedFiles, removeCollectionFiles } from './confirmedFiles';
 import { listUploadFiles, type CollectionInput } from './collectionUpload';
 import { orderedQuestions } from './displayRules';
 import { getCachedResearchPackage } from './researchCache';
+import { recordSent } from './sentHistory';
 import { createSyncEngine, type SendOutcome } from './syncEngine';
 
 // A fila de envio do aparelho: o motor (syncEngine) ligado ao armazenamento local e à API.
@@ -91,6 +92,16 @@ export const syncQueue = createSyncEngine({
 
     async onConfirmed(clientId) {
         const collection = await getCollection(clientId);
+        // Fica o registro de que chegou (histórico de enviadas). Se não gravar, a coleta sai da fila do mesmo jeito.
+        if (collection) {
+            await recordSent({
+                clientId,
+                researchId: collection.researchId,
+                startedAt: collection.startedAt,
+                finishedAt: collection.finishedAt,
+                sentAt: new Date().toISOString(),
+            }).catch((error) => console.log('Falha ao registrar a coleta no histórico de enviadas:', error));
+        }
         await removeCollection(clientId); // sai da fila: o servidor já tem a coleta e todos os arquivos
         // Cada arquivo foi apagado do aparelho assim que o servidor o recebeu (collectionSender); aqui sai o resto
         // (pastas vazias, arquivo que o sistema não deixou apagar na hora).

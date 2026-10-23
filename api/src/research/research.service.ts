@@ -107,11 +107,21 @@ export class ResearchService {
                     !!r && r.status !== ResearchStatus.DRAFT && r.companyId === currentUser.companyId,
             );
 
+            // O pesquisador vê o próprio progresso: a meta do vínculo (`targetCount`, nulo = sem meta) e quantas
+            // coletas dele o servidor já recebeu (`collected`). O app soma o que ainda está na fila do aparelho.
+            const withProgress = await Promise.all(
+                visible.map(async (r) => {
+                    const link = links.find((l) => l.researchId === r.id);
+                    const received = await orm.Collection.where({ researchId: r.id, researcherId: user.id }).all();
+                    return { ...r, targetCount: link?.targetCount ?? null, collected: received.length };
+                }),
+            );
+
             // Com o aparelho identificado, cada pesquisa diz se a cópia dele ainda vale (ACTIVE) ou foi
             // devolvida/revogada: é assim que o app descobre que o administrador revogou o acesso.
-            if (!deviceId) return visible;
+            if (!deviceId) return withProgress;
             return Promise.all(
-                visible.map(async (r) => ({ ...r, copyStatus: await copyStatusOf(orm, r.id, user.id, deviceId) })),
+                withProgress.map(async (r) => ({ ...r, copyStatus: await copyStatusOf(orm, r.id, user.id, deviceId) })),
             );
         }
 
