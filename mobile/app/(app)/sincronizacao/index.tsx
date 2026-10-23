@@ -2,9 +2,10 @@
 import { useFocusEffect } from 'expo-router';
 import { CloudUpload, HardDrive, Trash2, WifiOff } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ResearchProgressCard from './_components/ResearchProgressCard';
 import SyncCard, { type SyncCardStatus } from './_components/SyncCard';
+import { canDiscard, discardCollection } from '@/lib/collectionDiscard';
 import { listCollections, type LocalCollection } from '@/lib/collectionStore';
 import { getStorageReport, releaseConfirmedFiles, type StorageReport } from '@/lib/confirmedFiles';
 import { buildSpaceWarning, spaceLevel } from '@/lib/deviceSpace';
@@ -85,6 +86,31 @@ export default function Sincronizacao() {
         void load().catch((error) => console.log('Falha ao atualizar o espaço:', error));
     };
 
+    // Coleta que o servidor recusou de vez: só sai do aparelho se o pesquisador descartar, depois de confirmar.
+    const confirmDiscard = (item: LocalCollection) => {
+        Alert.alert(
+            'Descartar esta coleta?',
+            `As respostas, fotos e áudios da coleta ${item.clientId.slice(0, 8)} serão apagados deste aparelho e NÃO serão enviados ao servidor. ` +
+                `Motivo da recusa: ${item.sendState?.lastFailure?.reason ?? 'o servidor não aceitou esta coleta'} ` +
+                'Isso não pode ser desfeito.',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Descartar',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await discardCollection(item.clientId);
+                        } catch (error) {
+                            Alert.alert('Não foi possível descartar', error instanceof Error ? error.message : 'Tente de novo.');
+                        }
+                        void load().catch((error) => console.log('Falha ao atualizar a lista:', error));
+                    },
+                },
+            ],
+        );
+    };
+
     const level = spaceLevel(usage.freeBytes);
     const spaceWarning = buildSpaceWarning(level, usage.freeBytes === null ? '' : formatBytes(usage.freeBytes), usage.releasableBytes);
 
@@ -117,7 +143,7 @@ export default function Sincronizacao() {
         computeProgress(
             research,
             sent,
-            finished.filter((c) => c.researchId === research.id).length,
+            finished.filter((c) => c.researchId === research.id).map((c) => c.clientId),
         );
     const draftsOf = (researchId: number) =>
         collections.filter((c) => c.researchId === researchId && c.status === 'IN_PROGRESS').length;
@@ -319,6 +345,8 @@ export default function Sincronizacao() {
                             tentativas={row.item.sendState?.attempts}
                             onRetry={() => void syncQueue.run({ trigger: 'manual', only: row.item.clientId })}
                             retryDisabled={!canSend}
+                            onDiscard={canDiscard(row.item) ? () => confirmDiscard(row.item) : undefined}
+                            discardDisabled={sync.running}
                         />
                     </View>
                 )

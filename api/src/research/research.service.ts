@@ -107,13 +107,17 @@ export class ResearchService {
                     !!r && r.status !== ResearchStatus.DRAFT && r.companyId === currentUser.companyId,
             );
 
-            // O pesquisador vê o próprio progresso: a meta do vínculo (`targetCount`, nulo = sem meta) e quantas
-            // coletas dele o servidor já recebeu (`collected`). O app soma o que ainda está na fila do aparelho.
+            // O pesquisador vê o próprio progresso: a meta do vínculo (`targetCount`, nulo = sem meta), quantas
+            // coletas dele o servidor já recebeu (`collected`) e os identificadores delas (`collectedIds`).
+            // Com os identificadores o app não conta duas vezes a coleta que está no servidor e ainda no aparelho.
             const withProgress = await Promise.all(
                 visible.map(async (r) => {
                     const link = links.find((l) => l.researchId === r.id);
                     const received = await orm.Collection.where({ researchId: r.id, researcherId: user.id }).all();
-                    return { ...r, targetCount: link?.targetCount ?? null, collected: received.length };
+                    const collectedIds = received
+                        .map((c: { clientId?: string | null }) => c.clientId?.toLowerCase())
+                        .filter((id: string | undefined): id is string => !!id);
+                    return { ...r, targetCount: link?.targetCount ?? null, collected: received.length, collectedIds };
                 }),
             );
 

@@ -24,6 +24,8 @@ export interface Research {
     // como estavam em `progressSyncedAt` (a última atualização da lista com internet).
     targetCount?: number | null;
     collected?: number;
+    // Identificadores (clientId) dessas coletas. Ausente em servidor antigo: aí vale o horário da atualização.
+    collectedIds?: string[];
     progressSyncedAt?: string;
 }
 

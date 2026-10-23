@@ -23,7 +23,8 @@ export function useRemoveResearch(isOnline: boolean, onRemoved: () => void | Pro
                     'Remoção bloqueada',
                     `"${title}" ainda tem ${describePending(pending)} neste aparelho. ` +
                         'Envie tudo (ou conclua os rascunhos e envie) antes de remover a pesquisa. ' +
-                        'Assim nenhuma coleta é perdida.',
+                        'Assim nenhuma coleta é perdida. ' +
+                        'Coleta que o servidor recusou de vez pode ser descartada na aba Falhas do histórico de envio.',
                 );
                 return;
             }

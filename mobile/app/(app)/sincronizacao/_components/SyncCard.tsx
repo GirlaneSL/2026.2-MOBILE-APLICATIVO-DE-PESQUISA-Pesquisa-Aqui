@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { RotateCw } from 'lucide-react-native';
+import { RotateCw, Trash2 } from 'lucide-react-native';
 import Chip from '@/components/Chip';
 import { Brand } from '@/constants/brand';
 
@@ -18,6 +18,9 @@ interface SyncCardProps {
     tentativas?: number;
     onRetry?: () => void;
     retryDisabled?: boolean;
+    // Só quando o servidor recusou de vez: apaga a coleta do aparelho (a tela pede confirmação)
+    onDiscard?: () => void;
+    discardDisabled?: boolean;
 }
 
 export default function SyncCard({
@@ -30,6 +33,8 @@ export default function SyncCard({
     tentativas,
     onRetry,
     retryDisabled,
+    onDiscard,
+    discardDisabled,
 }: SyncCardProps) {
     const renderStatus = () => {
         switch (status) {
@@ -71,6 +76,7 @@ export default function SyncCard({
                             {tentativas === 1 ? '1 tentativa sem sucesso' : `${tentativas} tentativas sem sucesso`}
                         </Text>
                     ) : null}
+                    <View style={styles.actions}>
                     {onRetry ? (
                         <TouchableOpacity
                             style={[styles.retryButton, retryDisabled && styles.retryButtonDisabled]}
@@ -84,6 +90,20 @@ export default function SyncCard({
                             <Text style={styles.retryText}>Tentar de novo</Text>
                         </TouchableOpacity>
                     ) : null}
+                    {onDiscard ? (
+                        <TouchableOpacity
+                            style={[styles.discardButton, discardDisabled && styles.retryButtonDisabled]}
+                            onPress={onDiscard}
+                            disabled={discardDisabled}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Descartar a ${identificador}, apagando do aparelho`}
+                            accessibilityState={{ disabled: !!discardDisabled }}
+                        >
+                            <Trash2 size={14} color={Brand.clayInk} strokeWidth={1.8} />
+                            <Text style={styles.discardText}>Descartar coleta</Text>
+                        </TouchableOpacity>
+                    ) : null}
+                    </View>
                 </View>
             ) : null}
         </View>
@@ -136,6 +156,20 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#cdd5d0',
     },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8 },
+    discardButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 6,
+        marginTop: 8,
+        paddingHorizontal: 16,
+        height: 38,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#e9c5b9',
+    },
+    discardText: { fontSize: 13, fontWeight: '500', color: Brand.clayInk },
     retryButtonDisabled: { opacity: 0.45 },
     retryText: { fontSize: 13, fontWeight: '500', color: Brand.ink },
 });

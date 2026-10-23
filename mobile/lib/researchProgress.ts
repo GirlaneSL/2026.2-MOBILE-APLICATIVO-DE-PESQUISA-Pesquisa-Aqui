@@ -3,14 +3,17 @@ import type { SentRecord } from './sentHistory';
 // Progresso do pesquisador frente à meta, calculado no aparelho (funciona sem internet).
 //
 // feitas = o que o servidor tinha na última atualização da lista (`collected`)
-//        + o que foi enviado depois dela (histórico do aparelho)
-//        + o que está finalizado e ainda aguardando envio.
+//        + as coletas do aparelho (enviadas ou aguardando envio) que NÃO estão nessa contagem.
+// Cada coleta é reconhecida pelo identificador (clientId), então nenhuma conta duas vezes,
+// aconteça o envio quando acontecer em relação à atualização da lista.
 // Rascunhos não contam: a coleta só vale depois de finalizada.
 
 export interface ProgressSource {
     id: number;
     targetCount?: number | null;
     collected?: number;
+    /** clientId das coletas já contadas em `collected`. Ausente (servidor antigo): usa `progressSyncedAt`. */
+    collectedIds?: string[];
     progressSyncedAt?: string;
 }
 
@@ -26,22 +29,34 @@ export interface ResearchProgress {
     percent: number | null;
 }
 
+const normalize = (clientId: string) => clientId.toLowerCase();
+
 export function computeProgress(
     research: ProgressSource,
     sent: SentRecord[],
-    pendingFinished: number,
+    /** clientId das coletas finalizadas desta pesquisa que ainda estão no aparelho. */
+    pendingIds: string[],
 ): ResearchProgress {
-    const since = research.progressSyncedAt;
-    const sentAfterSync = sent.filter(
-        (record) => record.researchId === research.id && (!since || record.sentAt > since),
-    ).length;
+    const sentOfResearch = sent.filter((record) => record.researchId === research.id);
 
-    const done = (research.collected ?? 0) + sentAfterSync + pendingFinished;
+    let notCounted: number;
+    if (research.collectedIds) {
+        const known = new Set(research.collectedIds.map(normalize));
+        const local = new Set([...sentOfResearch.map((r) => r.clientId), ...pendingIds].map(normalize));
+        notCounted = [...local].filter((clientId) => !known.has(clientId)).length;
+    } else {
+        // Servidor sem a lista de identificadores: conta o enviado depois da atualização e o que está na fila.
+        const since = research.progressSyncedAt;
+        const sentAfterSync = sentOfResearch.filter((record) => !since || record.sentAt > since).length;
+        notCounted = sentAfterSync + pendingIds.length;
+    }
+
+    const done = (research.collected ?? 0) + notCounted;
     const target = research.targetCount ?? null;
 
     return {
         done,
-        pending: pendingFinished,
+        pending: pendingIds.length,
         target,
         remaining: target === null ? null : Math.max(0, target - done),
         percent: target === null ? null : Math.min(100, Math.round((done / target) * 100)),
