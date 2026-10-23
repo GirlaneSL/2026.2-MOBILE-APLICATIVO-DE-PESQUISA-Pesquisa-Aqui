@@ -54,7 +54,7 @@ function answerFileNames(type: string, answer: string | null): string[] {
 }
 
 // Recusa de arquivo com código legível pela máquina (o aplicativo decide se tenta de novo).
-function fileRejection(Exception: typeof BadRequestException | typeof NotFoundException, code: string, message: string, retryable: boolean) {
+export function fileRejection(Exception: typeof BadRequestException | typeof NotFoundException, code: string, message: string, retryable: boolean) {
     return new Exception({ statusCode: Exception === NotFoundException ? 404 : 400, code, message, retryable });
 }
 

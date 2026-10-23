@@ -79,6 +79,20 @@ export function deleteAudio(uri: string): void {
     deleteQuietly(uri);
 }
 
+/** Endereço no aparelho do áudio de uma questão de uma coleta, a partir do nome guardado na resposta. */
+export const answerAudioUriOf = (collectionId: string, fileName: string): string =>
+    new File(collectionAudioDir(collectionId), fileName).uri;
+
+/** Apaga a pasta de áudios das questões da coleta inteira (a coleta já foi confirmada pelo servidor). */
+export function deleteCollectionAudios(collectionId: string): void {
+    try {
+        const directory = collectionAudioDir(collectionId);
+        if (directory.exists) directory.delete();
+    } catch {
+        // pasta que o sistema não deixa apagar não atrapalha: o que sobrar é "liberável" na tela de envio
+    }
+}
+
 /** Quanto os áudios das questões de uma coleta ocupam no aparelho. */
 export function getQuestionAudioBytes(collectionId: string): number {
     try {

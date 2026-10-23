@@ -26,6 +26,20 @@ export type CapturePhotoResult =
 
 const collectionPhotosDir = (collectionId: string) => new Directory(Paths.document, PHOTOS_ROOT, collectionId);
 
+/** Endereço no aparelho da foto de uma coleta, a partir do nome guardado na resposta. */
+export const photoUriOf = (collectionId: string, fileName: string): string =>
+    new File(collectionPhotosDir(collectionId), fileName).uri;
+
+/** Apaga a pasta de fotos da coleta inteira (a coleta já foi confirmada pelo servidor). */
+export function deleteCollectionPhotos(collectionId: string): void {
+    try {
+        const directory = collectionPhotosDir(collectionId);
+        if (directory.exists) directory.delete();
+    } catch {
+        // pasta que o sistema não deixa apagar não atrapalha: o que sobrar é "liberável" na tela de envio
+    }
+}
+
 // ---------- Permissão ----------
 
 async function ensureCameraPermission(): Promise<{ granted: boolean; canAskAgain: boolean }> {

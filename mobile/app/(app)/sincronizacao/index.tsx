@@ -1,11 +1,13 @@
 // mobile/app/(app)/sincronizacao/index.tsx
 import { useFocusEffect } from 'expo-router';
-import { CloudUpload, HardDrive, WifiOff } from 'lucide-react-native';
+import { CloudUpload, HardDrive, Trash2, WifiOff } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SyncCard, { type SyncCardStatus } from './_components/SyncCard';
 import { listCollections, type LocalCollection } from '@/lib/collectionStore';
-import { formatBytes, getStorageUsage, type StorageUsage } from '@/lib/photoStorage';
+import { getStorageReport, releaseConfirmedFiles, type StorageReport } from '@/lib/confirmedFiles';
+import { buildSpaceWarning, spaceLevel } from '@/lib/deviceSpace';
+import { formatBytes } from '@/lib/photoStorage';
 import { getCachedResearches } from '@/lib/researchCache';
 import { syncQueue } from '@/lib/syncQueue';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -14,15 +16,16 @@ import { Brand, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useSyncState } from '@/hooks/useSyncQueue';
 
-const EMPTY_USAGE: StorageUsage = { photosBytes: 0, audioBytes: 0, totalBytes: 0, freeBytes: null };
+const EMPTY_USAGE: StorageReport = { photosBytes: 0, audioBytes: 0, totalBytes: 0, freeBytes: null, releasableBytes: 0 };
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
 export default function Sincronizacao() {
     const [collections, setCollections] = useState<LocalCollection[]>([]);
     const [titles, setTitles] = useState<Map<number, string>>(new Map());
-    const [usage, setUsage] = useState<StorageUsage>(EMPTY_USAGE);
+    const [usage, setUsage] = useState<StorageReport>(EMPTY_USAGE);
     const [refreshing, setRefreshing] = useState(false);
+    const [released, setReleased] = useState<string | null>(null);
     const isOnline = useNetworkStatus();
     const sync = useSyncState();
 
@@ -31,7 +34,7 @@ export default function Sincronizacao() {
         const [stored, researches] = await Promise.all([listCollections(), getCachedResearches()]);
         setCollections(stored);
         setTitles(new Map(researches.map((research) => [research.id, research.title])));
-        setUsage(getStorageUsage(stored));
+        setUsage(getStorageReport(stored));
     }, []);
 
     // Recarrega ao abrir a aba e a cada mudança do envio (coleta confirmada sai, falha ganha motivo),
@@ -54,6 +57,16 @@ export default function Sincronizacao() {
             setRefreshing(false);
         }
     };
+
+    // Libera o espaço do que o servidor já confirmou. Nunca toca no que ainda não foi enviado.
+    const freeSpace = () => {
+        const { files, freedBytes } = releaseConfirmedFiles(collections);
+        setReleased(files > 0 ? `${plural(files, 'arquivo apagado', 'arquivos apagados')}: ${formatBytes(freedBytes)} liberados.` : null);
+        void load().catch((error) => console.log('Falha ao atualizar o espaço:', error));
+    };
+
+    const level = spaceLevel(usage.freeBytes);
+    const spaceWarning = buildSpaceWarning(level, usage.freeBytes === null ? '' : formatBytes(usage.freeBytes), usage.releasableBytes);
 
     const finished = collections
         .filter((c) => c.status === 'FINISHED')
@@ -164,6 +177,31 @@ export default function Sincronizacao() {
                             {usage.freeBytes !== null ? `. Livre no aparelho: ${formatBytes(usage.freeBytes)}` : ''}
                         </Text>
                         {drafts > 0 ? <Text style={styles.storageNote}>Inclui os rascunhos em andamento.</Text> : null}
+
+                        {spaceWarning ? (
+                            <Text style={[styles.spaceWarning, spaceWarning.level === 'critical' && styles.spaceWarningCritical]}>
+                                {spaceWarning.title}. {spaceWarning.text}
+                            </Text>
+                        ) : null}
+
+                        {usage.releasableBytes > 0 ? (
+                            <View style={styles.releaseBox}>
+                                <Text style={styles.storageDetail}>
+                                    {formatBytes(usage.releasableBytes)} já estão no servidor e ainda ocupam o aparelho.
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.releaseButton}
+                                    onPress={freeSpace}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`Apagar do aparelho os arquivos já enviados, ${formatBytes(usage.releasableBytes)}`}
+                                >
+                                    <Trash2 size={14} color={Brand.greenDeep} strokeWidth={1.8} />
+                                    <Text style={styles.releaseText}>Apagar arquivos já enviados</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : released ? (
+                            <Text style={styles.storageNote}>{released}</Text>
+                        ) : null}
                     </View>
                     </View>
                 </View>
@@ -248,6 +286,21 @@ const styles = StyleSheet.create({
     storageTotal: { fontSize: 34, fontWeight: '300', letterSpacing: -1.5, color: Brand.ink, marginTop: 6 },
     storageDetail: { fontSize: 13, color: Brand.muted },
     storageNote: { fontSize: 12, color: Brand.muted, marginTop: 2 },
+    spaceWarning: { fontSize: 13, lineHeight: 18, color: Brand.warn, backgroundColor: Brand.warnLight, borderRadius: 14, padding: 12, marginTop: 8 },
+    spaceWarningCritical: { color: Brand.clayInk, backgroundColor: Brand.clayLight },
+    releaseBox: { marginTop: 10, gap: 8 },
+    releaseButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 6,
+        paddingHorizontal: 16,
+        height: 38,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#cdd5d0',
+    },
+    releaseText: { fontSize: 13, fontWeight: '500', color: Brand.ink },
     row: { paddingHorizontal: 18 },
     separator: { height: 12 },
     emptyState: { justifyContent: 'center', alignItems: 'center', padding: 40, gap: 12 },

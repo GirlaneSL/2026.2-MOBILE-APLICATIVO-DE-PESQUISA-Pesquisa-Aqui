@@ -1,6 +1,15 @@
 import { File } from 'expo-file-system';
 import { ApiError, apiFetch } from './api';
-import { buildFileFormData, listUploadFiles, type CollectionInput } from './collectionUpload';
+import {
+    buildChunkFormData,
+    buildProgressQuery,
+    fileSizeOf,
+    listUploadFiles,
+    readFileChunk,
+    UPLOAD_CHUNK_BYTES,
+    type CollectionInput,
+    type UploadFile,
+} from './collectionUpload';
 import type { SendOutcome } from './syncEngine';
 
 // Envio de UMA coleta ao servidor. Nunca lança erro: tudo vira um SendOutcome para a fila decidir.
@@ -8,23 +17,25 @@ import type { SendOutcome } from './syncEngine';
 // O envio é separado em duas etapas, para um arquivo pesado nunca travar a fila:
 //  1. POST /collection/sync (JSON): as respostas, sem arquivo. Idempotente pelo clientId (UUID do aparelho);
 //     responde ACCEPTED, ALREADY_EXISTS ou REJECTED com motivo.
-//  2. POST /collection/:clientId/files (multipart): um arquivo por requisição (foto, áudio de questão ou áudio
-//     da entrevista), ligado à coleta pelo UUID e à questão. Reenviar o mesmo arquivo não duplica.
+//  2. Arquivos (foto, áudio de questão ou áudio da entrevista), um de cada vez, ligados à coleta pelo UUID e à
+//     questão. Cada arquivo sobe em pedaços de 1 MB (POST /collection/:clientId/files/chunk): se a rede cai no meio,
+//     a próxima tentativa pergunta ao servidor quanto ele já tem (GET .../files/progress) e continua dali, em vez
+//     de recomeçar. Reenviar um arquivo que o servidor já tem não duplica.
 
 const SYNC_TIMEOUT_MS = 30_000;
-const UPLOAD_TIMEOUT_MS = 3 * 60_000; // áudio de entrevista longa e várias fotos pesam dezenas de MB
+const CHUNK_TIMEOUT_MS = 60_000; // um pedaço de 1 MB: se não passa em 1 minuto, a rede não está servindo
 
 class Unreachable extends Error {}
 
-async function post(path: string, body: BodyInit, timeoutMs: number): Promise<Response> {
+async function request(method: 'GET' | 'POST', path: string, body: BodyInit | undefined, timeoutMs: number): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        return await apiFetch(path, { method: 'POST', body, signal: controller.signal });
+        return await apiFetch(path, { method, body, signal: controller.signal });
     } catch (error) {
         if (error instanceof ApiError) throw error; // sessão expirada
         // O motivo real (ex.: arquivo ilegível, conexão encerrada pelo servidor) só aparece aqui, no log do Expo
-        console.log(`Falha de rede em POST ${path}:`, error);
+        console.log(`Falha de rede em ${method} ${path}:`, error);
         throw new Unreachable(
             controller.signal.aborted
                 ? 'O servidor demorou demais para responder.'
@@ -34,6 +45,8 @@ async function post(path: string, body: BodyInit, timeoutMs: number): Promise<Re
         clearTimeout(timer);
     }
 }
+
+const post = (path: string, body: BodyInit, timeoutMs: number) => request('POST', path, body, timeoutMs);
 
 // Resposta de erro do servidor (400, 403, 404, 5xx...). Falha temporária é a que vale tentar de novo sozinho.
 async function failureFromHttp(response: Response): Promise<SendOutcome> {
@@ -120,8 +133,49 @@ function removeFileQuietly(uri: string): void {
     }
 }
 
+/** Resultado de subir um arquivo: chegou inteiro, ou a resposta do servidor que o recusou / deu erro. */
+type FileUploadResult = { done: true } | { done: false; response: Response };
+
+/**
+ * Sobe UM arquivo em pedaços, continuando de onde o servidor parou.
+ * Arquivo maior que um pedaço começa perguntando quanto o servidor já tem (uma tentativa anterior pode ter
+ * subido parte dele). O servidor é quem manda: se ele diz que tem N bytes, o próximo pedaço começa em N,
+ * mesmo que o app achasse outra coisa (resposta perdida, pedaço repetido, arquivo parcial descartado).
+ */
+async function uploadFileInChunks(clientId: string, file: UploadFile): Promise<FileUploadResult> {
+    const base = `/collection/${encodeURIComponent(clientId)}/files`;
+    const total = fileSizeOf(file.uri);
+
+    let offset = 0;
+    if (total > UPLOAD_CHUNK_BYTES) {
+        const progress = await request('GET', `${base}/progress?${buildProgressQuery(file, total)}`, undefined, SYNC_TIMEOUT_MS);
+        if (!progress.ok) return { done: false, response: progress };
+        const data = await progress.json().catch(() => null);
+        const received = Number(data?.receivedBytes);
+        if (Number.isFinite(received)) offset = Math.min(Math.max(0, Math.floor(received)), total);
+    }
+
+    // Trava contra servidor que nunca avança: o normal é um pedaço por volta.
+    const maxRounds = Math.ceil(total / UPLOAD_CHUNK_BYTES) + 20;
+    for (let round = 0; round < maxRounds; round++) {
+        const length = Math.min(UPLOAD_CHUNK_BYTES, total - offset);
+        const bytes = await readFileChunk(file.uri, offset, length);
+        if (bytes.length !== length) throw new Error(`Leitura incompleta de ${file.name} (${bytes.length} de ${length} bytes)`);
+
+        const response = await post(`${base}/chunk`, buildChunkFormData(file, offset, total, bytes), CHUNK_TIMEOUT_MS);
+        if (!response.ok) return { done: false, response };
+
+        const data = await response.json().catch(() => null);
+        if (data?.status === 'ACCEPTED' || data?.status === 'ALREADY_EXISTS') return { done: true };
+        if (data?.status !== 'PARTIAL' || !Number.isFinite(Number(data.receivedBytes))) break;
+        offset = Math.min(Math.max(0, Math.floor(Number(data.receivedBytes))), total);
+    }
+    throw new Error(`O servidor não confirmou o arquivo ${file.name}`);
+}
+
 /**
  * Envia os arquivos da coleta que o servidor ainda não tem, um a um. A coleta (respostas) já chegou antes.
+ * - cada arquivo sobe em pedaços e continua de onde parou (uploadFileInChunks);
  * - arquivo que o servidor já recebeu (resposta ALREADY_EXISTS) conta como enviado: não duplica;
  * - falha de rede ou do servidor para na hora (o que já subiu não sobe de novo na próxima rodada);
  * - recusa definitiva de um arquivo (tipo, tamanho) não impede os outros: a coleta fica na fila com o motivo.
@@ -143,14 +197,10 @@ export async function sendCollectionFiles(
                 continue;
             }
 
-            const response = await post(
-                `/collection/${encodeURIComponent(input.clientId)}/files`,
-                buildFileFormData(file),
-                UPLOAD_TIMEOUT_MS,
-            );
+            const result = await uploadFileInChunks(input.clientId, file);
 
-            if (!response.ok) {
-                const failure = await failureFromHttp(response);
+            if (!result.done) {
+                const failure = await failureFromHttp(result.response);
                 if (failure.kind === 'failed' && failure.code === 'COLLECTION_NOT_RECEIVED') {
                     // O servidor não tem a coleta: quem chama volta a enviar as respostas primeiro.
                     return { ...failure, reason: 'O servidor não encontrou esta coleta. As respostas serão enviadas de novo.', retryable: true };

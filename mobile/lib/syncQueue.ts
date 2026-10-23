@@ -10,6 +10,7 @@ import {
     removeCollection,
     resetCollectionSent,
 } from './collectionStore';
+import { releaseConfirmedFiles, removeCollectionFiles } from './confirmedFiles';
 import { listUploadFiles, type CollectionInput } from './collectionUpload';
 import { orderedQuestions } from './displayRules';
 import { getCachedResearchPackage } from './researchCache';
@@ -76,6 +77,11 @@ export const syncQueue = createSyncEngine({
         const uploaded = (await getCollection(clientId))?.upload?.uploaded ?? [];
         const outcome = await sendCollectionFiles(loaded.input, uploaded, (key) => markFileUploaded(clientId, key));
 
+        // O que o servidor confirmou e ainda ficou no aparelho (app fechado no meio, sistema que não deixou
+        // apagar) sai agora: o espaço volta mesmo quando a coleta continua na fila por outro arquivo.
+        const after = await getCollection(clientId);
+        if (after) releaseConfirmedFiles([after]);
+
         // O servidor não tem a coleta: volta a mandar as respostas na próxima rodada.
         if (outcome.kind === 'failed' && outcome.code === 'COLLECTION_NOT_RECEIVED') {
             await resetCollectionSent(clientId);
@@ -84,8 +90,11 @@ export const syncQueue = createSyncEngine({
     },
 
     async onConfirmed(clientId) {
+        const collection = await getCollection(clientId);
         await removeCollection(clientId); // sai da fila: o servidor já tem a coleta e todos os arquivos
-        // Cada arquivo foi apagado do aparelho assim que o servidor o recebeu (collectionSender).
+        // Cada arquivo foi apagado do aparelho assim que o servidor o recebeu (collectionSender); aqui sai o resto
+        // (pastas vazias, arquivo que o sistema não deixou apagar na hora).
+        if (collection) removeCollectionFiles(collection);
     },
 
     onFailed: recordSendFailure,

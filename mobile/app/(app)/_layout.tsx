@@ -2,6 +2,7 @@ import { CustomTabBar } from '@/components/CustomTabBar';
 import { Tabs } from 'expo-router';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/context/AuthContext';
+import { LowSpaceBanner } from '@/components/LowSpaceBanner';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { useAutoSync } from '@/hooks/useSyncQueue';
 import { Brand } from '@/constants/brand';
@@ -16,6 +17,7 @@ export default function TabLayout() {
                 {/* cor da área sob a câmera do celular */}
                 <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: Brand.forest }}>
                     <OfflineBanner />
+                    <LowSpaceBanner />
                     <Tabs
                         tabBar={(props: any) => <CustomTabBar {...props} />}
                         screenOptions={{ sceneStyle: { backgroundColor: Brand.paper } }}

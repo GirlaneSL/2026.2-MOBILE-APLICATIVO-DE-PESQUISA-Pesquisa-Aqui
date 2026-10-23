@@ -4,10 +4,14 @@ import { apiFetch } from "./api";
 // Parte de arquivo para o FormData. O fetch do Expo não aceita o formato antigo do React Native
 // ({ uri, name, type }): só texto, Blob ou um objeto com `bytes()`. Aqui o arquivo é lido do aparelho
 // no momento do envio, e nome e tipo ficam sob controle do app (o servidor valida o tipo do áudio).
+// O File só lê endereço com esquema (file://, content://)
+const toFileUri = (uri: string) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(uri) ? uri : `file://${uri}`);
+
+/** Tamanho do arquivo no aparelho, em bytes (0 se não existe). */
+export const fileSizeOf = (uri: string): number => new File(toFileUri(uri)).size;
+
 export function filePart(uri: string, name: string, type: string): Blob {
-    // O File só lê endereço com esquema (file://, content://)
-    const fileUri = /^[a-z][a-z0-9+.-]*:\/\//i.test(uri) ? uri : `file://${uri}`;
-    const file = new File(fileUri);
+    const file = new File(toFileUri(uri));
     return { name, type, bytes: () => file.bytes() } as unknown as Blob;
 }
 
@@ -180,6 +184,46 @@ export function buildFileFormData(file: UploadFile): FormData {
     if (file.durationSeconds !== undefined) form.append('durationSeconds', String(file.durationSeconds));
     form.append('file', filePart(file.uri, file.name, file.mimeType));
     return form;
+}
+
+/** Tamanho de cada pedaço enviado. Pequeno o bastante para caber numa rede ruim, grande o bastante para não virar enxurrada de requisições. */
+export const UPLOAD_CHUNK_BYTES = 1024 * 1024;
+
+// Parte de arquivo montada de bytes que já estão na memória (um pedaço do arquivo).
+function bytesPart(bytes: Uint8Array, name: string, type: string): Blob {
+    return { name, type, bytes: async () => bytes } as unknown as Blob;
+}
+
+// Query de GET /collection/:clientId/files/progress: "quanto deste arquivo o servidor já tem?"
+export function buildProgressQuery(file: UploadFile, totalBytes: number): string {
+    const params = new URLSearchParams({ name: file.name, totalBytes: String(totalBytes) });
+    if (file.questionId !== undefined) params.set('questionId', String(file.questionId));
+    return params.toString();
+}
+
+// Multipart de UM PEDAÇO (POST /collection/:clientId/files/chunk): os mesmos campos que identificam o arquivo
+// no envio inteiro, mais a posição do pedaço (`offset`) e o tamanho do arquivo todo (`totalBytes`).
+export function buildChunkFormData(file: UploadFile, offset: number, totalBytes: number, bytes: Uint8Array): FormData {
+    const form = new FormData();
+    form.append('name', file.name);
+    if (file.questionId !== undefined) form.append('questionId', String(file.questionId));
+    if (file.durationSeconds !== undefined) form.append('durationSeconds', String(file.durationSeconds));
+    form.append('mimeType', file.mimeType);
+    form.append('offset', String(offset));
+    form.append('totalBytes', String(totalBytes));
+    form.append('file', bytesPart(bytes, file.name, file.mimeType));
+    return form;
+}
+
+/** Lê `length` bytes do arquivo a partir de `offset`, sem carregar o arquivo inteiro na memória. */
+export async function readFileChunk(uri: string, offset: number, length: number): Promise<Uint8Array> {
+    const handle = new File(toFileUri(uri)).open();
+    try {
+        handle.offset = offset;
+        return await handle.readBytes(length);
+    } finally {
+        handle.close();
+    }
 }
 
 // Envia a coleta: respostas, consentimento (data, hora) e o áudio, tudo na mesma requisição.

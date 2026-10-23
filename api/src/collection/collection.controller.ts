@@ -20,11 +20,13 @@ import { AuthGuard } from '../auth/auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { CollectionSyncService } from './collection-sync.service.js';
+import { CollectionFileChunkService, MAX_CHUNK_BYTES } from './file-chunks.service.js';
 import { CollectionService } from './collection.service.js';
 import type { UploadedAudio } from './collection.service.js';
 import { CreateCollectionDto, MAX_MEDIA_FILES } from './dto/create-collection.dto.js';
 import { SyncCollectionsDto } from './dto/sync-collections.dto.js';
 import { UploadCollectionFileDto } from './dto/upload-collection-file.dto.js';
+import { FileProgressQueryDto, UploadFileChunkDto } from './dto/upload-file-chunk.dto.js';
 import { uploadMaxBytes } from './media-validation.js';
 
 // Limite do arquivo de áudio por coleta (padrão 150 MB; ajustável por AUDIO_MAX_BYTES).
@@ -36,6 +38,7 @@ export class CollectionController {
     constructor(
         private collectionService: CollectionService,
         private collectionSyncService: CollectionSyncService,
+        private fileChunkService: CollectionFileChunkService,
     ) { }
 
     // multipart/form-data: campo `payload` (JSON com respostas e consentimento) + arquivos opcionais:
@@ -84,6 +87,32 @@ export class CollectionController {
         @CurrentUser() currentUser: UserPayLoad,
     ) {
         return this.collectionService.uploadFile(clientId, dto, file, currentUser);
+    }
+
+    // Envio em pedaços, para arquivo grande em rede ruim: o app pergunta quanto o servidor já tem e continua dali.
+    // Quando o último pedaço chega, o arquivo passa pelas mesmas validações do envio inteiro (acima).
+    @Get(':clientId/files/progress')
+    @Header('Cache-Control', 'private, no-store')
+    fileProgress(
+        @Param('clientId', new ParseUUIDPipe()) clientId: string,
+        @Query() query: FileProgressQueryDto,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.fileChunkService.progress(clientId, query, currentUser);
+    }
+
+    // multipart/form-data: `file` (o pedaço) + name, questionId, durationSeconds, mimeType, offset, totalBytes.
+    // Responde PARTIAL com `receivedBytes` até o último pedaço; no último, o mesmo resultado do envio inteiro.
+    @Post(':clientId/files/chunk')
+    @HttpCode(200)
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_CHUNK_BYTES, files: 1 } }))
+    uploadFileChunk(
+        @Param('clientId', new ParseUUIDPipe()) clientId: string,
+        @Body() dto: UploadFileChunkDto,
+        @UploadedFile() file: UploadedAudio | undefined,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.fileChunkService.receive(clientId, dto, file, currentUser);
     }
 
     @Get()
