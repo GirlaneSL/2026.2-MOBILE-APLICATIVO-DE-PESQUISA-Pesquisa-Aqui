@@ -90,7 +90,11 @@ const KINDS: CloudinaryKind[] = ['image', 'video'];
 // Sem configuração, cai para o disco local (AUDIO_STORAGE_DIR) — pensado só para desenvolvimento.
 //
 // Os caminhos relativos (`<pesquisa>/<uuid>.m4a`, `<pesquisa>/answers/<coleta>/q1-0.jpg`) são os mesmos
-// nos dois modos: no Cloudinary o caminho sem a extensão é o `public_id`.
+// nos dois modos (e são os que ficam no banco): no Cloudinary o caminho sem a extensão é o `public_id`.
+//
+// CLOUDINARY_FOLDER (opcional) define a pasta raiz no Cloudinary. Cada pesquisa ganha a sua própria
+// subpasta dentro dela: `<CLOUDINARY_FOLDER>/<pesquisa>/...`. Sem a variável, tudo fica como antes (`<pesquisa>/...`).
+// Arquivos antigos, gravados sem a pasta raiz, continuam sendo lidos e apagados normalmente.
 @Injectable()
 export class AudioStorage {
     private readonly logger = new Logger(AudioStorage.name);
@@ -115,6 +119,22 @@ export class AudioStorage {
             this.logger.warn('Cloudinary não configurado: mídias sendo gravadas em disco local (use só em desenvolvimento).');
         }
         return this.cloudinaryReady;
+    }
+
+    // Pasta raiz no Cloudinary (CLOUDINARY_FOLDER), sem barras nas pontas. Vazia = sem pasta raiz.
+    private get cloudFolder(): string {
+        return (process.env.CLOUDINARY_FOLDER ?? '')
+            .replace(/\\/g, '/')
+            .split('/')
+            .map((part) => part.trim())
+            .filter((part) => part !== '' && part !== '.' && part !== '..')
+            .join('/');
+    }
+
+    // Raízes onde um arquivo pode estar: a atual (onde se grava) e, se houver pasta configurada, a antiga (sem pasta).
+    private get cloudRoots(): string[] {
+        const folder = this.cloudFolder;
+        return folder ? [folder, ''] : [''];
     }
 
     async save(researchId: number, buffer: Buffer, extension: string): Promise<string> {
@@ -165,14 +185,19 @@ export class AudioStorage {
     // ---------- Cloudinary ----------
 
     // `12/answers/3/q5-0.jpg` -> public_id `12/answers/3/q5-0`, formato `jpg`, recurso `image`.
-    private cloudRef(relativePath: string): { publicId: string; format: string; kind: CloudinaryKind } {
+    // Com `root` (ex.: `pesquisas`), o public_id vira `pesquisas/12/answers/3/q5-0`.
+    private cloudRef(
+        relativePath: string,
+        root: string = this.cloudRoots[0],
+    ): { publicId: string; format: string; kind: CloudinaryKind } {
         const clean = relativePath.replace(/\\/g, '/');
         if (clean.split('/').some((part) => part === '..' || part === '')) throw new Error('Invalid media path');
         const dot = clean.lastIndexOf('.');
         if (dot <= clean.lastIndexOf('/') + 1) throw new Error('Invalid media path');
         const format = clean.slice(dot + 1).toLowerCase();
+        const withoutExtension = clean.slice(0, dot);
         return {
-            publicId: clean.slice(0, dot),
+            publicId: root ? `${root}/${withoutExtension}` : withoutExtension,
             format,
             kind: IMAGE_FILE_EXTENSIONS.has(format) ? 'image' : 'video',
         };
@@ -184,6 +209,8 @@ export class AudioStorage {
             const uploader = cloudinary.uploader.upload_chunked_stream(
                 {
                     public_id: publicId,
+                    // Modo de pastas dinâmicas do Cloudinary: a pasta mostrada no painel vem daqui, não do public_id.
+                    asset_folder: publicId.slice(0, publicId.lastIndexOf('/')),
                     resource_type: kind,
                     type: 'authenticated',
                     overwrite: false,
@@ -225,13 +252,20 @@ export class AudioStorage {
     }
 
     private async cloudOpen(relativePath: string): Promise<StoredFile | null> {
-        let ref;
-        try {
-            ref = this.cloudRef(relativePath);
-        } catch {
-            return null;
+        for (const root of this.cloudRoots) {
+            let ref;
+            try {
+                ref = this.cloudRef(relativePath, root);
+            } catch {
+                return null;
+            }
+            const file = await this.cloudOpenRef(ref);
+            if (file) return file;
         }
+        return null;
+    }
 
+    private async cloudOpenRef(ref: { publicId: string; format: string; kind: CloudinaryKind }): Promise<StoredFile | null> {
         let response = await fetch(this.signedUrl(ref, ref.format));
 
         // Áudio pedido com a extensão errada (ex.: .m4a, mas o Cloudinary guardou como mp4) não é entregue
@@ -254,8 +288,21 @@ export class AudioStorage {
         return { stream: Readable.from(buffer), size: buffer.length };
     }
 
+    // Prefixos de public_id de uma pasta lógica, um por raiz possível.
+    private cloudPrefixes(relativeDir: string): string[] {
+        const dir = relativeDir.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+        return this.cloudRoots.map((root) => `${[root, dir].filter(Boolean).join('/')}/`);
+    }
+
     private async cloudList(relativeDir: string): Promise<string[]> {
-        const prefix = `${relativeDir.replace(/\\/g, '/').replace(/\/+$/, '')}/`;
+        const names = new Set<string>();
+        for (const prefix of this.cloudPrefixes(relativeDir)) {
+            for (const name of await this.cloudListPrefix(prefix)) names.add(name);
+        }
+        return [...names];
+    }
+
+    private async cloudListPrefix(prefix: string): Promise<string[]> {
         const names: string[] = [];
         for (const kind of KINDS) {
             let cursor: string | undefined;
@@ -281,12 +328,17 @@ export class AudioStorage {
     }
 
     private async cloudRemove(relativePath: string): Promise<void> {
-        const { publicId, kind } = this.cloudRef(relativePath);
-        await cloudinary.uploader.destroy(publicId, { resource_type: kind, type: 'authenticated', invalidate: true });
+        for (const root of this.cloudRoots) {
+            const { publicId, kind } = this.cloudRef(relativePath, root);
+            await cloudinary.uploader.destroy(publicId, { resource_type: kind, type: 'authenticated', invalidate: true });
+        }
     }
 
     private async cloudRemoveDir(relativeDir: string): Promise<void> {
-        const prefix = `${relativeDir.replace(/\\/g, '/').replace(/\/+$/, '')}/`;
+        for (const prefix of this.cloudPrefixes(relativeDir)) await this.cloudRemovePrefix(prefix);
+    }
+
+    private async cloudRemovePrefix(prefix: string): Promise<void> {
         for (const kind of KINDS) {
             // O Cloudinary apaga em lotes: repete enquanto ele disser que sobrou arquivo (`partial`).
             for (let round = 0; round < 50; round++) {
