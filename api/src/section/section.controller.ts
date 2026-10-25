@@ -23,6 +23,12 @@ export class SectionController {
     return this.sectionService.reorder(reorderDto, currentUser);
   }
 
+  // Declarada antes de ':id'. Traz seções, questões e alternativas de uma vez.
+  @Get('questionnaire')
+  questionnaire(@Query('researchId', ParseIntPipe) researchId: number, @CurrentUser() currentUser: UserPayLoad) {
+    return this.sectionService.questionnaire(researchId, currentUser);
+  }
+
   @Get()
   findAll(@Query('researchId', ParseIntPipe) researchId: number, @CurrentUser() currentUser: UserPayLoad) {
     return this.sectionService.findAll(researchId, currentUser);

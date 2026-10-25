@@ -248,51 +248,42 @@ export const getOptionsApi = async (questionId: number) => {
 }
 
 export const loadQuestionnaire = async (researchId: number): Promise<FormSection[]> => {
-    const sections = await getSections(researchId);
-    const sortedSections = [...sections].sort((a, b) => a.order - b.order);
+    // Uma só chamada traz seções, questões e alternativas (antes eram uma por seção e uma por questão).
+    const response = await apiFetch(`/section/questionnaire?researchId=${researchId}`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) await throwApiError(response, "Erro ao carregar o questionário");
+    const sections: any[] = await response.json();
 
-    const result: FormSection[] = [];
-
-    for (const section of sortedSections) {
-        const questions = await getQuestions(section.id);
-        const sortedQuestions = [...questions].sort((a, b) => a.order - b.order);
-
-        const mappedQuestions = [];
-        for (const q of sortedQuestions) {
-            const optionsRaw = await getOptionsApi(q.id);
-            const sortedOptions = [...optionsRaw].sort((a: any, b: any) => a.order - b.order);
-            const options: Option[] = sortedOptions.map((o: any) => ({ id: String(o.id), text: o.text, order: o.order }));
-
-            mappedQuestions.push({
-                id: String(q.id),
-                title: q.statement,
-                type: fromBackendType(q.type),
-                helpText: q.helpText ?? "",
-                required: q.isRequired,
-                order: q.order,
-                minSelections: q.minSelections ?? undefined,
-                maxSelections: q.maxSelections ?? undefined,
-                minValue: q.minValue ?? undefined,
-                maxValue: q.maxValue ?? undefined,
-                minDate: q.minDate ?? undefined,
-                maxDate: q.maxDate ?? undefined,
-                maxLength: q.maxLength ?? undefined,
-                scaleLeftLabel: q.scaleLeftLabel ?? undefined,
-                scaleRightLabel: q.scaleRightLabel ?? undefined,
-                maxFiles: q.maxFiles ?? undefined,
-                maxDuration: q.maxDuration ?? undefined,
-                options: options
-            });
-        }
-
-        result.push({
+    return [...sections]
+        .sort((a, b) => a.order - b.order)
+        .map((section) => ({
             id: String(section.id),
             title: section.title,
             order: section.order,
-            questions: mappedQuestions
-        });
-    }
-    return result;
+            questions: [...(section.questions ?? [])]
+                .sort((a: any, b: any) => a.order - b.order)
+                .map((q: any) => ({
+                    id: String(q.id),
+                    title: q.statement,
+                    type: fromBackendType(q.type),
+                    helpText: q.helpText ?? "",
+                    required: q.isRequired,
+                    order: q.order,
+                    minSelections: q.minSelections ?? undefined,
+                    maxSelections: q.maxSelections ?? undefined,
+                    minValue: q.minValue ?? undefined,
+                    maxValue: q.maxValue ?? undefined,
+                    minDate: q.minDate ?? undefined,
+                    maxDate: q.maxDate ?? undefined,
+                    maxLength: q.maxLength ?? undefined,
+                    scaleLeftLabel: q.scaleLeftLabel ?? undefined,
+                    scaleRightLabel: q.scaleRightLabel ?? undefined,
+                    maxFiles: q.maxFiles ?? undefined,
+                    maxDuration: q.maxDuration ?? undefined,
+                    options: [...(q.options ?? [])]
+                        .sort((a: any, b: any) => a.order - b.order)
+                        .map((o: any) => ({ id: String(o.id), text: o.text, order: o.order })),
+                })),
+        }));
 }
 
 export const saveQuestionnaire = async (researchId: number, sections: FormSection[]): Promise<void> => {

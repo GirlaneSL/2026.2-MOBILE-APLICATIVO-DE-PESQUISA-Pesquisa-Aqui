@@ -30,6 +30,41 @@ export class SectionService {
     return await this.prisma.client.orm.public.Section.where({ researchId }).all();
   }
 
+  /**
+   * Questionário inteiro da pesquisa (seções > questões > alternativas) numa só chamada.
+   * Mesma permissão de findAll; são só 3 consultas, qualquer que seja o tamanho do questionário.
+   */
+  async questionnaire(researchId: number, currentUser: UserPayLoad) {
+    await this.researchService.findOne(researchId, currentUser);
+    const orm = this.prisma.client.orm.public;
+
+    const sections = [...(await orm.Section.where({ researchId }).all())].sort((a, b) => a.order - b.order);
+    if (sections.length === 0) return [];
+
+    const sectionIds = sections.map((section) => section.id);
+    const questions = [...(await orm.Question.where((q) => q.sectionId.in(sectionIds)).all())].sort((a, b) => a.order - b.order);
+    const questionIds = questions.map((q) => q.id);
+    const options = questionIds.length > 0
+      ? [...(await orm.QuestionOption.where((o) => o.questionId.in(questionIds)).all())].sort((a, b) => a.order - b.order)
+      : [];
+
+    const optionsOf = new Map<number, typeof options>();
+    for (const option of options) {
+      const list = optionsOf.get(option.questionId);
+      if (list) list.push(option);
+      else optionsOf.set(option.questionId, [option]);
+    }
+    const questionsOf = new Map<number, Array<(typeof questions)[number] & { options: typeof options }>>();
+    for (const question of questions) {
+      const item = { ...question, options: optionsOf.get(question.id) ?? [] };
+      const list = questionsOf.get(question.sectionId);
+      if (list) list.push(item);
+      else questionsOf.set(question.sectionId, [item]);
+    }
+
+    return sections.map((section) => ({ ...section, questions: questionsOf.get(section.id) ?? [] }));
+  }
+
   async findOne(id: number, currentUser: UserPayLoad) {
     const section = await this.prisma.client.orm.public.Section.where({ id }).first()
 
