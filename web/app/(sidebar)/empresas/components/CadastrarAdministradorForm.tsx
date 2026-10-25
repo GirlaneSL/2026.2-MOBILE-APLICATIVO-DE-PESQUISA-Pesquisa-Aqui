@@ -1,18 +1,13 @@
 'use client'
 
 import { Button } from "@/components/ui/button";
-import { ComboBoxLayout } from "@/components/ui/comboboxLayout";
+import { RemoteComboBox } from "@/components/ui/remoteCombobox";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { getCompanies } from "@/lib/company";
+import { getCompanyOptions } from "@/lib/company";
 import { createUser } from "@/lib/user";
-import { SubmitEventHandler, useEffect, useState } from "react";
+import { SubmitEventHandler, useState } from "react";
 import toast from "react-hot-toast";
-
-interface Company {
-    id: number;
-    legalName: string;
-}
 
 export default function CadastrarAdministradorForm() {
     const [name, setName] = useState('');
@@ -20,27 +15,7 @@ export default function CadastrarAdministradorForm() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    const [companies, setCompanies] = useState<Company[]>([])
     const [companyId, setCompanyId] = useState<string>('')
-
-    useEffect(() => {
-        getCompanies()
-            .then(setCompanies)
-            .catch((error) => {
-                console.log(error);
-                toast.error("Erro ao carregar empresas");
-
-            });
-    }, []);
-
-    const sortedCompanies = [...companies].sort((a, b) => a.legalName.localeCompare(b.legalName, 'pt-BR', { sensitivity: 'base' }))
-
-    const companyIds = sortedCompanies.map((c) => String(c.id));
-    const companyLabels: Record<string, string> = sortedCompanies.reduce(
-        (acc, c) => ({ ...acc, [String(c.id)]: c.legalName }),
-        {}
-    );
-
 
     const [isSubmitLoading, setIsSubmitLoading] = useState(false);
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
@@ -123,11 +98,13 @@ export default function CadastrarAdministradorForm() {
 
                 <div>
                     <label htmlFor="admin-empresa">Empresa*</label>
-                    <ComboBoxLayout
-                        items={companyIds}
-                        labels={companyLabels}
+                    {/* Pesquisa e paginação no servidor: a lista de empresas nunca é baixada inteira. */}
+                    <RemoteComboBox
+                        fetchOptions={getCompanyOptions}
                         value={companyId}
                         onValueChange={setCompanyId}
+                        placeholder="Digite para pesquisar a empresa"
+                        emptyMessage="Nenhuma empresa encontrada!"
                     />
                 </div>
 

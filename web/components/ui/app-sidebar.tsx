@@ -5,7 +5,7 @@ import { GlobalSearch } from "@/components/ui/global-search"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useFieldSnapshot } from "@/hooks/useFieldSnapshot"
 import { logout } from "@/lib/auth"
-import { avatarTone, buildTeamRows } from "@/lib/fieldData"
+import { avatarTone, teamRowsOf } from "@/lib/fieldData"
 import { Building2, ChevronLeft, LayoutDashboard, LogIn, LogOut, NotebookPen, UsersRound, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -53,12 +53,12 @@ export function AppSidebar() {
     const isAdmin = user?.profile === "ADMINISTRATOR"
     const { snapshot, loading: fieldLoading } = useFieldSnapshot(isAdmin)
     const inField = useMemo(
-        () => (snapshot ? buildTeamRows(snapshot, snapshot.loadedAt).filter((row) => row.inField) : []),
+        () => teamRowsOf(snapshot).filter((row) => row.inField),
         [snapshot]
     )
     const counts = {
-        researches: snapshot?.researches.length,
-        researchers: snapshot?.researchers.length,
+        researches: snapshot?.totals.researches,
+        researchers: snapshot?.totals.researchers,
     }
 
     const isActive = (href: string) =>

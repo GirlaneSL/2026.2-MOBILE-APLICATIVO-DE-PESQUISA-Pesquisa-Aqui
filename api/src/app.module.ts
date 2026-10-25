@@ -10,9 +10,10 @@ import { SectionModule } from './section/section.module.js';
 import { QuestionModule } from './question/question.module.js';
 import { QuestionRuleModule } from './question-rule/question-rule.module.js';
 import { CollectionModule } from './collection/collection.module.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
 
 @Module({
-  imports: [CompanyModule, AuthModule, UserModule, ResearchModule, SectionModule, QuestionModule, QuestionRuleModule, CollectionModule],
+  imports: [CompanyModule, AuthModule, UserModule, ResearchModule, SectionModule, QuestionModule, QuestionRuleModule, CollectionModule, DashboardModule],
   controllers: [AppController],
   providers: [AppService, PrismaService],
 })

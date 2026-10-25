@@ -1,4 +1,5 @@
-import type { Research } from "@/lib/research";
+import { usePagedResource } from "@/hooks/usePagedResource";
+import { getResearchesPage, type Research, type ResearchListItem } from "@/lib/research";
 import {
     CellTitle,
     DataTable,
@@ -11,7 +12,6 @@ import {
     TableEmpty,
     TableSearch,
     TableViewControls,
-    sortRows,
     type DataColumn,
     type TableSort,
     type TableView,
@@ -22,23 +22,11 @@ import {
     formatPeriod,
     initialsOf,
     periodProgress,
-    type FieldCollection,
 } from "@/lib/fieldData";
-import type { UserItem } from "@/lib/user";
-import { useMemo, useState } from "react";
-
-const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+import { useState } from "react";
 
 type PesquisasEquipeTabelaProps = {
-    researches: Research[];
-    researchers: UserItem[];
-    /** researchId -> ids dos pesquisadores vinculados. */
-    links: Record<number, number[]>;
-    collections: FieldCollection[];
     now: number;
-    loading?: boolean;
-    /** Equipe e coletas ainda estão chegando. */
-    teamLoading?: boolean;
 };
 
 const SEGMENTS = 20;
@@ -62,37 +50,28 @@ export function situationOf(research: Research, now: number): Situation {
     return { label: research.status === "IN_FIELD" ? "Em campo" : "Publicada", tone: "light", endingSoon: false };
 }
 
-/** Tabela de pesquisas do painel: período, equipe, situação e andamento de cada pesquisa. */
-export default function PesquisasEquipeTabela({ researches, researchers, links, collections, now, loading = false, teamLoading = false }: PesquisasEquipeTabelaProps) {
-    const [search, setSearch] = useState("");
+/** Tabela de pesquisas do painel: período, equipe, situação e andamento. A API entrega uma página por vez. */
+export default function PesquisasEquipeTabela({ now }: PesquisasEquipeTabelaProps) {
     const [sort, setSort] = useState<TableSort>("recent");
     const [view, setView] = useState<TableView>("table");
-    const byId = useMemo(() => new Map(researchers.map((r) => [r.id, r])), [researchers]);
 
-    const collectionsByResearch = useMemo(() => {
-        const map = new Map<number, number>();
-        for (const c of collections) map.set(c.researchId, (map.get(c.researchId) ?? 0) + 1);
-        return map;
-    }, [collections]);
-
-    const sorted = useMemo(
-        () => sortRows(researches, sort, { name: (r) => r.title, date: (r) => r.createdAt }),
-        [researches, sort]
+    const list = usePagedResource<ResearchListItem>(
+        (params) => getResearchesPage({ ...params, sort }),
+        { pageSize: 10, filters: { sort } },
     );
+    const { search, setSearch } = list;
+    const loading = list.loading;
+    const researches = list.items;
+    const rows = list.items;
+    const term = search.trim();
 
-    const term = normalize(search.trim());
-    const rows = useMemo(
-        () => (term ? sorted.filter((r) => normalize(`${r.title} ${r.objective ?? ""} ${r.targetAudience ?? ""}`).includes(term)) : sorted),
-        [sorted, term]
-    );
-
-    const columns: DataColumn<Research>[] = [
+    const columns: DataColumn<ResearchListItem>[] = [
         {
             id: "title",
             header: "Pesquisa",
             minWidth: "14rem",
             cell: (research) => {
-                const done = collectionsByResearch.get(research.id) ?? 0;
+                const done = research.collected;
                 return (
                     <CellTitle
                         title={research.title}
@@ -100,7 +79,7 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
                         sub={
                             <>
                                 {formatPeriod(research.startDate, research.endDate, new Date(now))}
-                                {research.status !== "DRAFT" && !teamLoading && ` · ${done} ${done === 1 ? "coleta" : "coletas"}`}
+                                {research.status !== "DRAFT" && ` · ${done} ${done === 1 ? "coleta" : "coletas"}`}
                             </>
                         }
                     />
@@ -111,8 +90,7 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
             id: "team",
             header: "Equipe",
             cell: (research) => {
-                if (teamLoading) return <Muted>–</Muted>;
-                const team = (links[research.id] ?? []).map((id) => byId.get(id)).filter((u): u is UserItem => !!u);
+                const team = research.team;
                 if (team.length === 0) return <span title="Nenhum pesquisador vinculado"><Muted>Sem equipe</Muted></span>;
                 return (
                     <div className="pa-stack" title={team.map((u) => u.name).join(", ")}>
@@ -167,9 +145,9 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
 
     return (
         <div>
-            <DataTableHeader title="Pesquisas cadastradas" count={term ? `${rows.length} de ${researches.length}` : researches.length} />
+            <DataTableHeader title="Pesquisas cadastradas" count={loading ? undefined : list.total} />
 
-            {!loading && researches.length > 0 && (
+            {!loading && (list.total > 0 || term) && (
                 <DataTableToolbar>
                     <TableSearch value={search} onChange={setSearch} placeholder="Buscar por título ou público..." label="Buscar pesquisas" />
                     <div className="grow flex flex-wrap items-center gap-2">
@@ -186,8 +164,9 @@ export default function PesquisasEquipeTabela({ researches, researchers, links, 
                 loading={loading}
                 loadingLabel="Carregando pesquisas..."
                 view={view}
+                server={list.server}
                 empty={
-                    researches.length === 0 ? (
+                    !term ? (
                         <TableEmpty title="Nenhuma pesquisa cadastrada." text='Use "Nova pesquisa" para começar.' />
                     ) : (
                         <TableEmpty title="Nenhuma pesquisa encontrada" text="Tente outro título ou público." onClear={() => setSearch("")} />

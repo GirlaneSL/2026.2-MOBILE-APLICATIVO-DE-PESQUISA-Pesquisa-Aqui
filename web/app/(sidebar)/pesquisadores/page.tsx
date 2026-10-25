@@ -4,10 +4,9 @@ import BannerComponent from "@/components/ui/bannerComponent";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { getCompanies } from "@/lib/company";
-import { getResearchers, UserItem } from "@/lib/user";
+import { getResearcherStats, type ResearcherStats } from "@/lib/user";
 import { Building2, RefreshCw, TrendingUp, UserPlus, UsersRound } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import InfoCard from "../(home)/components/infoCards";
 import CadastrarPesquisadorForm from "./components/CadastrarPesquisadorForm";
@@ -21,79 +20,38 @@ export default function PesquisadoresPage() {
     const isSuperAdmin = user?.profile === 'SUPERADMINISTRATOR';
     const canRegister = user?.profile === 'SUPERADMINISTRATOR' || user?.profile === 'ADMINISTRATOR';
 
-    const [researchers, setResearchers] = useState<UserItem[]>([]);
-    const [companyNames, setCompanyNames] = useState<Record<number, string>>({});
+    // Só os números (total, cadastros por semana...) vêm para cá; a lista é paginada dentro de <ListaPesquisadores>.
+    const [stats, setStats] = useState<ResearcherStats | null>(null);
     const [loading, setLoading] = useState(true);
-
     const [reloadKey, setReloadKey] = useState(0);
-    const [referenceTime, setReferenceTime] = useState(0);
+
+    const loadStats = useCallback(() => {
+        getResearcherStats()
+            .then(setStats)
+            .catch((error) => {
+                console.error(error);
+                toast.error(error instanceof Error ? error.message : "Erro ao carregar pesquisadores");
+            })
+            .finally(() => setLoading(false));
+    }, []);
+
+    useEffect(() => {
+        loadStats();
+    }, [loadStats, reloadKey]);
 
     const loadResearchers = useCallback(() => {
         setLoading(true);
         setReloadKey((k) => k + 1);
     }, []);
 
-    useEffect(() => {
-        let cancelled = false;
+    const weekly = stats?.weekly ?? Array.from({ length: WEEKS }, () => 0);
+    const total = stats?.total ?? 0;
+    const recent = stats?.recent ?? 0;
+    const companies = stats?.companies ?? 0;
+    const referenceTime = stats?.referenceTime ?? 0;
 
-        getResearchers()
-            .then((data) => {
-                if (cancelled) return;
-                setResearchers(data);
-                setReferenceTime(Date.now());
-            })
-            .catch((error) => {
-                console.error(error);
-                if (!cancelled) toast.error(error instanceof Error ? error.message : "Erro ao carregar pesquisadores");
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [reloadKey]);
-
-    useEffect(() => {
-        if (!isSuperAdmin) return;
-
-        getCompanies()
-            .then((companies: { id: number; legalName: string }[]) =>
-                setCompanyNames(Object.fromEntries(companies.map((c) => [c.id, c.legalName])))
-            )
-            .catch((error) => console.error(error));
-    }, [isSuperAdmin]);
-
-    const handleDeleted = (username: string) =>
-        setResearchers((prev) => prev.filter((r) => r.username !== username));
-
-    const handleUpdated = (updated: UserItem) =>
-        setResearchers((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
-
-    const stats = useMemo(() => {
-        const DAY = 24 * 60 * 60 * 1000;
-        const last30 = referenceTime - 30 * DAY;
-
-        // Cadastros por semana nas últimas 8 semanas (da mais antiga para a atual).
-        const weekly = Array.from({ length: WEEKS }, () => 0);
-        researchers.forEach((r) => {
-            const t = r.createdAt ? new Date(r.createdAt).getTime() : NaN;
-            if (Number.isNaN(t) || !referenceTime) return;
-            const ago = Math.floor((referenceTime - t) / (7 * DAY));
-            if (ago >= 0 && ago < WEEKS) weekly[WEEKS - 1 - ago] += 1;
-        });
-
-        return {
-            total: researchers.length,
-            companies: new Set(researchers.map((r) => r.companyId)).size,
-            recent: researchers.filter((r) => r.createdAt && new Date(r.createdAt).getTime() >= last30).length,
-            weekly,
-        };
-    }, [researchers, referenceTime]);
-
-    const maxWeek = Math.max(1, ...stats.weekly);
-    const recentShare = stats.total ? Math.round((stats.recent / stats.total) * 100) : 0;
+    const maxWeek = Math.max(1, ...weekly);
+    const recentShare = total ? Math.round((recent / total) * 100) : 0;
 
     const statValue = (n: number) => (loading ? "–" : n);
 
@@ -134,7 +92,7 @@ export default function PesquisadoresPage() {
                     cardDescription={isSuperAdmin ? "Em todas as empresas" : "Na sua empresa"}
                     cardContent={
                         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-                            <p className="pa-stat !text-[64px] text-[var(--fg-dark)]">{statValue(stats.total)}</p>
+                            <p className="pa-stat !text-[64px] text-[var(--fg-dark)]">{statValue(total)}</p>
 
                             <div className="w-full sm:max-w-[260px]">
                                 <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--muted-dark)]">
@@ -144,9 +102,9 @@ export default function PesquisadoresPage() {
                                 <div
                                     className="flex h-16 items-end gap-1.5"
                                     role="img"
-                                    aria-label={`Cadastros por semana: ${stats.weekly.join(", ")}`}
+                                    aria-label={`Cadastros por semana: ${weekly.join(", ")}`}
                                 >
-                                    {stats.weekly.map((n, i) => {
+                                    {weekly.map((n, i) => {
                                         const isCurrent = i === WEEKS - 1;
                                         return (
                                             <div
@@ -180,7 +138,7 @@ export default function PesquisadoresPage() {
                     cardDescription={isSuperAdmin ? "Empresas com ao menos um pesquisador" : "Cadastrados recentemente"}
                     cardContent={
                         <div className="flex flex-col gap-4">
-                            <p className="pa-stat !text-[64px]">{statValue(isSuperAdmin ? stats.companies : stats.recent)}</p>
+                            <p className="pa-stat !text-[64px]">{statValue(isSuperAdmin ? companies : recent)}</p>
 
                             {!isSuperAdmin && (
                                 <div>
@@ -212,15 +170,15 @@ export default function PesquisadoresPage() {
                 }
                 cardContent={
                     <ListaPesquisadores
-                        researchers={researchers}
-                        companyNames={companyNames}
-                        loading={loading}
+                        companyNames={{}}
+                        reloadKey={reloadKey}
+                        counts={stats ?? undefined}
                         canDelete={canRegister}
                         canEdit={canRegister}
                         canDeactivate={canRegister}
                         showCompany={isSuperAdmin}
-                        onDeleted={handleDeleted}
-                        onUpdated={handleUpdated}
+                        onDeleted={loadStats}
+                        onUpdated={loadStats}
                         referenceTime={referenceTime}
                         maxHeightClassName="max-h-[34rem]"
                     />

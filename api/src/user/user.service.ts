@@ -4,6 +4,7 @@ import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import * as bcrypt from 'bcrypt';
+import { runPaged, type UserPageQueryDto } from '../common/pagination.js';
 
 @Injectable()
 export class UserService {
@@ -33,6 +34,88 @@ export class UserService {
             return userWithoutPassword;
         })
 
+    }
+
+    // Lista paginada (painel web): `?page=&pageSize=&q=&profile=&situation=&sort=`. Só a página sai do servidor.
+    // `admins: true` é a lista de administradores (só o superadministrador a vê).
+    async findPage(query: UserPageQueryDto, currentUser: UserPayLoad, admins = false) {
+        const users = this.prisma.client.orm.public.User;
+        const orm = this.prisma.client.orm.public;
+
+        if (admins && currentUser.profile !== 'SUPERADMINISTRATOR') {
+            return { items: [], total: 0, page: 1, pageSize: query.pageSize ?? 20, totalPages: 1 };
+        }
+
+        let scoped =
+            currentUser.profile === 'SUPERADMINISTRATOR'
+                ? users.where((u) => u.id.gt(0))
+                : users.where({ companyId: currentUser.companyId });
+        if (admins) scoped = scoped.where({ profile: 'ADMINISTRATOR' });
+        else if (query.profile) scoped = scoped.where({ profile: query.profile });
+        if (query.situation) scoped = scoped.where({ situation: query.situation });
+
+        const sorted =
+            query.sort === 'name'
+                ? scoped.orderBy([(u) => u.name.asc(), (u) => u.id.asc()])
+                : scoped.orderBy([(u) => u.createdAt.desc(), (u) => u.id.desc()]);
+
+        type Row = Awaited<ReturnType<typeof sorted.all>>[number];
+        // A busca também acha pelo nome da empresa: só carrega as empresas quando há texto.
+        const companyNames = new Map<number, string>();
+        if (query.q?.trim()) {
+            for (const c of await orm.Company.all()) companyNames.set(c.id, c.legalName);
+        }
+
+        const page = await runPaged<Row>(query, {
+            count: async () => (await scoped.aggregate((a) => ({ total: a.count() }))).total,
+            page: async (limit, offset) => [...(await sorted.limit(limit).offset(offset).all())],
+            all: async () => [...(await sorted.all())],
+            searchText: (u) => `${u.name} ${u.username} ${u.companyId !== null ? (companyNames.get(u.companyId) ?? '') : ''}`,
+        });
+
+        // Nome da empresa só das pessoas desta página, em UMA consulta.
+        const companyIds = [...new Set(page.items.map((u) => u.companyId).filter((id): id is number => id !== null))];
+        const companyRows = companyIds.length > 0 ? [...(await orm.Company.where((c) => c.id.in(companyIds)).all())] : [];
+        const names = new Map<number, string | null>(companyRows.map((c) => [c.id, c.legalName]));
+
+        return {
+            ...page,
+            items: page.items.map((user) => {
+                const { passwordHash: _, ...userWithoutPassword } = user;
+                return { ...userWithoutPassword, companyName: user.companyId !== null ? (names.get(user.companyId) ?? null) : null };
+            }),
+        };
+    }
+
+    // Números do painel de pesquisadores (total, ritmo de cadastros, empresas), sem enviar a lista.
+    async researcherStats(currentUser: UserPayLoad) {
+        const users = this.prisma.client.orm.public.User;
+        const scoped =
+            currentUser.profile === 'SUPERADMINISTRATOR'
+                ? users.where({ profile: 'RESEARCHER' })
+                : users.where({ profile: 'RESEARCHER', companyId: currentUser.companyId });
+
+        const DAY = 24 * 60 * 60 * 1000;
+        const WEEKS = 8;
+        const now = Date.now();
+        const weekly = Array.from({ length: WEEKS }, () => 0);
+        const companies = new Set<number | null>();
+        let total = 0;
+        let active = 0;
+        let recent = 0;
+
+        for (const user of await scoped.all()) {
+            total += 1;
+            if (user.situation !== 'INACTIVE') active += 1;
+            companies.add(user.companyId);
+            const created = new Date(user.createdAt).getTime();
+            if (Number.isNaN(created)) continue;
+            if (created >= now - 30 * DAY) recent += 1;
+            const ago = Math.floor((now - created) / (7 * DAY));
+            if (ago >= 0 && ago < WEEKS) weekly[WEEKS - 1 - ago] += 1;
+        }
+
+        return { total, active, inactive: total - active, recent, companies: companies.size, weekly, referenceTime: now };
     }
 
     async findAllAdmin(currentUser: UserPayLoad) {

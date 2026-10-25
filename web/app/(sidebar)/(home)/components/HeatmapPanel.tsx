@@ -1,11 +1,11 @@
-import { buildHeatmap, HEAT_DAY_NAMES, HEAT_DAYS, HEAT_FIRST_HOUR, HEAT_HOURS, type FieldCollection } from "@/lib/fieldData";
+import { HEAT_DAY_NAMES, HEAT_DAYS, HEAT_FIRST_HOUR, HEAT_HOURS, type Heatmap } from "@/lib/fieldData";
 import { LoadingState } from "@/components/ui/loadingState";
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import InfoCard from "./infoCards";
 
 type HeatmapPanelProps = {
-    collections: FieldCollection[];
-    now: number;
+    /** Mapa já calculado pelo servidor (GET /dashboard/admin). */
+    heat: Heatmap | undefined;
     loading?: boolean;
     /** A consulta das coletas falhou. */
     error?: boolean;
@@ -18,8 +18,8 @@ type HeatmapPanelProps = {
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** Mapa de calor: em que dia da semana e horário as coletas acontecem (últimas 4 semanas). */
-export default function HeatmapPanel({ collections, now, loading = false, error = false, incomplete = false, icon, cardClassName }: HeatmapPanelProps) {
-    const heat = useMemo(() => buildHeatmap(collections, now), [collections, now]);
+export default function HeatmapPanel({ heat: heatData, loading = false, error = false, incomplete = false, icon, cardClassName }: HeatmapPanelProps) {
+    const heat: Heatmap = heatData ?? { cells: HEAT_DAYS.map(() => new Array<number>(HEAT_HOURS).fill(0)), levels: HEAT_DAYS.map(() => new Array<number>(HEAT_HOURS).fill(0)), total: 0, outside: 0, peak: null };
     const peakLabel = heat.peak
         ? `${HEAT_DAY_NAMES[heat.peak.day]}, ${heat.peak.hour}h às ${heat.peak.hour + 1}h`
         : null;

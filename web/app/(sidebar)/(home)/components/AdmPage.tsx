@@ -6,10 +6,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { TableTabs } from "@/components/ui/data-table";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
 import { useFieldSnapshot } from "@/hooks/useFieldSnapshot";
-import { buildAdminActivities, countByMonth } from "@/lib/dashboard";
-import { buildTeamRows } from "@/lib/fieldData";
-import { getActiveResearchesInMonth, getResearches, getResearchesByMonth, type Research } from "@/lib/research";
-import { getResearchers, type UserItem } from "@/lib/user";
+import { MONTH_NAMES, type ActivityItem } from "@/lib/dashboard";
+import { teamRowsOf } from "@/lib/fieldData";
+import { getResearcherStats, type ResearcherStats } from "@/lib/user";
 import { CalendarClock, ClipboardList, Clock, History, NotebookPen, Target, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -30,92 +29,73 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 type TeamTab = "pesquisas" | "pesquisadores";
 
 export default function AdmPage({ userName }: { userName?: string }) {
-    const [researches, setResearches] = useState<Research[]>([]);
-    const [researchers, setResearchers] = useState<UserItem[]>([]);
-    const [loading, setLoading] = useState(true);
     const [teamTab, setTeamTab] = useState<TeamTab>("pesquisas");
+
+    // O servidor calcula o painel (totais, gráficos, equipe, mapa de calor) e devolve só o resultado.
+    const { snapshot: dash, loading, failed } = useFieldSnapshot();
+    const [researcherStats, setResearcherStats] = useState<ResearcherStats | null>(null);
 
     useEffect(() => {
         let cancelled = false;
-
-        Promise.all([getResearches(), getResearchers()])
-            .then(([researchesData, researchersData]) => {
-                if (cancelled) return;
-                setResearches(researchesData ?? []);
-                setResearchers(researchersData ?? []);
-            })
+        getResearcherStats()
+            .then((data) => { if (!cancelled) setResearcherStats(data); })
             .catch((error) => {
                 if (cancelled || isSessionExpiredError(error)) return;
                 console.error(error);
-                toast.error('Erro ao carregar dados do painel');
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
             });
+        return () => { cancelled = true; };
+    }, []);
 
-        return () => {
-            cancelled = true;
-        };
-    }, [])
-
-    const { snapshot, loading: fieldLoading, failed: fieldFailed } = useFieldSnapshot();
+    useEffect(() => {
+        if (failed) toast.error('Erro ao carregar dados do painel');
+    }, [failed]);
 
     const [today] = useState(() => new Date());
-    const year = today.getFullYear();
     const month = today.getMonth() + 1;
 
-    const activeThisMonth = useMemo(() => getActiveResearchesInMonth(researches, month, year), [researches, month, year]);
-    const activePrevMonth = useMemo(
-        () => getActiveResearchesInMonth(researches, month === 1 ? 12 : month - 1, month === 1 ? year - 1 : year),
-        [researches, month, year]
-    );
-
     const researchesChart = useMemo(
-        () => getResearchesByMonth(researches, year).map((p) => ({ label: p.month, value: p.Pesquisas })),
-        [researches, year]
+        () => MONTH_NAMES.map((label, i) => ({ label, value: dash?.activeByMonth[i] ?? 0 })),
+        [dash]
     );
 
     const researchersChart = useMemo(
-        () => countByMonth(researchers, (r) => r.createdAt, year, 'Pesquisadores').map((p) => ({ label: p.month, value: Number(p.Pesquisadores) })),
-        [researchers, year]
+        () => MONTH_NAMES.map((label, i) => ({ label, value: dash?.researchersByMonth[i] ?? 0 })),
+        [dash]
     );
 
-    const activities = useMemo(
-        () => buildAdminActivities(researches, researchers),
-        [researches, researchers]
+    const activities: ActivityItem[] = useMemo(
+        () => (dash?.activities ?? []).map((a) => ({ ...a, date: new Date(a.date) })),
+        [dash]
     );
 
-    const byStatus = useMemo(() => {
-        const count = (status: Research["status"]) => researches.filter((r) => r.status === status).length;
-        return { draft: count("DRAFT"), published: count("PUBLISHED"), inField: count("IN_FIELD"), closed: count("CLOSED") };
-    }, [researches]);
+    const byStatus = {
+        draft: dash?.byStatus.DRAFT ?? 0,
+        published: dash?.byStatus.PUBLISHED ?? 0,
+        inField: dash?.byStatus.IN_FIELD ?? 0,
+        closed: dash?.byStatus.CLOSED ?? 0,
+    };
 
     const pins = useMemo(
         () =>
-            [...activeThisMonth]
-                .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
-                .slice(0, PIN_SLOTS.length)
-                .map((r, i) => {
-                    const daysLeft = Math.ceil((new Date(r.endDate).getTime() - today.getTime()) / DAY_MS);
-                    return { id: r.id, label: r.title, daysLeft, slot: PIN_SLOTS[i] };
-                }),
-        [activeThisMonth, today]
+            (dash?.pins ?? []).slice(0, PIN_SLOTS.length).map((r, i) => {
+                const daysLeft = Math.ceil((new Date(r.endDate).getTime() - today.getTime()) / DAY_MS);
+                return { id: r.id, label: r.title, daysLeft, slot: PIN_SLOTS[i] };
+            }),
+        [dash, today]
     );
 
-    const fieldNow = snapshot?.loadedAt ?? today.getTime();
-    const teamRows = useMemo(
-        () => buildTeamRows({ researchers, collections: snapshot?.collections ?? [] }, fieldNow),
-        [researchers, snapshot, fieldNow]
-    );
-    const inFieldNow = teamRows.filter((row) => row.inField).length;
+    const fieldNow = dash?.generatedAt ?? today.getTime();
+    const teamRows = useMemo(() => teamRowsOf(dash), [dash]);
+    const inFieldNow = dash?.totals.inField ?? 0;
 
-    const diff = activeThisMonth.length - activePrevMonth.length;
+    const activeThisMonth = dash?.activeThisMonth ?? 0;
+    const diff = activeThisMonth - (dash?.activePrevMonth ?? 0);
     const previousMonthName = monthName(month - 2);
     const delta = loading || diff === 0
         ? undefined
         : `${Math.abs(diff)} ${diff > 0 ? "a mais" : "a menos"} que em ${previousMonthName}`;
 
-    const dash = loading ? "–" : undefined;
+    const dashValue = loading ? "–" : undefined;
 
     return (
         <>
@@ -127,13 +107,13 @@ export default function AdmPage({ userName }: { userName?: string }) {
 
             <HeroPanel
                 greeting={`${greetingFor(today)}${userName ? `, ${firstName(userName)}` : ""}. Neste mês:`}
-                value={dash ?? activeThisMonth.length}
-                caption={activeThisMonth.length === 1 ? "pesquisa ativa" : "pesquisas ativas"}
+                value={dashValue ?? activeThisMonth}
+                caption={activeThisMonth === 1 ? "pesquisa ativa" : "pesquisas ativas"}
                 delta={delta}
                 minis={[
-                    { value: dash ?? researches.length, label: "pesquisas no total" },
-                    { value: dash ?? researchers.length, label: "pesquisadores" },
-                    { value: dash ?? (fieldLoading || fieldFailed ? "–" : inFieldNow), label: "pesquisadores em campo" },
+                    { value: dashValue ?? dash?.totals.researches ?? 0, label: "pesquisas no total" },
+                    { value: dashValue ?? dash?.totals.researchers ?? 0, label: "pesquisadores" },
+                    { value: dashValue ?? inFieldNow, label: "pesquisadores em campo" },
                 ]}
             >
                 {!loading && pins.length === 0 && (
@@ -171,7 +151,7 @@ export default function AdmPage({ userName }: { userName?: string }) {
                     title="Situação das pesquisas"
                     description="Como estão todas as pesquisas da empresa"
                     highlighted={byStatus.published + byStatus.inField}
-                    total={researches.length}
+                    total={dash?.totals.researches ?? 0}
                     caption="publicadas ou em campo"
                     rows={[
                         { label: "Em campo", count: byStatus.inField },
@@ -203,11 +183,9 @@ export default function AdmPage({ userName }: { userName?: string }) {
                 <HeatmapPanel
                     cardClassName="pa-c6"
                     icon={<CalendarClock />}
-                    collections={snapshot?.collections ?? []}
-                    now={fieldNow}
-                    loading={fieldLoading}
-                    error={fieldFailed && !snapshot}
-                    incomplete={snapshot?.partial}
+                    heat={dash?.heatmap}
+                    loading={loading}
+                    error={failed && !dash}
                 />
 
                 <EquipePanel
@@ -215,8 +193,8 @@ export default function AdmPage({ userName }: { userName?: string }) {
                     icon={<UsersRound />}
                     rows={teamRows}
                     now={fieldNow}
-                    loading={loading || fieldLoading}
-                    error={fieldFailed && !snapshot}
+                    loading={loading}
+                    error={failed && !dash}
                 />
 
                 <InfoCard
@@ -232,26 +210,17 @@ export default function AdmPage({ userName }: { userName?: string }) {
                                 value={teamTab}
                                 onChange={setTeamTab}
                                 options={[
-                                    { value: "pesquisas", label: "Pesquisas", count: loading ? undefined : researches.length, icon: <NotebookPen /> },
-                                    { value: "pesquisadores", label: "Pesquisadores", count: loading ? undefined : researchers.length, icon: <UsersRound /> },
+                                    { value: "pesquisas", label: "Pesquisas", count: loading ? undefined : dash?.totals.researches, icon: <NotebookPen /> },
+                                    { value: "pesquisadores", label: "Pesquisadores", count: loading ? undefined : dash?.totals.researchers, icon: <UsersRound /> },
                                 ]}
                             />
 
                             {teamTab === "pesquisas" ? (
-                                <PesquisasEquipeTabela
-                                    researches={researches}
-                                    researchers={researchers}
-                                    links={snapshot?.links ?? {}}
-                                    collections={snapshot?.collections ?? []}
-                                    now={fieldNow}
-                                    loading={loading}
-                                    teamLoading={fieldLoading}
-                                />
+                                <PesquisasEquipeTabela now={fieldNow} />
                             ) : (
                                 <ListaPesquisadores
-                                    researchers={researchers}
                                     companyNames={{}}
-                                    loading={loading}
+                                    counts={researcherStats ?? undefined}
                                     canDelete={false}
                                     showCompany={false}
                                     onDeleted={() => { }}

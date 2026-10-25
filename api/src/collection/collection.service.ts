@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma.service.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { AudioStorage, audioExtensionFor, imageExtensionFor, mediaTypeFor } from './audio-storage.js';
 import { assertValidConsent } from './consent.js';
+import { normalizeText, pageParams, runPaged, toPage, type CollectionPageQueryDto } from '../common/pagination.js';
 import { copyRevokedException, isDeviceRevoked } from '../research/research-copies.js';
 import type { CollectionPayloadDto } from './dto/create-collection.dto.js';
 import type { UploadCollectionFileDto } from './dto/upload-collection-file.dto.js';
@@ -212,6 +213,76 @@ export class CollectionService {
                 this.toSummary(c, await nameOf(c.researcherId), await nameOf(c.consentConfirmedById)),
             ),
         );
+    }
+
+    // Totais da pesquisa (recebidas, com gravação, pesquisadores, última), sem listar as coletas.
+    async stats(researchId: number, currentUser: UserPayLoad) {
+        const orm = this.prisma.client.orm.public;
+        const research = await orm.Research.where({ id: researchId }).first();
+        this.assertCompanyAdmin(research, currentUser);
+
+        const scoped = orm.Collection.where({ researchId });
+        const total = (await scoped.aggregate((a) => ({ total: a.count() }))).total;
+        const withAudio = (await scoped.where((c) => c.audioPath.isNotNull()).aggregate((a) => ({ total: a.count() }))).total;
+
+        const researchers = new Set<number>();
+        let lastAt: string | null = null;
+        for (const c of await scoped.all()) {
+            researchers.add(c.researcherId);
+            if (!lastAt || new Date(c.startedAt).getTime() > new Date(lastAt).getTime()) lastAt = c.startedAt;
+        }
+
+        return { total, withAudio, researchers: researchers.size, lastAt };
+    }
+
+    // Lista paginada (painel web): `?page=&pageSize=&q=&audio=&sort=`. Só a página sai do servidor, e só ela
+    // tem os nomes resolvidos (em UMA consulta). A busca acha pelo nome do pesquisador ou pelo número (#12).
+    async findPage(researchId: number, query: CollectionPageQueryDto, currentUser: UserPayLoad) {
+        const orm = this.prisma.client.orm.public;
+        const research = await orm.Research.where({ id: researchId }).first();
+        this.assertCompanyAdmin(research, currentUser);
+
+        let scoped = orm.Collection.where({ researchId });
+        if (query.audio === 'AUDIO') scoped = scoped.where((c) => c.audioPath.isNotNull());
+        if (query.audio === 'NO_AUDIO') scoped = scoped.where((c) => c.audioPath.isNull());
+
+        const sorted =
+            query.sort === 'name'
+                ? scoped.orderBy([(c) => c.researcherId.asc(), (c) => c.id.asc()])
+                : scoped.orderBy([(c) => c.startedAt.desc(), (c) => c.id.desc()]);
+
+        type Row = Awaited<ReturnType<typeof sorted.all>>[number];
+
+        const summarizeAll = async (rows: Row[]) => {
+            const personIds = [
+                ...new Set(rows.flatMap((c) => [c.researcherId, c.consentConfirmedById]).filter((id): id is number => id !== null)),
+            ];
+            const people = personIds.length > 0 ? [...(await orm.User.where((u) => u.id.in(personIds)).all())] : [];
+            const nameById = new Map(people.map((p) => [p.id, p.name]));
+            const nameOf = (id: number | null) => (id === null ? null : (nameById.get(id) ?? null));
+            return rows.map((c) => this.toSummary(c, nameOf(c.researcherId), nameOf(c.consentConfirmedById)));
+        };
+
+        const params = pageParams(query);
+        const term = normalizeText(query.q?.trim().replace(/^#/, ''));
+
+        // Com texto ou ordem A-Z (o nome vem de outra tabela), a lista da pesquisa é resumida e cortada em memória.
+        if (term || query.sort === 'name') {
+            const all = await summarizeAll([...(await sorted.all())]);
+            const matching = term
+                ? all.filter((c) => normalizeText(c.researcherName).includes(term) || String(c.id).includes(term))
+                : all;
+            if (query.sort === 'name') {
+                matching.sort((a, b) => (a.researcherName ?? '').localeCompare(b.researcherName ?? '', 'pt-BR', { sensitivity: 'base' }));
+            }
+            return toPage(matching.slice(params.offset, params.offset + params.pageSize), matching.length, params);
+        }
+
+        return runPaged<Awaited<ReturnType<typeof summarizeAll>>[number]>(query, {
+            count: async () => (await scoped.aggregate((a) => ({ total: a.count() }))).total,
+            page: async (limit, offset) => summarizeAll([...(await sorted.limit(limit).offset(offset).all())]),
+            all: async () => [],
+        });
     }
 
     // Abre uma coleta com as respostas, na ordem do questionário (seção e pergunta).

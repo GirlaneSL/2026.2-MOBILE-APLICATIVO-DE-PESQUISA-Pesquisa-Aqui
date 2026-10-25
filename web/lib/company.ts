@@ -1,4 +1,5 @@
 import { apiFetch } from "./apiFetcher";
+import { asPage, pageQuery, type Page, type PageParams } from "./pagination";
 
 export interface CompanyItem {
     id: number;
@@ -107,4 +108,39 @@ export const deleteCompany = async (id: number) => {
     if (!response.ok) throw await companyError(response, 'Falha ao excluir empresa');
 
     return response.json();
+}
+
+/** Uma página de empresas (busca, situação e ordem no servidor). */
+export const getCompaniesPage = async (params: PageParams & { situation?: CompanyItem['situation'] }): Promise<Page<CompanyItem>> => {
+    const response = await apiFetch(`/company${pageQuery(params)}`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw new Error('Failed to get companies');
+    return asPage<CompanyItem>(await response.json(), params);
+}
+
+export interface CompanyStats {
+    year: number;
+    companies: number;
+    activeCompanies: number;
+    inactiveCompanies: number;
+    admins: number;
+    /** Cadastros por mês no ano (12 números). */
+    companiesByMonth: number[];
+    adminsByMonth: number[];
+    /** As empresas mais novas (para o painel). */
+    recentCompanies: { id: number; legalName: string; situation: 'ACTIVE' | 'INACTIVE' }[];
+    /** Atividades mais recentes (empresas e administradores). */
+    activities: { id: string; kind: 'company' | 'admin' | 'research' | 'researcher'; message: string; date: string }[];
+}
+
+/** Totais da tela de empresas, sem trazer as listas. */
+export const getCompanyStats = async (): Promise<CompanyStats> => {
+    const response = await apiFetch('/company/stats', { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw new Error('Falha ao carregar os números das empresas');
+    return response.json();
+}
+
+/** Empresas ativas no formato do <RemoteComboBox> (value = id, label = razão social): pesquisa e página vêm do servidor. */
+export const getCompanyOptions = async (params: { page: number; pageSize: number; q: string }) => {
+    const page = await getCompaniesPage({ ...params, situation: 'ACTIVE', sort: 'name' });
+    return { ...page, items: page.items.map((company) => ({ value: String(company.id), label: company.legalName })) };
 }

@@ -1,5 +1,7 @@
 import { apiFetch } from "./apiFetcher";
 import { MONTH_NAMES } from "./dashboard";
+import { asPage, pageQuery, type Page, type PageParams } from "./pagination";
+import type { UserItem } from "./user";
 
 export interface Research {
     id: number;
@@ -65,6 +67,38 @@ export const getResearches = async (): Promise<Research[]> => {
         throw new Error(errorBody?.message || `Failed to get researches (status ${response.status})`);
     }
 
+    return response.json();
+}
+
+/** Pesquisa da lista paginada: já traz as coletas recebidas e a equipe (só desta página). */
+export type ResearchListItem = Research & {
+    collected: number;
+    team: { id: number; name: string; username: string }[];
+};
+
+/** Uma página de pesquisas (painel web). Filtros e busca são feitos no servidor. */
+export const getResearchesPage = async (params: PageParams & { status?: Research["status"] }): Promise<Page<ResearchListItem>> => {
+    const response = await apiFetch(`/research${pageQuery(params)}`, { method: 'GET', credentials: 'include' });
+
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || `Failed to get researches (status ${response.status})`);
+    }
+
+    return asPage<ResearchListItem>(await response.json(), params);
+}
+
+export interface ResearchSummary {
+    total: number;
+    /** Coletas recebidas em todas as pesquisas. */
+    collections: number;
+    byStatus: Record<Research["status"], number>;
+}
+
+/** Quantas pesquisas há em cada situação, sem trazer as pesquisas. */
+export const getResearchSummary = async (): Promise<ResearchSummary> => {
+    const response = await apiFetch('/research/summary', { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw new Error('Falha ao carregar o resumo das pesquisas');
     return response.json();
 }
 
@@ -165,6 +199,30 @@ export const getResearchLinkedResearchers = async (researchId: number): Promise<
     return response.json();
 };
 
+/** Uma página dos pesquisadores vinculados (busca no servidor). */
+export const getResearchLinkedPage = async (researchId: number, params: PageParams): Promise<Page<ResearchResearcherLink>> => {
+    const response = await apiFetch(`/research/${researchId}/researchers${pageQuery(params)}`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw await readError(response, 'Falha ao carregar pesquisadores vinculados');
+    return asPage<ResearchResearcherLink>(await response.json(), params);
+};
+
+/** Pesquisador da empresa com o vínculo dele nesta pesquisa (nulo = disponível). */
+export type ResearchTeamMember = UserItem & { link: ResearchResearcherLink | null };
+
+export type ResearchTeamPage = Page<ResearchTeamMember> & {
+    summary: { total: number; linked: number; linkedPreview: { id: number; name: string }[] };
+};
+
+/** Uma página da equipe da pesquisa: pesquisadores da empresa, vinculados primeiro (busca e filtro no servidor). */
+export const getResearchTeamPage = async (
+    researchId: number,
+    params: PageParams & { filter?: 'ALL' | 'LINKED' | 'AVAILABLE' },
+): Promise<ResearchTeamPage> => {
+    const response = await apiFetch(`/research/${researchId}/team${pageQuery(params)}`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw await readError(response, 'Falha ao carregar a equipe da pesquisa');
+    return response.json();
+};
+
 export const linkResearcher = async (researchId: number, userId: number, targetCount?: number): Promise<void> => {
     const response = await apiFetch(`/research/${researchId}/researchers/${userId}`, {
         method: 'POST',
@@ -227,6 +285,42 @@ export interface ResearchCopies {
 /** Quem está com a pesquisa baixada, o motivo da trava e o histórico de devoluções e revogações. */
 export const getResearchCopies = async (researchId: number): Promise<ResearchCopies> => {
     const response = await apiFetch(`/research/${researchId}/copies`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw await readError(response, 'Falha ao carregar as cópias em campo');
+    return response.json();
+};
+
+/** Cópia do histórico: `unblockable` = o botão de desbloquear aparece nela. */
+export type ResearchCopyHistoryItem = ResearchCopy & { unblockable: boolean };
+
+export interface ResearchCopiesRevokedUser {
+    key: string;
+    name: string | null;
+    username: string | null;
+    devices: ResearchCopy[];
+    blocked: number;
+    revocations: number;
+}
+
+/** Cópias em campo em partes limitadas: ativas, usuários revogados e o histórico em páginas. */
+export interface ResearchCopiesOverview {
+    researchId: number;
+    locked: boolean;
+    lockReason: "ACTIVE_COPIES" | "CLOSED" | null;
+    lockMessage: string | null;
+    activeCopies: number;
+    active: ResearchCopy[];
+    activeTotal: number;
+    revokedUsers: ResearchCopiesRevokedUser[];
+    revokedUsersTotal: number;
+    historyTotal: number;
+    history: Page<ResearchCopyHistoryItem>;
+}
+
+export const getResearchCopiesPage = async (
+    researchId: number,
+    params: PageParams & { status?: "ALL" | "RETURNED" | "REVOKED" },
+): Promise<ResearchCopiesOverview> => {
+    const response = await apiFetch(`/research/${researchId}/copies${pageQuery(params)}`, { method: 'GET', credentials: 'include' });
     if (!response.ok) throw await readError(response, 'Falha ao carregar as cópias em campo');
     return response.json();
 };

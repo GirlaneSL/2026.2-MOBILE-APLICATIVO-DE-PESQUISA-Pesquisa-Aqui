@@ -2,6 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/loadingState";
+import { PaginatedList, Pagination, usePagination } from "@/components/ui/pagination";
+import { RemoteComboBox } from "@/components/ui/remoteCombobox";
+import { getResearchLinkedPage } from "@/lib/research";
 import { Spinner } from "@/components/ui/spinner";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -49,7 +52,6 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
     const [panel, setPanel] = useState<ResearchPanel | null>(null);
     const [report, setReport] = useState<ResearchReport | null>(null);
     // Lista de pesquisadores para o filtro: vem do painel SEM filtro, para o seletor não encolher ao filtrar.
-    const [people, setPeople] = useState<{ userId: number; name: string }[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -72,13 +74,12 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
             setReport(r);
             setUpdatedAt(new Date());
             setError(null);
-            if (researcherId === undefined) setPeople(p.researchers.map((x) => ({ userId: x.userId, name: x.name })));
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erro ao carregar o painel');
         } finally {
             setLoading(false);
         }
-    }, [researchId, filters, researcherId, invalidRange]);
+    }, [researchId, filters, invalidRange]);
 
     // Carrega na abertura e a cada mudança de filtro (a tela anterior continua visível até a nova chegar).
     useEffect(() => {
@@ -156,14 +157,26 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
                     </label>
                     <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
                         Pesquisador
-                        <select
-                            value={researcherId ?? ''}
-                            onChange={(e) => setResearcherId(e.target.value === '' ? undefined : Number(e.target.value))}
-                            className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-foreground"
-                        >
-                            <option value="">Todos</option>
-                            {people.map((p) => <option key={p.userId} value={p.userId}>{p.name}</option>)}
-                        </select>
+                        {/* Pesquisa e paginação no servidor: só uma página de pesquisadores por vez. */}
+                        <RemoteComboBox
+                            fetchOptions={async (params) => {
+                                const page = await getResearchLinkedPage(researchId, params);
+                                return {
+                                    ...page,
+                                    items: page.items.map((link) => ({
+                                        value: String(link.userId),
+                                        label: link.name ?? `Pesquisador ${link.userId}`,
+                                        hint: link.username ? `@${link.username}` : undefined,
+                                    })),
+                                };
+                            }}
+                            value={researcherId === undefined ? '' : String(researcherId)}
+                            onValueChange={(value) => setResearcherId(value === '' ? undefined : Number(value))}
+                            reloadKey={researchId}
+                            placeholder="Todos"
+                            emptyMessage="Nenhum pesquisador encontrado!"
+                            clearable
+                        />
                     </label>
                 </div>
 
@@ -226,50 +239,7 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
                     </div>
                 </header>
 
-                <div className="mt-5 overflow-x-auto">
-                    <table className="w-full min-w-[720px] text-left text-sm">
-                        <thead className="text-xs uppercase tracking-wide text-muted-foreground">
-                            <tr>
-                                <th className="pb-2 font-medium">Pesquisador</th>
-                                <th className="pb-2 font-medium">Coletas</th>
-                                <th className="pb-2 font-medium">Meta</th>
-                                <th className="pb-2 font-medium">Última sincronização</th>
-                                <th className="pb-2 font-medium">Tempo médio</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {panel.researchers.length === 0 && (
-                                <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">Nenhum pesquisador vinculado.</td></tr>
-                            )}
-                            {panel.researchers.map((r) => (
-                                <tr key={r.userId} className="border-t border-border">
-                                    <td className="py-3 font-medium">
-                                        {r.name}
-                                        {!r.linked && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">desvinculado</span>}
-                                    </td>
-                                    <td className="py-3 tabular-nums">{r.collected}{r.targetCount ? ` / ${r.targetCount}` : ''}</td>
-                                    <td className="py-3">
-                                        {r.progress === null ? <span className="text-muted-foreground">Sem meta</span> : (
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-2 w-24 rounded-full bg-muted"><div className="h-full rounded-full bg-[var(--green-deep)]" style={{ width: `${r.progress}%` }} /></div>
-                                                <span className="tabular-nums">{r.progress}%</span>
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="py-3">{fmtDateTime(r.lastSyncAt)}</td>
-                                    <td className="py-3 tabular-nums">
-                                        {formatSeconds(r.averageSeconds)}
-                                        {r.suspiciouslyFast && (
-                                            <span title="Média bem abaixo da dos colegas: vale conferir essas coletas" className="ml-2 inline-flex items-center gap-1 rounded-full bg-[#f3e0d9] px-2 py-0.5 text-[11px] font-semibold text-[#8a432f]">
-                                                <TriangleAlert className="size-3" />rápido demais
-                                            </span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <ResearcherTable researchers={panel.researchers} />
             </article>
 
             {/* Gráfico por questão */}
@@ -278,12 +248,74 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
                 {report.questions.length === 0 ? (
                     <p className="rounded-2xl bg-muted/50 p-6 text-center text-sm text-muted-foreground">Esta pesquisa não tem questões de escolha ou sim/não para exibir em gráfico.</p>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                        {report.questions.map((q) => <QuestionCard key={q.questionId} question={q} />)}
-                    </div>
+                    <PaginatedList
+                        items={report.questions}
+                        getKey={(q) => q.questionId}
+                        as="div"
+                        pageSize={10}
+                        pageSizeOptions={[10, 20, 50]}
+                        label="Resultado por questão"
+                        className="grid grid-cols-1 gap-4 xl:grid-cols-2"
+                    >
+                        {(q) => <QuestionCard key={q.questionId} question={q} />}
+                    </PaginatedList>
                 )}
             </div>
         </div>
+    );
+}
+
+function ResearcherTable({ researchers }: { researchers: ResearchPanel["researchers"] }) {
+    const pager = usePagination(researchers, { resetKey: researchers.length > 0 ? researchers[0].userId : null });
+
+    return (
+        <div className="mt-5">
+        <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                        <th className="pb-2 font-medium">Pesquisador</th>
+                        <th className="pb-2 font-medium">Coletas</th>
+                        <th className="pb-2 font-medium">Meta</th>
+                        <th className="pb-2 font-medium">Última sincronização</th>
+                        <th className="pb-2 font-medium">Tempo médio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {researchers.length === 0 && (
+                        <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">Nenhum pesquisador vinculado.</td></tr>
+                    )}
+                    {pager.items.map((r) => (
+                        <tr key={r.userId} className="border-t border-border">
+                            <td className="py-3 font-medium">
+                                {r.name}
+                                {!r.linked && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">desvinculado</span>}
+                            </td>
+                            <td className="py-3 tabular-nums">{r.collected}{r.targetCount ? ` / ${r.targetCount}` : ''}</td>
+                            <td className="py-3">
+                                {r.progress === null ? <span className="text-muted-foreground">Sem meta</span> : (
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-24 rounded-full bg-muted"><div className="h-full rounded-full bg-[var(--green-deep)]" style={{ width: `${r.progress}%` }} /></div>
+                                        <span className="tabular-nums">{r.progress}%</span>
+                                    </div>
+                                )}
+                            </td>
+                            <td className="py-3">{fmtDateTime(r.lastSyncAt)}</td>
+                            <td className="py-3 tabular-nums">
+                                {formatSeconds(r.averageSeconds)}
+                                {r.suspiciouslyFast && (
+                                    <span title="Média bem abaixo da dos colegas: vale conferir essas coletas" className="ml-2 inline-flex items-center gap-1 rounded-full bg-[#f3e0d9] px-2 py-0.5 text-[11px] font-semibold text-[#8a432f]">
+                                        <TriangleAlert className="size-3" />rápido demais
+                                    </span>
+                                )}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        {pager.visible && <Pagination {...pager.pagerProps} label="Pesquisadores da pesquisa" />}
+    </div>
     );
 }
 

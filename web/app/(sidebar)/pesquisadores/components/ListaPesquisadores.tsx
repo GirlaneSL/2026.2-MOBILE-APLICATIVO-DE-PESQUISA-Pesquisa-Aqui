@@ -18,20 +18,24 @@ import {
 } from "@/components/ui/data-table";
 import { LoadingState } from "@/components/ui/loadingState";
 import { avatarTone, initialsOf } from "@/lib/fieldData";
-import { deleteUser, setUserSituation, UserItem } from "@/lib/user";
+import { deleteUser, getResearchersPage, setUserSituation, UserItem } from "@/lib/user";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import EditUserDialog from "@/components/ui/edit-user-dialog";
 import { Building2, CalendarClock, Pencil, Power, PowerOff, Sparkles, Trash2, UsersRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ServerPagination } from "@/components/ui/pagination";
+import { usePagedResource } from "@/hooks/usePagedResource";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 type ViewMode = 'cards' | 'table';
 type SortMode = 'recent' | 'name';
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE';
 
 interface ListaPesquisadoresProps {
-    researchers: UserItem[];
     companyNames: Record<number, string>;
-    loading: boolean;
+    /** Muda quando o pai quer recarregar a lista (ex.: depois de cadastrar um pesquisador). */
+    reloadKey?: number;
+    /** Totais para os filtros de situação (vêm de `getResearcherStats`). */
+    counts?: { total: number; active: number; inactive: number };
     canDelete: boolean;
     /** Mostra o botão Editar (nome, usuário e senha). */
     canEdit?: boolean;
@@ -51,8 +55,6 @@ const DAY = 24 * 60 * 60 * 1000;
 /** Usuário sem o campo (resposta antiga) conta como ativo. */
 const isActive = (u: UserItem) => u.situation !== 'INACTIVE';
 
-const normalize = (s: string) =>
-    s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const formatDate = (iso?: string) => {
     if (!iso) return '—';
@@ -105,9 +107,9 @@ function Avatar({ user, size = 'md' }: { user: UserItem; size?: 'sm' | 'md' | 'l
 }
 
 export default function ListaPesquisadores({
-    researchers,
     companyNames,
-    loading,
+    reloadKey = 0,
+    counts,
     canDelete,
     canEdit = false,
     canDeactivate = false,
@@ -117,7 +119,6 @@ export default function ListaPesquisadores({
     referenceTime = 0,
     maxHeightClassName = "max-h-96",
 }: ListaPesquisadoresProps) {
-    const [search, setSearch] = useState('');
     const [deleting, setDeleting] = useState<string | null>(null);
     const [editing, setEditing] = useState<UserItem | null>(null);
     const [togglingSituation, setTogglingSituation] = useState<string | null>(null);
@@ -125,26 +126,27 @@ export default function ListaPesquisadores({
     const [view, setView] = useState<ViewMode>('table');
     const [sort, setSort] = useState<SortMode>('recent');
 
-    const filtered = useMemo(() => {
-        const term = normalize(search.trim());
-        const matching = !term
-            ? researchers
-            : researchers.filter((r) =>
-                normalize(r.name).includes(term) ||
-                normalize(r.username).includes(term) ||
-                normalize(companyNames[r.companyId ?? -1] ?? '').includes(term)
-            );
-        const base = status === 'ALL' ? matching : matching.filter((r) => isActive(r) === (status === 'ACTIVE'));
+    // A API devolve uma página por vez (busca, situação e ordem são feitas lá): a tela nunca recebe todos os pesquisadores.
+    const list = usePagedResource<UserItem>(
+        (params) =>
+            getResearchersPage({
+                ...params,
+                situation: status === 'ALL' ? undefined : status,
+                sort,
+            }),
+        { pageSize: 12, filters: { status, sort } },
+    );
+    const { reload } = list;
 
-        return [...base].sort((a, b) =>
-            sort === 'name'
-                ? a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
-                : timeValue(b.createdAt) - timeValue(a.createdAt)
-        );
-    }, [researchers, search, companyNames, sort, status]);
+    // O pai pediu para recarregar (ex.: cadastrou alguém).
+    useEffect(() => {
+        if (reloadKey > 0) reload();
+    }, [reloadKey, reload]);
 
-    const activeCount = researchers.filter(isActive).length;
-    const inactiveCount = researchers.length - activeCount;
+    const loading = list.loading;
+    const search = list.search;
+    const setSearch = list.setSearch;
+    const pageSizes = [12, 24, 48, 96];
 
     const isNew = (r: UserItem) =>
         !!referenceTime && timeValue(r.createdAt) >= referenceTime - 30 * DAY;
@@ -163,6 +165,7 @@ export default function ListaPesquisadores({
             await deleteUser(user.username);
             toast.success("Pesquisador excluído com sucesso!");
             onDeleted(user.username);
+            reload();
         } catch (error) {
             console.error(error);
             toast.error(error instanceof Error ? error.message : "Erro ao excluir pesquisador");
@@ -189,6 +192,7 @@ export default function ListaPesquisadores({
             const updated = await setUserSituation(user.username, deactivating ? 'INACTIVE' : 'ACTIVE');
             toast.success(deactivating ? "Pesquisador desativado" : "Pesquisador reativado");
             onUpdated?.(updated);
+            reload();
         } catch (error) {
             console.error(error);
             toast.error(error instanceof Error ? error.message : "Erro ao alterar a situação do pesquisador");
@@ -215,7 +219,7 @@ export default function ListaPesquisadores({
             ? [{
                 id: 'company',
                 header: 'Empresa',
-                cell: (r: UserItem) => companyNames[r.companyId ?? -1] ?? <Muted>—</Muted>,
+                cell: (r: UserItem) => (r.companyName ?? companyNames[r.companyId ?? -1]) || <Muted>—</Muted>,
             } as DataColumn<UserItem>]
             : []),
         {
@@ -278,16 +282,18 @@ export default function ListaPesquisadores({
 
     const hasQuery = search.trim().length > 0;
 
+    const isFiltered = hasQuery || status !== 'ALL';
+
     const emptyState = (
         <TableEmpty
-            icon={researchers.length > 0 ? undefined : <UsersRound />}
-            title={researchers.length > 0 ? 'Nenhum pesquisador encontrado' : 'Sua equipe de campo começa aqui'}
+            icon={isFiltered ? undefined : <UsersRound />}
+            title={isFiltered ? 'Nenhum pesquisador encontrado' : 'Sua equipe de campo começa aqui'}
             text={
-                researchers.length > 0
+                isFiltered
                     ? 'Tente outro nome, usuário ou empresa.'
                     : 'Use "Novo pesquisador" para cadastrar quem vai coletar em campo.'
             }
-            onClear={researchers.length > 0 ? () => { setSearch(''); setStatus('ALL'); } : undefined}
+            onClear={isFiltered ? () => { setSearch(''); setStatus('ALL'); } : undefined}
         />
     );
 
@@ -295,7 +301,7 @@ export default function ListaPesquisadores({
         <div className="flex flex-col">
             <DataTableHeader
                 title="Pesquisadores"
-                count={hasQuery ? `${filtered.length} de ${researchers.length}` : researchers.length}
+                count={loading ? undefined : list.total}
             />
 
             <DataTableToolbar>
@@ -306,15 +312,15 @@ export default function ListaPesquisadores({
                     label="Buscar pesquisadores"
                 />
                 <div className="grow flex flex-wrap items-center gap-2">
-                    {!loading && researchers.length > 0 && (inactiveCount > 0 || status !== 'ALL') && (
+                    {!loading && counts && counts.total > 0 && (counts.inactive > 0 || status !== 'ALL') && (
                         <TableFilters<StatusFilter>
                             label="Situação"
                             value={status}
                             onChange={setStatus}
                             options={[
-                                { value: 'ALL', label: 'Todos', count: researchers.length },
-                                { value: 'ACTIVE', label: 'Ativos', count: activeCount },
-                                { value: 'INACTIVE', label: 'Inativos', count: inactiveCount },
+                                { value: 'ALL', label: 'Todos', count: counts.total },
+                                { value: 'ACTIVE', label: 'Ativos', count: counts.active },
+                                { value: 'INACTIVE', label: 'Inativos', count: counts.inactive },
                             ]}
                         />
                     )}
@@ -325,21 +331,24 @@ export default function ListaPesquisadores({
             {/* Conteúdo */}
             {loading ? (
                 <LoadingState label="Carregando pesquisadores..." shape={view === 'table' ? 'table' : 'people'} columns={4} />
-            ) : filtered.length === 0 ? (
+            ) : list.items.length === 0 ? (
                 emptyState
             ) : view === 'table' ? (
                 <DataTable
                     label="Pesquisadores"
                     columns={columns}
-                    rows={filtered}
+                    rows={list.items}
                     getRowKey={(r) => r.id ?? r.username}
                     className={maxHeightClassName}
+                    server={list.server}
+                    pageSizeOptions={pageSizes}
                 />
             ) : (
+                <div className="pa-dt-root" data-fetching={list.fetching || undefined}>
                 <div className={`${maxHeightClassName} overflow-y-auto pr-1`}>
                     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        {filtered.map((r) => {
-                            const company = companyNames[r.companyId ?? -1];
+                        {list.items.map((r) => {
+                            const company = r.companyName ?? companyNames[r.companyId ?? -1];
                             const fresh = isNew(r);
                             const since = relativeDays(r.createdAt, referenceTime);
 
@@ -433,6 +442,8 @@ export default function ListaPesquisadores({
                             );
                         })}
                     </ul>
+                </div>
+                <ServerPagination server={list.server} label="Pesquisadores" pageSizeOptions={pageSizes} />
                 </div>
             )}
 

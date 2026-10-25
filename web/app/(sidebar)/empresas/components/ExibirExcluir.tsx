@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { deactivate, deleteCompany, getCompanies, type CompanyItem } from '@/lib/company';
-import { deleteUser, getUsersAdmin, setUserSituation, type UserItem } from '@/lib/user';
+import { useState } from 'react';
+import { usePagedResource } from '@/hooks/usePagedResource';
+import { deactivate, deleteCompany, getCompaniesPage, type CompanyItem } from '@/lib/company';
+import { deleteUser, getAdminsPage, setUserSituation, type UserItem } from '@/lib/user';
 import { Button } from '@/components/ui/button';
 import {
     DataTable,
@@ -17,7 +18,6 @@ import {
     TableSearch,
     TableTabs,
     TableViewControls,
-    sortRows,
     type DataColumn,
     type TableSort,
     type TableView,
@@ -32,6 +32,10 @@ type Admin = UserItem;
 
 interface ExibirEditarProps {
     allowActions?: boolean;
+    /** Totais para as abas e filtros (vêm de `getCompanyStats`): a lista em si é paginada no servidor. */
+    counts?: { companies: number; activeCompanies: number; admins: number };
+    /** Muda quando o pai quer recarregar as listas (ex.: depois de cadastrar). */
+    reloadKey?: number;
     /** Chamado depois que um administrador é excluído, para a página manter contadores e gráficos em dia. */
     onAdminDeleted?: (username: string) => void;
     /** Chamado depois de editar um administrador. */
@@ -60,8 +64,6 @@ const PROFILE_TRANSLATION: Record<string, string> = {
     RESEARCHER: 'Pesquisador',
 };
 
-const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-
 const formatDate = (iso?: string) => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -70,18 +72,13 @@ const formatDate = (iso?: string) => {
 
 export default function ExibirEditar({
     allowActions = true,
+    counts,
+    reloadKey = 0,
     onAdminDeleted,
     onAdminUpdated,
     onCompanyUpdated,
     onCompanyDeleted,
 }: ExibirEditarProps) {
-    const [rawCompanies, setRawCompanies] = useState<RawCompany[]>([]);
-    const [loadingCompanies, setLoadingCompanies] = useState(true);
-
-    const [rawAdmins, setRawAdmins] = useState<Admin[]>([]);
-    const [loadingAdmins, setLoadingAdmins] = useState(true);
-
-    const [error, setError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [deletingAdmin, setDeletingAdmin] = useState<string | null>(null);
     const [togglingAdmin, setTogglingAdmin] = useState<string | null>(null);
@@ -90,18 +87,35 @@ export default function ExibirEditar({
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
 
     const [tab, setTab] = useState<Tab>('companies');
-    const [search, setSearch] = useState('');
     const [status, setStatus] = useState<StatusFilter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
     const [view, setView] = useState<TableView>('table');
 
+    // Cada aba pede ao servidor só a página que aparece (busca, situação e ordem são feitas lá).
+    // Só a aba aberta faz requisição.
+    const companiesList = usePagedResource<RawCompany>(
+        (params) => getCompaniesPage({ ...params, situation: status === 'ALL' ? undefined : status, sort }),
+        { filters: { status, sort, reloadKey }, enabled: tab === 'companies' },
+    );
+    const adminsList = usePagedResource<Admin>((params) => getAdminsPage({ ...params, sort }), {
+        filters: { sort, reloadKey },
+        enabled: tab === 'admins',
+    });
+    const active = tab === 'companies' ? companiesList : adminsList;
+    const error = active.error;
+    const { search, setSearch } = active;
+    const rawCompanies = companiesList.items;
+    const rawAdmins = adminsList.items;
+    const loadingCompanies = companiesList.loading;
+    const loadingAdmins = adminsList.loading;
+
     const handleCompanySaved = (updated: CompanyItem) => {
-        setRawCompanies((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
+        companiesList.reload();
         onCompanyUpdated?.(updated);
     };
 
     const handleAdminSaved = (updated: UserItem) => {
-        setRawAdmins((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
+        adminsList.reload();
         onAdminUpdated?.(updated);
     };
 
@@ -122,7 +136,7 @@ export default function ExibirEditar({
         try {
             await deleteCompany(+id);
 
-            setRawCompanies((prev) => prev.filter((c) => c.id !== +id));
+            companiesList.reload();
             onCompanyDeleted?.(+id);
             toast.success(`Empresa "${company?.legalName ?? id}" excluída`);
         } catch (err) {
@@ -148,9 +162,7 @@ export default function ExibirEditar({
         try {
             await deactivate(+id);
 
-            setRawCompanies((prev) =>
-                prev.map((c) => (c.id === +id ? { ...c, situation: 'INACTIVE' } : c))
-            );
+            companiesList.reload();
             if (company) onCompanyUpdated?.({ ...company, situation: 'INACTIVE' });
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Erro ao desativar empresa');
@@ -179,7 +191,7 @@ export default function ExibirEditar({
         try {
             const updated = await setUserSituation(username, deactivating ? 'INACTIVE' : 'ACTIVE');
 
-            setRawAdmins((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
+            adminsList.reload();
             onAdminUpdated?.(updated);
             toast.success(deactivating ? 'Administrador desativado' : 'Administrador reativado');
         } catch (err) {
@@ -206,7 +218,7 @@ export default function ExibirEditar({
         try {
             await deleteUser(username);
 
-            setRawAdmins((prev) => prev.filter((a) => a.username !== username));
+            adminsList.reload();
             onAdminDeleted?.(username);
             toast.success(`Administrador "${admin?.name ?? username}" excluído`);
         } catch (err) {
@@ -216,66 +228,10 @@ export default function ExibirEditar({
         }
     };
 
-    useEffect(() => {
-        getUsersAdmin()
-            .then((data) => {
-                setRawAdmins(data);
-            })
-            .catch((error) => {
-                console.log(error);
-                toast.error('Erro ao carregar administradores');
-            })
-            .finally(() => {
-                setLoadingAdmins(false);
-            });
-    }, []);
+    const hasFilter = search.trim().length > 0 || (tab === 'companies' && status !== 'ALL');
 
-    useEffect(() => {
-        getCompanies()
-            .then((data) => {
-                setRawCompanies(data);
-            })
-            .catch((err) => {
-                setError(err.message);
-            })
-            .finally(() => {
-                setLoadingCompanies(false);
-            });
-    }, []);
-
-    const activeCount = rawCompanies.filter((c) => c.situation === 'ACTIVE').length;
-    const inactiveCount = rawCompanies.length - activeCount;
-
-    const term = normalize(search.trim());
-    const hasFilter = term.length > 0 || (tab === 'companies' && status !== 'ALL');
-
-    const companies = useMemo(
-        () =>
-            sortRows(
-                rawCompanies.filter(
-                    (c) =>
-                        (status === 'ALL' || c.situation === status) &&
-                        (!term ||
-                            normalize(c.legalName).includes(term) ||
-                            normalize(c.contactInformation ?? '').includes(term))
-                ),
-                sort,
-                { name: (c) => c.legalName, date: (c) => c.createdAt }
-            ),
-        [rawCompanies, status, term, sort]
-    );
-
-    const admins = useMemo(
-        () =>
-            sortRows(
-                rawAdmins.filter(
-                    (a) => !term || normalize(a.name).includes(term) || normalize(a.username).includes(term)
-                ),
-                sort,
-                { name: (a) => a.name, date: (a) => a.createdAt }
-            ),
-        [rawAdmins, term, sort]
-    );
+    const companies = companiesList.items;
+    const admins = adminsList.items;
 
     const clear = () => {
         setSearch('');
@@ -283,8 +239,9 @@ export default function ExibirEditar({
     };
 
     const switchTab = (t: Tab) => {
+        companiesList.setSearch('');
+        adminsList.setSearch('');
         setTab(t);
-        setSearch('');
         setStatus('ALL');
     };
 
@@ -405,8 +362,6 @@ export default function ExibirEditar({
             : []),
     ];
 
-    const total = tab === 'companies' ? rawCompanies.length : rawAdmins.length;
-    const shown = tab === 'companies' ? companies.length : admins.length;
 
     return (
         <div className="flex flex-col">
@@ -415,14 +370,14 @@ export default function ExibirEditar({
                 value={tab}
                 onChange={switchTab}
                 options={[
-                    { value: 'companies', label: 'Empresas', count: rawCompanies.length, icon: <Building2 /> },
-                    { value: 'admins', label: 'Administradores', count: rawAdmins.length, icon: <UsersRound /> },
+                    { value: 'companies', label: 'Empresas', count: counts?.companies, icon: <Building2 /> },
+                    { value: 'admins', label: 'Administradores', count: counts?.admins, icon: <UsersRound /> },
                 ]}
             />
 
             <DataTableHeader
                 title={tab === 'companies' ? 'Empresas cadastradas' : 'Administradores cadastrados'}
-                count={hasFilter ? `${shown} de ${total}` : total}
+                count={active.loading ? undefined : active.total}
             />
 
             <DataTableToolbar>
@@ -433,15 +388,15 @@ export default function ExibirEditar({
                     label="Buscar"
                 />
                 <div className="grow flex flex-wrap items-center gap-2">
-                    {tab === 'companies' && !loadingCompanies && rawCompanies.length > 0 && (
+                    {tab === 'companies' && counts && counts.companies > 0 && (
                         <TableFilters<StatusFilter>
                             label="Situação"
                             value={status}
                             onChange={setStatus}
                             options={[
-                                { value: 'ALL', label: 'Todas', count: rawCompanies.length },
-                                { value: 'ACTIVE', label: 'Ativas', count: activeCount },
-                                { value: 'INACTIVE', label: 'Inativas', count: inactiveCount },
+                                { value: 'ALL', label: 'Todas', count: counts.companies },
+                                { value: 'ACTIVE', label: 'Ativas', count: counts.activeCompanies },
+                                { value: 'INACTIVE', label: 'Inativas', count: counts.companies - counts.activeCompanies },
                             ]}
                         />
                     )}
@@ -461,6 +416,7 @@ export default function ExibirEditar({
                     loading={loadingCompanies}
                     loadingLabel="Carregando empresas..."
                     view={view}
+                    server={companiesList.server}
                     empty={
                         <TableEmpty
                             icon={hasFilter ? undefined : <Building2 />}
@@ -478,6 +434,7 @@ export default function ExibirEditar({
                     loading={loadingAdmins}
                     loadingLabel="Carregando administradores..."
                     view={view}
+                    server={adminsList.server}
                     empty={
                         <TableEmpty
                             icon={hasFilter ? undefined : <UsersRound />}

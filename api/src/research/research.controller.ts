@@ -9,6 +9,7 @@ import { UpdateResearchDto } from './dto/update-research.dto.js';
 import { LinkResearcherDto } from './dto/link-researcher.dto.js';
 import { UpdateResearcherTargetDto } from './dto/update-researcher-target.dto.js';
 import { RevokeCopyDto } from './dto/revoke-copy.dto.js';
+import { TeamPageQueryDto, CopiesPageQueryDto, isPaged, normalizeText, paginateList, ResearchPageQueryDto, PageQueryDto } from '../common/pagination.js';
 
 @UseGuards(AuthGuard)
 @Controller('research')
@@ -22,8 +23,21 @@ export class ResearchController {
 
     // O aplicativo envia `X-Device-ID`: para o pesquisador, cada pesquisa volta com `copyStatus` (a cópia deste aparelho).
     @Get()
-    findAll(@Headers('x-device-id') deviceId: string | undefined, @CurrentUser() currentUser: UserPayLoad) {
+    // Painel web: `?page=&pageSize=&q=&status=&sort=` devolve só uma página ({ items, total, ... }).
+    // Sem `page`/`pageSize` (aplicativo) a lista continua inteira, no formato antigo.
+    findAll(
+        @Headers('x-device-id') deviceId: string | undefined,
+        @Query() query: ResearchPageQueryDto,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        if (isPaged(query) && currentUser.profile !== 'RESEARCHER') return this.researchService.findPage(query, currentUser);
         return this.researchService.findAll(currentUser, deviceId?.trim() || undefined);
+    }
+
+    // Contagem por situação, sem listar as pesquisas (precisa vir antes de ":id").
+    @Get('summary')
+    summary(@CurrentUser() currentUser: UserPayLoad) {
+        return this.researchService.summary(currentUser);
     }
 
     @Get(':id')
@@ -80,8 +94,19 @@ export class ResearchController {
     }
 
     @Get(':id/researchers')
-    listResearchers(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
-        return this.researchService.listResearchers(id, currentUser);
+    // Painel web: `?page=&pageSize=&q=` devolve só uma página dos vínculos. Sem `page`/`pageSize`, lista inteira.
+    async listResearchers(@Param('id', ParseIntPipe) id: number, @Query() query: PageQueryDto, @CurrentUser() currentUser: UserPayLoad) {
+        const rows = await this.researchService.listResearchers(id, currentUser);
+        if (!isPaged(query)) return rows;
+        const term = normalizeText(query.q?.trim());
+        const matching = term ? rows.filter((r) => normalizeText(`${r.name ?? ''} ${r.username ?? ''}`).includes(term)) : rows;
+        return paginateList(matching, query);
+    }
+
+    // Pesquisadores da empresa com o vínculo de cada um, em páginas: `?page=&pageSize=&q=&sort=&filter=`.
+    @Get(':id/team')
+    team(@Param('id', ParseIntPipe) id: number, @Query() query: TeamPageQueryDto, @CurrentUser() currentUser: UserPayLoad) {
+        return this.researchService.teamPage(id, query, currentUser);
     }
 
     @Post(':id/researchers/:userId')
@@ -115,7 +140,9 @@ export class ResearchController {
 
     // Quem está com a pesquisa baixada (cópias ativas + histórico de devoluções e revogações). Só administrador.
     @Get(':id/copies')
-    listCopies(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+    // Painel web: `?page=&pageSize=&status=&q=` devolve ativas + usuários revogados + o histórico em páginas.
+    listCopies(@Param('id', ParseIntPipe) id: number, @Query() query: CopiesPageQueryDto, @CurrentUser() currentUser: UserPayLoad) {
+        if (isPaged(query)) return this.researchService.listCopiesPage(id, query, currentUser);
         return this.researchService.listCopies(id, currentUser);
     }
 

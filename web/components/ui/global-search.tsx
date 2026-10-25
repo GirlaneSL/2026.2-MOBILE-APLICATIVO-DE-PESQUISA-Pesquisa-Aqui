@@ -166,27 +166,34 @@ function SearchPanel({ profile, pages, onClose, onNavigate }: SearchPanelProps) 
     const listRef = useRef<HTMLDivElement>(null)
     const listId = useId()
 
-    /* ---------- carrega os registros ---------- */
+    /* ---------- busca os registros no servidor (poucos por tipo, depois de uma pausa na digitação) ---------- */
+    const searched = query.trim()
     useEffect(() => {
         let cancelled = false
 
-        loadSearchEntries(profile)
-            .then((entries) => {
-                if (!cancelled) setRecords(entries)
-            })
-            .catch((error) => {
-                if (cancelled || isSessionExpiredError(error)) return
-                console.error(error)
-                setFailed(true)
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false)
-            })
+        const timer = window.setTimeout(() => {
+            loadSearchEntries(profile, searched)
+                .then((entries) => {
+                    if (!cancelled) {
+                        setRecords(entries)
+                        setFailed(false)
+                    }
+                })
+                .catch((error) => {
+                    if (cancelled || isSessionExpiredError(error)) return
+                    console.error(error)
+                    setFailed(true)
+                })
+                .finally(() => {
+                    if (!cancelled) setLoading(false)
+                })
+        }, searched ? 250 : 0)
 
         return () => {
             cancelled = true
+            window.clearTimeout(timer)
         }
-    }, [profile])
+    }, [profile, searched])
 
     /* ---------- foco e rolagem da página ---------- */
     useEffect(() => {
@@ -389,7 +396,7 @@ function SearchPanel({ profile, pages, onClose, onNavigate }: SearchPanelProps) 
                     <span><kbd>↑</kbd><kbd>↓</kbd> navegar</span>
                     <span><kbd><CornerDownLeft /></kbd> abrir</span>
                     <span><kbd>Esc</kbd> fechar</span>
-                    <span className="r"><UsersRound /> {records.length} registros</span>
+                    <span className="r"><UsersRound /> {records.length} {records.length === 1 ? "registro" : "registros"}</span>
                 </div>
             </div>
         </div>

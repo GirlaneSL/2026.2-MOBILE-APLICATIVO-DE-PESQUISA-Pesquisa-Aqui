@@ -4,9 +4,8 @@ import BannerComponent from "@/components/ui/bannerComponent";
 import { Pin } from "@/components/ui/contour";
 import { buttonVariants } from "@/components/ui/button";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
-import { getCompanies, type CompanyItem } from "@/lib/company";
-import { buildSuperAdminActivities, countByMonth } from "@/lib/dashboard";
-import { getUsersAdmin, type UserItem } from "@/lib/user";
+import { getCompanyStats, type CompanyStats } from "@/lib/company";
+import { MONTH_NAMES, type ActivityItem } from "@/lib/dashboard";
 import { Building2, Building, History, UserCog } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -20,18 +19,16 @@ import StatusPanel from "./StatusPanel";
 import UltimasAtualizacoesList from "./UltimasAtualizacoesList";
 
 export default function SuperAdmPage({ userName }: { userName?: string }) {
-    const [companies, setCompanies] = useState<CompanyItem[]>([])
-    const [admins, setAdmins] = useState<UserItem[]>([])
+    // Totais, gráficos e atividades chegam prontos do servidor (nenhuma lista inteira é baixada).
+    const [stats, setStats] = useState<CompanyStats | null>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         let cancelled = false;
 
-        Promise.all([getCompanies(), getUsersAdmin()])
-            .then(([companiesData, adminsData]) => {
-                if (cancelled) return;
-                setCompanies(companiesData ?? []);
-                setAdmins(adminsData ?? []);
+        getCompanyStats()
+            .then((data) => {
+                if (!cancelled) setStats(data);
             })
             .catch((error) => {
                 if (cancelled || isSessionExpiredError(error)) return;
@@ -48,32 +45,35 @@ export default function SuperAdmPage({ userName }: { userName?: string }) {
     }, [])
 
     const [today] = useState(() => new Date());
-    const year = today.getFullYear();
     const month = today.getMonth();
 
-    const activeCompanies = useMemo(() => companies.filter((c) => c.situation === 'ACTIVE'), [companies]);
+    const companiesCount = stats?.companies ?? 0;
+    const activeCount = stats?.activeCompanies ?? 0;
+    const adminsCount = stats?.admins ?? 0;
 
     const companiesChart = useMemo(
-        () => countByMonth(companies, (c) => c.createdAt, year, 'Empresas').map((p) => ({ label: p.month, value: Number(p.Empresas) })),
-        [companies, year]
+        () => MONTH_NAMES.map((label, i) => ({ label, value: stats?.companiesByMonth[i] ?? 0 })),
+        [stats]
     );
 
     const adminsChart = useMemo(
-        () => countByMonth(admins, (a) => a.createdAt, year, 'Administradores').map((p) => ({ label: p.month, value: Number(p.Administradores) })),
-        [admins, year]
+        () => MONTH_NAMES.map((label, i) => ({ label, value: stats?.adminsByMonth[i] ?? 0 })),
+        [stats]
     );
 
-    const activities = useMemo(() => buildSuperAdminActivities(companies, admins), [companies, admins]);
+    const activities: ActivityItem[] = useMemo(
+        () => (stats?.activities ?? []).map((a) => ({ ...a, date: new Date(a.date) })),
+        [stats]
+    );
 
     const newThisMonth = companiesChart[month]?.value ?? 0;
 
     const pins = useMemo(
         () =>
-            [...companies]
-                .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
+            (stats?.recentCompanies ?? [])
                 .slice(0, PIN_SLOTS.length)
                 .map((c, i) => ({ id: c.id, label: c.legalName, inactive: c.situation !== 'ACTIVE', slot: PIN_SLOTS[i] })),
-        [companies]
+        [stats]
     );
 
     const dash = loading ? "–" : undefined;
@@ -88,13 +88,13 @@ export default function SuperAdmPage({ userName }: { userName?: string }) {
 
             <HeroPanel
                 greeting={`${greetingFor(today)}${userName ? `, ${firstName(userName)}` : ""}. Agora:`}
-                value={dash ?? activeCompanies.length}
-                caption={activeCompanies.length === 1 ? "empresa ativa" : "empresas ativas"}
+                value={dash ?? activeCount}
+                caption={activeCount === 1 ? "empresa ativa" : "empresas ativas"}
                 delta={!loading && newThisMonth > 0 ? `${newThisMonth} ${newThisMonth === 1 ? "nova" : "novas"} em ${monthName(month)}` : undefined}
                 minis={[
-                    { value: dash ?? companies.length, label: "empresas cadastradas" },
-                    { value: dash ?? admins.length, label: "administradores" },
-                    { value: dash ?? companies.length - activeCompanies.length, label: "empresas inativas" },
+                    { value: dash ?? companiesCount, label: "empresas cadastradas" },
+                    { value: dash ?? adminsCount, label: "administradores" },
+                    { value: dash ?? companiesCount - activeCount, label: "empresas inativas" },
                 ]}
             >
                 {!loading && pins.length === 0 && (
@@ -123,12 +123,12 @@ export default function SuperAdmPage({ userName }: { userName?: string }) {
                     icon={<Building />}
                     title="Situação das empresas"
                     description="Empresas que podem entrar no sistema"
-                    highlighted={activeCompanies.length}
-                    total={companies.length}
+                    highlighted={activeCount}
+                    total={companiesCount}
                     caption="empresas ativas"
                     rows={[
-                        { label: "Ativas", count: activeCompanies.length },
-                        { label: "Inativas", count: companies.length - activeCompanies.length, tone: "clay" },
+                        { label: "Ativas", count: activeCount },
+                        { label: "Inativas", count: companiesCount - activeCount, tone: "clay" },
                     ]}
                 />
 
@@ -157,7 +157,7 @@ export default function SuperAdmPage({ userName }: { userName?: string }) {
                     cardTitle="Empresas e administradores"
                     cardDescription="Quem tem acesso e em que situação"
                     CardContentClassName="max-h-[26rem] overflow-auto"
-                    cardContent={<ExibirEditar allowActions={false} />}
+                    cardContent={<ExibirEditar allowActions={false} counts={stats ? { companies: stats.companies, activeCompanies: stats.activeCompanies, admins: stats.admins } : undefined} />}
                 />
             </section>
         </>

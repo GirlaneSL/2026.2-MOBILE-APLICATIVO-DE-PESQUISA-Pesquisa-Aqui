@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
@@ -6,6 +6,7 @@ import { UpdateUserSituationDto } from './dto/update-user-situation.dto.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { AuthGuard } from '../auth/auth.guard.js';
+import { isPaged, UserPageQueryDto } from '../common/pagination.js';
 
 @UseGuards(AuthGuard)
 @Controller('user')
@@ -18,12 +19,21 @@ export class UserController {
     }
 
     @Get()
-    findAll(@CurrentUser() currentUser: UserPayLoad) {
+    // Painel web: `?page=&pageSize=&q=&profile=&situation=&sort=` devolve só uma página. Sem `page`/`pageSize`, lista inteira.
+    findAll(@Query() query: UserPageQueryDto, @CurrentUser() currentUser: UserPayLoad) {
+        if (isPaged(query)) return this.userService.findPage(query, currentUser);
         return this.userService.findAll(currentUser);
     }
 
+    // Totais do painel de pesquisadores, sem listar ninguém.
+    @Get('/researchers/stats')
+    researcherStats(@CurrentUser() currentUser: UserPayLoad) {
+        return this.userService.researcherStats(currentUser);
+    }
+
     @Get('/admins')
-    findAllAdmin(@CurrentUser() currentUser: UserPayLoad) {
+    findAllAdmin(@Query() query: UserPageQueryDto, @CurrentUser() currentUser: UserPayLoad) {
+        if (isPaged(query)) return this.userService.findPage(query, currentUser, true);
         return this.userService.findAllAdmin(currentUser);
     }
 

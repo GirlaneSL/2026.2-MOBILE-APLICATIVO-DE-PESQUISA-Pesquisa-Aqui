@@ -1,12 +1,14 @@
-import { getCollections, type CollectionSummary } from "./collection";
-import { getCompanies, type CompanyItem } from "./company";
-import { getResearches, type Research } from "./research";
-import { getResearchers, getUsersAdmin, type UserItem } from "./user";
+import { getCollectionsPage, type CollectionSummary } from "./collection";
+import { getCompaniesPage, type CompanyItem } from "./company";
+import type { Page } from "./pagination";
+import { getResearchesPage, type Research, type ResearchListItem } from "./research";
+import { getAdminsPage, getResearchersPage, type UserItem } from "./user";
 
 /**
  * Buscador global: reúne em uma lista única as páginas do painel e os registros
  * que o perfil logado pode ver (pesquisas, pesquisadores, empresas, administradores)
- * e faz a busca no próprio navegador, sem acento e sem diferenciar maiúsculas.
+ * Os registros vêm do servidor já filtrados pelo texto digitado, em páginas de até 100 (todas as
+ * páginas são buscadas, então nenhum resultado fica de fora); o navegador só ordena e destaca, sem acento e sem diferenciar maiúsculas.
  */
 
 export type SearchProfile = "SUPERADMINISTRATOR" | "ADMINISTRATOR" | "RESEARCHER";
@@ -54,9 +56,27 @@ const STATUS_LABELS: Record<Research["status"], { label: string; tone: SearchEnt
    ------------------------------------------------------------------ */
 
 const CACHE_TTL_MS = 60_000;
+/** Tamanho de cada requisição (o máximo que a API aceita): os resultados vêm em páginas até acabarem. */
+const FETCH_PAGE_SIZE = 100;
+/** Trava de segurança: no máximo 50 páginas (5.000 registros) por fonte em uma busca. */
+const MAX_PAGES = 50;
+/** Quantas pesquisas têm as coletas consultadas ao mesmo tempo. */
+const COLLECTION_CONCURRENCY = 4;
 
-let cache: { profile: SearchProfile; entries: SearchEntry[]; at: number } | null = null;
-let inFlight: { profile: SearchProfile; promise: Promise<SearchEntry[]> } | null = null;
+/** Junta TODAS as páginas de uma consulta paginada (a API entrega no máximo 100 por vez). */
+async function fetchAllPages<T>(load: (page: number) => Promise<Page<T>>): Promise<T[]> {
+    const first = await load(1);
+    const items = [...first.items];
+    const lastPage = Math.min(first.totalPages, MAX_PAGES);
+    if (lastPage > 1) {
+        const rest = await Promise.all(Array.from({ length: lastPage - 1 }, (_, i) => load(i + 2)));
+        for (const page of rest) items.push(...page.items);
+    }
+    return items;
+}
+
+const cache = new Map<string, { entries: SearchEntry[]; at: number }>();
+const inFlight = new Map<string, Promise<SearchEntry[]>>();
 
 const researchEntry = (r: Research): SearchEntry => {
     const status = STATUS_LABELS[r.status];
@@ -123,7 +143,7 @@ const companyEntry = (c: CompanyItem): SearchEntry => ({
     badgeTone: c.situation === "ACTIVE" ? "live" : "off",
 });
 
-async function fetchEntries(profile: SearchProfile): Promise<SearchEntry[]> {
+async function fetchEntries(profile: SearchProfile, query: string): Promise<SearchEntry[]> {
     // Cada fonte é independente: se uma falhar, as outras continuam aparecendo.
     const settled = async <T>(promise: Promise<T>, fallback: T): Promise<T> => {
         try {
@@ -135,62 +155,92 @@ async function fetchEntries(profile: SearchProfile): Promise<SearchEntry[]> {
         }
     };
 
+    // O servidor procura o texto inteiro; com várias palavras mandamos a mais longa e o navegador confere as demais.
+    const q = longestToken(query);
+    const list = <T,>(load: (params: { page: number; pageSize: number; q: string; sort: "recent" }) => Promise<Page<T>>) =>
+        settled(fetchAllPages((page) => load({ page, pageSize: FETCH_PAGE_SIZE, q, sort: "recent" })), [] as T[]);
+
+    // Sem texto não há o que procurar: só as 4 pesquisas mais recentes, para o usuário ter por onde começar.
+    if (!q) {
+        if (profile === "SUPERADMINISTRATOR") return [];
+        const recent = await settled(getResearchesPage({ page: 1, pageSize: 4, sort: "recent" }), null);
+        return (recent?.items ?? []).map(researchEntry);
+    }
+
     if (profile === "SUPERADMINISTRATOR") {
-        const [companies, admins] = await Promise.all([
-            settled<CompanyItem[]>(getCompanies(), []),
-            settled<UserItem[]>(getUsersAdmin(), []),
-        ]);
-        return [...(companies ?? []).map(companyEntry), ...(admins ?? []).map(adminEntry)];
+        const [companies, admins] = await Promise.all([list(getCompaniesPage), list(getAdminsPage)]);
+        return [...companies.map(companyEntry), ...admins.map(adminEntry)];
     }
 
     if (profile === "ADMINISTRATOR") {
-        const [researches, researchers] = await Promise.all([
-            settled<Research[]>(getResearches(), []),
-            settled<UserItem[]>(getResearchers(), []),
-        ]);
-        const list = researches ?? [];
+        const [researches, researchers] = await Promise.all([list(getResearchesPage), list(getResearchersPage)]);
 
-        // A API lista as coletas por pesquisa. Rascunho ainda não recebe coletas.
-        const withCollections = list.filter((r) => r.status !== "DRAFT");
-        const collectionResults = await Promise.allSettled(withCollections.map((r) => getCollections(r.id)));
+        // Coletas: a API lista por pesquisa, então consulta todas as pesquisas fora de rascunho
+        // (rascunho não recebe coletas), poucas por vez, e junta tudo o que combina com o texto.
         const collections: SearchEntry[] = [];
-        collectionResults.forEach((result, i) => {
-            if (result.status === "rejected") {
-                if (result.reason instanceof Error && result.reason.message === "Session expired") throw result.reason;
-                return;
-            }
-            for (const c of result.value) collections.push(collectionEntry(c, withCollections[i]));
-        });
+        if (q.length >= 1) {
+            const everything = await settled(
+                fetchAllPages((page) => getResearchesPage({ page, pageSize: FETCH_PAGE_SIZE, sort: "recent" })),
+                [] as ResearchListItem[],
+            );
+            const targets = everything.filter((r) => r.status !== "DRAFT");
 
-        return [...list.map(researchEntry), ...(researchers ?? []).map(researcherEntry), ...collections];
+            for (let i = 0; i < targets.length; i += COLLECTION_CONCURRENCY) {
+                const batch = targets.slice(i, i + COLLECTION_CONCURRENCY);
+                const results = await Promise.allSettled(
+                    batch.map((r) => fetchAllPages((page) => getCollectionsPage(r.id, { page, pageSize: FETCH_PAGE_SIZE, q }))),
+                );
+                results.forEach((result, j) => {
+                    if (result.status === "rejected") {
+                        if (result.reason instanceof Error && result.reason.message === "Session expired") throw result.reason;
+                        return;
+                    }
+                    for (const c of result.value) collections.push(collectionEntry(c, batch[j]));
+                });
+            }
+        }
+
+        return [...researches.map(researchEntry), ...researchers.map(researcherEntry), ...collections];
     }
 
-    const researches = await settled<Research[]>(getResearches(), []);
-    return (researches ?? []).map(researchEntry);
+    return (await list(getResearchesPage)).map(researchEntry);
 }
 
-/** Carrega (ou reaproveita por 1 minuto) os registros pesquisáveis do perfil. */
-export function loadSearchEntries(profile: SearchProfile): Promise<SearchEntry[]> {
-    if (cache && cache.profile === profile && Date.now() - cache.at < CACHE_TTL_MS) {
-        return Promise.resolve(cache.entries);
-    }
-    if (inFlight && inFlight.profile === profile) return inFlight.promise;
+/** A palavra mais longa do texto (sem "#"): é a que mais restringe a consulta ao servidor. */
+const longestToken = (query: string) =>
+    query
+        .trim()
+        .split(/\s+/)
+        .map((token) => token.replace(/^#+/, ""))
+        .sort((a, b) => b.length - a.length)[0] ?? "";
 
-    const promise = fetchEntries(profile)
+/**
+ * Registros do perfil que combinam com o texto (poucos por tipo). Sem texto, devolve as pesquisas mais recentes.
+ * Reaproveita por 1 minuto a mesma busca.
+ */
+export function loadSearchEntries(profile: SearchProfile, query = ""): Promise<SearchEntry[]> {
+    const key = `${profile}|${query.trim().toLowerCase()}`;
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.at < CACHE_TTL_MS) return Promise.resolve(hit.entries);
+
+    const pending = inFlight.get(key);
+    if (pending) return pending;
+
+    const promise = fetchEntries(profile, query)
         .then((entries) => {
-            cache = { profile, entries, at: Date.now() };
+            cache.set(key, { entries, at: Date.now() });
             return entries;
         })
         .finally(() => {
-            if (inFlight?.promise === promise) inFlight = null;
+            inFlight.delete(key);
         });
-    inFlight = { profile, promise };
+    inFlight.set(key, promise);
     return promise;
 }
 
 /** Descarta o cache (útil ao sair da conta ou depois de cadastrar algo). */
 export function clearSearchCache() {
-    cache = null;
+    cache.clear();
 }
 
 /* ------------------------------------------------------------------
@@ -238,7 +288,7 @@ export interface SearchResult {
  * Todas as palavras digitadas precisam aparecer (no título, no subtítulo ou no texto extra).
  * O título pesa mais que o resto, e as páginas ganham um pequeno impulso.
  */
-export function searchEntries(entries: SearchEntry[], query: string, perKind = 6): SearchResult[] {
+export function searchEntries(entries: SearchEntry[], query: string, perKind = Number.POSITIVE_INFINITY): SearchResult[] {
     const tokens = tokensOf(query);
     if (tokens.length === 0) return [];
 
@@ -275,7 +325,7 @@ export function searchEntries(entries: SearchEntry[], query: string, perKind = 6
         (a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title, "pt-BR")
     );
 
-    // Limita cada grupo para que um tipo com muitos acertos não esconda os demais.
+    // Sem limite por padrão: todos os registros que combinam aparecem (`perKind` só serve para quem quiser cortar).
     const taken: Record<string, number> = {};
     const limited = results.filter(({ entry }) => {
         taken[entry.kind] = (taken[entry.kind] ?? 0) + 1;

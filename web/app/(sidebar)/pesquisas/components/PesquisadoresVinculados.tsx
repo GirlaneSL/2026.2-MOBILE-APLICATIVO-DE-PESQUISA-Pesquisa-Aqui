@@ -13,7 +13,6 @@ import {
     TableFilters,
     TableSearch,
     TableViewControls,
-    sortRows,
     type DataColumn,
     type TableSort,
     type TableView,
@@ -21,10 +20,10 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/loadingState";
 import { Input } from "@/components/ui/input";
-import { getResearchLinkedResearchers, linkResearcher, unlinkResearcher, updateResearcherTarget, type ResearchResearcherLink } from "@/lib/research";
-import { getResearchers, type UserItem } from "@/lib/user";
+import { usePagedResource } from "@/hooks/usePagedResource";
+import { getResearchTeamPage, linkResearcher, unlinkResearcher, updateResearcherTarget, type ResearchTeamMember, type ResearchTeamPage } from "@/lib/research";
 import { Link2Off, Plus, Save, UserRoundX, UsersRound } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 
 type Filter = 'ALL' | 'LINKED' | 'AVAILABLE';
@@ -54,45 +53,37 @@ const parseTarget = (raw: string): number | null => {
     return raw.trim() !== '' && Number.isInteger(value) && value >= 1 && value <= MAX_TARGET ? value : null;
 };
 
-const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
-export default function PesquisadoresVinculados({ researchId, companyId }: { researchId: number; companyId: number }) {
-    const [researchers, setResearchers] = useState<UserItem[]>([]);
-    const [linked, setLinked] = useState<Set<number>>(new Set());
-    const [links, setLinks] = useState<Map<number, ResearchResearcherLink>>(new Map());
+export default function PesquisadoresVinculados({ researchId }: { researchId: number; companyId: number }) {
     // Meta digitada por pesquisador (ainda não salva)
     const [drafts, setDrafts] = useState<Record<number, string>>({});
-    const [loading, setLoading] = useState(true);
     const [busyId, setBusyId] = useState<number | null>(null);
-    const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<Filter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
     const [view, setView] = useState<TableView>('table');
 
-    const load = useCallback(async () => {
-        try {
-            const [users, linkList] = await Promise.all([getResearchers(), getResearchLinkedResearchers(researchId)]);
-            setResearchers(users.filter((u) => u.companyId === companyId));
-            setLinked(new Set(linkList.map((l) => l.userId)));
-            setLinks(new Map(linkList.map((l) => [l.userId, l])));
-            setDrafts({});
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Erro ao carregar pesquisadores');
-        } finally {
-            setLoading(false);
-        }
-    }, [researchId, companyId]);
+    // A API devolve uma página da equipe por vez (vinculados primeiro; busca e filtro são feitos lá).
+    const list = usePagedResource<ResearchTeamMember, ResearchTeamPage>(
+        (params) => getResearchTeamPage(researchId, { ...params, filter, sort }),
+        { pageSize: 10, filters: { filter, sort, researchId } },
+    );
+    const { search, setSearch } = list;
+    const researchers = list.items;
+    const summary = list.data?.summary;
+    const loading = list.loading;
 
-    useEffect(() => { load(); }, [load]);
+    const load = async () => {
+        setDrafts({});
+        list.reload();
+    };
 
-    const draftOf = (user: UserItem) => {
+    const draftOf = (user: ResearchTeamMember) => {
         if (drafts[user.id] !== undefined) return drafts[user.id];
-        const current = links.get(user.id)?.targetCount;
+        const current = user.link?.targetCount;
         return current == null ? '' : String(current);
     };
 
-    const toggle = async (user: UserItem) => {
-        const isLinked = linked.has(user.id);
+    const toggle = async (user: ResearchTeamMember) => {
+        const isLinked = !!user.link;
         let target: number | undefined;
 
         if (!isLinked) {
@@ -121,7 +112,7 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
         }
     };
 
-    const saveTarget = async (user: UserItem) => {
+    const saveTarget = async (user: ResearchTeamMember) => {
         const parsed = parseTarget(draftOf(user));
         if (parsed === null) {
             toast.error('A meta deve ser um número inteiro a partir de 1.');
@@ -139,32 +130,16 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
         }
     };
 
-    const linkedCount = researchers.filter((r) => linked.has(r.id)).length;
-    const total = researchers.length;
+    const linkedCount = summary?.linked ?? 0;
+    const total = summary?.total ?? 0;
+    const isFiltered = search.trim().length > 0 || filter !== 'ALL';
     const pct = total ? Math.round((linkedCount / total) * 100) : 0;
-
-    // Vinculados primeiro; dentro de cada grupo, a ordem escolhida (Recentes ou A-Z).
-    const visible = useMemo(() => {
-        const term = normalize(search.trim());
-        const sorted = sortRows(
-            researchers.filter((r) => {
-                const isLinked = linked.has(r.id);
-                if (filter === 'LINKED' && !isLinked) return false;
-                if (filter === 'AVAILABLE' && isLinked) return false;
-                return !term || normalize(r.name).includes(term) || normalize(r.username).includes(term);
-            }),
-            sort,
-            { name: (r) => r.name, date: (r) => r.createdAt }
-        );
-        // Array.sort é estável: dentro de cada grupo a ordem acima é mantida.
-        return sorted.sort((a, b) => (linked.has(a.id) ? 0 : 1) - (linked.has(b.id) ? 0 : 1));
-    }, [researchers, linked, search, filter, sort]);
 
     if (loading) {
         return <LoadingState label="Carregando pesquisadores..." shape="people" />;
     }
 
-    if (total === 0) {
+    if (total === 0 && !isFiltered) {
         return (
             <div className="relative overflow-hidden rounded-[26px] border border-dashed border-input bg-muted/40 px-6 py-14 text-center">
                 <Contour seed={8} rings={10} cx={0.5} cy={0.5} size={1.2} style={{ opacity: 0.3 }} />
@@ -187,9 +162,9 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
         { value: 'AVAILABLE', label: 'Disponíveis', count: total - linkedCount },
     ];
 
-    const linkedUsers = researchers.filter((r) => linked.has(r.id));
+    const linkedUsers = summary?.linkedPreview ?? [];
 
-    const columns: DataColumn<UserItem>[] = [
+    const columns: DataColumn<ResearchTeamMember>[] = [
         {
             id: 'name',
             header: 'Pesquisador',
@@ -200,16 +175,16 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
             id: 'status',
             header: 'Situação',
             cell: (user) =>
-                linked.has(user.id) ? <TableChip tone="live">Na equipe</TableChip> : <TableChip tone="done">Disponível</TableChip>,
+                user.link ? <TableChip tone="live">Na equipe</TableChip> : <TableChip tone="done">Disponível</TableChip>,
         },
         {
             id: 'target',
             header: 'Meta de coletas',
             minWidth: '11rem',
             cell: (user) => {
-                const isLinked = linked.has(user.id);
+                const isLinked = !!user.link;
                 const busy = busyId === user.id;
-                const saved = links.get(user.id)?.targetCount;
+                const saved = user.link?.targetCount;
                 const draft = draftOf(user);
                 const changed = isLinked && draft !== (saved == null ? '' : String(saved));
                 return (
@@ -242,7 +217,7 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
             header: 'Entregue',
             minWidth: '11rem',
             cell: (user) => {
-                const link = links.get(user.id);
+                const link = user.link;
                 if (!link) return <span className="text-sm text-muted-foreground">-</span>;
                 const collected = link.collected ?? 0;
                 const target = link.targetCount ?? null;
@@ -270,7 +245,7 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
             hideHeader: true,
             align: 'right',
             cell: (user) => {
-                const isLinked = linked.has(user.id);
+                const isLinked = !!user.link;
                 const busy = busyId === user.id;
                 return (
                     <RowActions>
@@ -314,9 +289,9 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
                                         {initialsOf(u.name)}
                                     </span>
                                 ))}
-                                {linkedUsers.length > 5 && (
+                                {linkedCount > 5 && (
                                     <span className="grid size-10 place-items-center rounded-full border-[3px] border-[#d6e8de] bg-[var(--forest)] text-[12px] font-bold text-[var(--mint)]">
-                                        +{linkedUsers.length - 5}
+                                        +{linkedCount - 5}
                                     </span>
                                 )}
                             </div>
@@ -344,7 +319,7 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
             <div>
                 <DataTableHeader
                     title="Pesquisadores da empresa"
-                    count={visible.length === total ? total : `${visible.length} de ${total}`}
+                    count={list.total}
                 />
 
                 <DataTableToolbar>
@@ -363,11 +338,12 @@ export default function PesquisadoresVinculados({ researchId, companyId }: { res
                 <DataTable
                     label="Pesquisadores da empresa"
                     columns={columns}
-                    rows={visible}
+                    rows={researchers}
                     getRowKey={(user) => user.id}
-                    rowTone={(user) => (linked.has(user.id) ? 'on' : undefined)}
+                    rowTone={(user) => (user.link ? 'on' : undefined)}
                     minWidth="860px"
                     view={view}
+                    server={list.server}
                     empty={
                         <TableEmpty
                             title="Nenhum pesquisador encontrado"

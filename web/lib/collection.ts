@@ -1,4 +1,5 @@
 import { apiFetch } from "./apiFetcher";
+import { asPage, pageQuery, type Page, type PageParams } from "./pagination";
 
 export interface CollectionSummary {
     id: number;
@@ -91,6 +92,36 @@ export const getCollections = async (researchId: number): Promise<CollectionSumm
 
     if (!response.ok) throw await readError(response, 'Falha ao carregar as coletas');
 
+    return response.json();
+};
+
+// Uma página das coletas da pesquisa (busca, gravação e ordem no servidor).
+export const getCollectionsPage = async (
+    researchId: number,
+    params: PageParams & { audio?: 'AUDIO' | 'NO_AUDIO' },
+): Promise<Page<CollectionSummary>> => {
+    const response = await apiFetch(`/collection${pageQuery(params, { researchId })}`, {
+        method: 'GET',
+        credentials: 'include',
+    });
+
+    if (!response.ok) throw await readError(response, 'Falha ao carregar as coletas');
+
+    return asPage<CollectionSummary>(await response.json(), params);
+};
+
+export interface CollectionStats {
+    total: number;
+    withAudio: number;
+    /** Quantos pesquisadores já enviaram coletas. */
+    researchers: number;
+    lastAt: string | null;
+}
+
+// Totais da pesquisa (recebidas, com gravação, pesquisadores, última), sem trazer as coletas.
+export const getCollectionStats = async (researchId: number): Promise<CollectionStats> => {
+    const response = await apiFetch(`/collection/stats?researchId=${researchId}`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw await readError(response, 'Falha ao carregar os totais das coletas');
     return response.json();
 };
 

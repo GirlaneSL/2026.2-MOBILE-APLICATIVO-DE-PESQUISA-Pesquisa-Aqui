@@ -28,6 +28,7 @@ import { SyncCollectionsDto } from './dto/sync-collections.dto.js';
 import { UploadCollectionFileDto } from './dto/upload-collection-file.dto.js';
 import { FileProgressQueryDto, UploadFileChunkDto } from './dto/upload-file-chunk.dto.js';
 import { uploadMaxBytes } from './media-validation.js';
+import { CollectionPageQueryDto, isPaged } from '../common/pagination.js';
 
 // Limite do arquivo de áudio por coleta (padrão 150 MB; ajustável por AUDIO_MAX_BYTES).
 const MAX_AUDIO_BYTES = Number(process.env.AUDIO_MAX_BYTES) || 150 * 1024 * 1024;
@@ -116,8 +117,20 @@ export class CollectionController {
     }
 
     @Get()
-    findAll(@Query('researchId', ParseIntPipe) researchId: number, @CurrentUser() currentUser: UserPayLoad) {
+    // Painel web: `?page=&pageSize=&q=&audio=&sort=` devolve só uma página. Sem `page`/`pageSize`, lista inteira.
+    findAll(
+        @Query('researchId', ParseIntPipe) researchId: number,
+        @Query() query: CollectionPageQueryDto,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        if (isPaged(query)) return this.collectionService.findPage(researchId, query, currentUser);
         return this.collectionService.findAll(researchId, currentUser);
+    }
+
+    // Totais da pesquisa, sem listar as coletas (precisa vir antes de ":id").
+    @Get('stats')
+    stats(@Query('researchId', ParseIntPipe) researchId: number, @CurrentUser() currentUser: UserPayLoad) {
+        return this.collectionService.stats(researchId, currentUser);
     }
 
     // Uma coleta com todas as respostas (somente administrador da empresa da pesquisa).

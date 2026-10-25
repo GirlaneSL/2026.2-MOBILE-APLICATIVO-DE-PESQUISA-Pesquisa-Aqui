@@ -1,17 +1,17 @@
 'use client'
 
 import { isSessionExpiredError } from "@/lib/apiFetcher";
-import { loadFieldSnapshot, type FieldSnapshot } from "@/lib/fieldData";
+import { loadAdminDashboard, type AdminDashboard } from "@/lib/fieldData";
 import { useEffect, useState } from "react";
 
 const REFRESH_MS = 60_000;
 
 /**
- * Dados de campo da empresa (coletas, equipe, vínculos), atualizados a cada minuto.
+ * Painel do administrador (totais, gráficos, equipe, mapa de calor), calculado no servidor e atualizado a cada minuto.
  * Com `enabled` falso não faz nenhuma consulta (por exemplo, para quem não é administrador).
  */
 export function useFieldSnapshot(enabled = true) {
-    const [snapshot, setSnapshot] = useState<FieldSnapshot | null>(null);
+    const [snapshot, setSnapshot] = useState<AdminDashboard | null>(null);
     const [failed, setFailed] = useState(false);
 
     useEffect(() => {
@@ -20,7 +20,7 @@ export function useFieldSnapshot(enabled = true) {
 
         const refresh = () => {
             if (document.hidden) return;
-            loadFieldSnapshot()
+            loadAdminDashboard()
                 .then((data) => {
                     if (cancelled) return;
                     setSnapshot(data);

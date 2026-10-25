@@ -1,83 +1,58 @@
-import { getCollections } from "./collection";
-import { getResearches, getResearchLinkedResearchers, type Research } from "./research";
-import { getResearchers, type UserItem } from "./user";
+import { apiFetch } from "./apiFetcher";
+import type { Research } from "./research";
+import type { UserItem } from "./user";
 
 /**
- * Dados de campo do painel do administrador: coletas, equipe de cada pesquisa e
- * quem está coletando agora. A API não tem um endpoint de coletas por empresa,
- * então tudo é montado a partir de `/collection?researchId=` e dos vínculos.
+ * Dados de campo do painel do administrador. O servidor (GET /dashboard/admin) calcula tudo e devolve só
+ * o resultado: totais, gráficos mensais, mapa de calor, equipe do dia e as atividades mais recentes.
+ * O navegador não baixa mais todas as pesquisas, pesquisadores e coletas da empresa.
  */
 
-export interface FieldCollection {
-    id: number;
-    researchId: number;
-    researcherId: number;
-    /** Quando a entrevista terminou no aparelho (é o que conta como atividade em campo). */
-    at: Date;
-}
-
-export interface FieldSnapshot {
-    researches: Research[];
-    researchers: UserItem[];
-    collections: FieldCollection[];
-    /** researchId -> ids dos pesquisadores vinculados. */
-    links: Record<number, number[]>;
-    loadedAt: number;
-    /** true quando alguma consulta falhou e os números podem estar incompletos. */
-    partial: boolean;
+export interface AdminDashboard {
+    generatedAt: number;
+    year: number;
+    /** 1 a 12. */
+    month: number;
+    totals: { researches: number; researchers: number; inField: number };
+    byStatus: Record<Research["status"], number>;
+    activeThisMonth: number;
+    activePrevMonth: number;
+    /** Pesquisas ativas em cada mês do ano (12 números). */
+    activeByMonth: number[];
+    /** Pesquisadores cadastrados em cada mês do ano (12 números). */
+    researchersByMonth: number[];
+    pins: { id: number; title: string; endDate: string }[];
+    team: {
+        total: number;
+        rows: { id: number; name: string; username: string; collectionsToday: number; lastAt: string | null; inField: boolean }[];
+    };
+    heatmap: Heatmap;
+    activities: { id: string; kind: "company" | "admin" | "research" | "researcher"; message: string; date: string }[];
 }
 
 const CACHE_TTL_MS = 30_000;
 
-let cached: FieldSnapshot | null = null;
-let inFlight: Promise<FieldSnapshot> | null = null;
+let cached: AdminDashboard | null = null;
+let inFlight: Promise<AdminDashboard> | null = null;
 
-async function fetchSnapshot(): Promise<FieldSnapshot> {
-    const [researches, researchers] = await Promise.all([getResearches(), getResearchers()]);
-    let partial = false;
-
-    // Rascunho não recebe coletas; as outras situações podem ter recebido.
-    const withCollections = researches.filter((r) => r.status !== "DRAFT");
-
-    const [collectionResults, linkResults] = await Promise.all([
-        Promise.allSettled(withCollections.map((r) => getCollections(r.id))),
-        Promise.allSettled(researches.map((r) => getResearchLinkedResearchers(r.id))),
-    ]);
-
-    const collections: FieldCollection[] = [];
-    collectionResults.forEach((result, i) => {
-        if (result.status === "rejected") {
-            partial = true;
-            return;
-        }
-        for (const c of result.value) {
-            const at = new Date(c.finishedAt ?? c.startedAt);
-            if (Number.isNaN(at.getTime())) continue;
-            collections.push({ id: c.id, researchId: withCollections[i].id, researcherId: c.researcherId, at });
-        }
-    });
-
-    const links: Record<number, number[]> = {};
-    linkResults.forEach((result, i) => {
-        if (result.status === "rejected") {
-            partial = true;
-            return;
-        }
-        links[researches[i].id] = result.value.map((l) => l.userId);
-    });
-
-    return { researches, researchers, collections, links, loadedAt: Date.now(), partial };
+async function fetchDashboard(): Promise<AdminDashboard> {
+    const response = await apiFetch(`/dashboard/admin?tzOffset=${new Date().getTimezoneOffset()}`, { method: "GET", credentials: "include" });
+    if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message || `Falha ao carregar o painel (status ${response.status})`);
+    }
+    return response.json();
 }
 
-/** Carrega (ou reaproveita por 30 s) os dados de campo. Várias telas pedem juntas e só uma consulta sai. */
-export function loadFieldSnapshot(force = false): Promise<FieldSnapshot> {
-    if (!force && cached && Date.now() - cached.loadedAt < CACHE_TTL_MS) return Promise.resolve(cached);
+/** Carrega (ou reaproveita por 30 s) o painel. Várias telas pedem juntas e só uma consulta sai. */
+export function loadAdminDashboard(force = false): Promise<AdminDashboard> {
+    if (!force && cached && Date.now() - cached.generatedAt < CACHE_TTL_MS) return Promise.resolve(cached);
     if (inFlight) return inFlight;
 
-    inFlight = fetchSnapshot()
-        .then((snapshot) => {
-            cached = snapshot;
-            return snapshot;
+    inFlight = fetchDashboard()
+        .then((data) => {
+            cached = data;
+            return data;
         })
         .finally(() => {
             inFlight = null;
@@ -90,48 +65,24 @@ export function loadFieldSnapshot(force = false): Promise<FieldSnapshot> {
    Quem está em campo
    ------------------------------------------------------------------ */
 
-/** Um pesquisador conta como "em campo" se terminou uma coleta nesta janela. */
+/** Um pesquisador conta como "em campo" se terminou uma coleta nesta janela (o servidor usa a mesma). */
 export const IN_FIELD_WINDOW_MS = 2 * 60 * 60 * 1000;
 
-const isSameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-
 export interface TeamRow {
-    user: UserItem;
+    user: Pick<UserItem, "id" | "name" | "username">;
     collectionsToday: number;
     lastAt: Date | null;
     inField: boolean;
 }
 
-/** Equipe da empresa com as coletas de hoje; quem está em campo vem primeiro. */
-export function buildTeamRows(snapshot: Pick<FieldSnapshot, "researchers" | "collections">, now: number): TeamRow[] {
-    const today = new Date(now);
-    const byUser = new Map<number, { count: number; last: Date | null }>();
-
-    for (const c of snapshot.collections) {
-        const entry = byUser.get(c.researcherId) ?? { count: 0, last: null };
-        if (isSameDay(c.at, today)) entry.count += 1;
-        if (!entry.last || c.at > entry.last) entry.last = c.at;
-        byUser.set(c.researcherId, entry);
-    }
-
-    return snapshot.researchers
-        .map((user): TeamRow => {
-            const entry = byUser.get(user.id);
-            const lastAt = entry?.last ?? null;
-            return {
-                user,
-                collectionsToday: entry?.count ?? 0,
-                lastAt,
-                inField: !!lastAt && now - lastAt.getTime() <= IN_FIELD_WINDOW_MS && lastAt.getTime() <= now + 60_000,
-            };
-        })
-        .sort(
-            (a, b) =>
-                Number(b.inField) - Number(a.inField) ||
-                b.collectionsToday - a.collectionsToday ||
-                a.user.name.localeCompare(b.user.name, "pt-BR")
-        );
+/** Linhas da equipe do painel (já ordenadas pelo servidor: quem está em campo vem primeiro). */
+export function teamRowsOf(dashboard: Pick<AdminDashboard, "team"> | null | undefined): TeamRow[] {
+    return (dashboard?.team.rows ?? []).map((row) => ({
+        user: { id: row.id, name: row.name, username: row.username },
+        collectionsToday: row.collectionsToday,
+        lastAt: row.lastAt ? new Date(row.lastAt) : null,
+        inField: row.inField,
+    }));
 }
 
 /* ------------------------------------------------------------------
@@ -153,37 +104,6 @@ export interface Heatmap {
     /** Coletas fora da faixa de horários exibida. */
     outside: number;
     peak: { day: number; hour: number; count: number } | null;
-}
-
-export function buildHeatmap(collections: FieldCollection[], now: number): Heatmap {
-    const cells = HEAT_DAYS.map(() => new Array<number>(HEAT_HOURS).fill(0));
-    const since = now - HEAT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-    let total = 0;
-    let outside = 0;
-
-    for (const c of collections) {
-        if (c.at.getTime() < since || c.at.getTime() > now + 60_000) continue;
-        total += 1;
-        const day = (c.at.getDay() + 6) % 7;
-        const col = c.at.getHours() - HEAT_FIRST_HOUR;
-        if (col < 0 || col >= HEAT_HOURS) {
-            outside += 1;
-            continue;
-        }
-        cells[day][col] += 1;
-    }
-
-    let peak: Heatmap["peak"] = null;
-    cells.forEach((row, day) =>
-        row.forEach((count, col) => {
-            if (count > 0 && (!peak || count > peak.count)) peak = { day, hour: col + HEAT_FIRST_HOUR, count };
-        })
-    );
-
-    const max = (peak as Heatmap["peak"])?.count ?? 0;
-    const levels = cells.map((row) => row.map((count) => (count === 0 || max === 0 ? 0 : Math.ceil((count / max) * 4))));
-
-    return { cells, levels, total, outside, peak };
 }
 
 /* ------------------------------------------------------------------

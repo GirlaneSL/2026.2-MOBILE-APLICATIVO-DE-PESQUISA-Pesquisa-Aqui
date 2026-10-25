@@ -3,6 +3,7 @@
 import { buttonVariants } from "@/components/ui/button"
 import { Contour } from "@/components/ui/contour"
 import { LoadingState } from "@/components/ui/loadingState"
+import { DEFAULT_PAGE_SIZES, Pagination, usePagination } from "@/components/ui/pagination"
 import { avatarTone, initialsOf } from "@/lib/fieldData"
 import { cn } from "@/lib/utils"
 import { ArrowDownAZ, CalendarClock, LayoutGrid, List, Search, SearchX, X } from "lucide-react"
@@ -19,7 +20,9 @@ import "./data-table.css"
 //   <DataTableToolbar>  busca (<TableSearch>), filtros (<TableFilters>) e controles extras
 //   <TableViewControls> ordem (Recentes | A-Z) e modo de exibição (Lista | Cards): toda tabela tem
 //   <DataTable>         a tabela (cabeçalho fixo, rolagem, carregando e vazio já resolvidos);
-//                       com view="cards" desenha as MESMAS colunas como cartões
+//                       com view="cards" desenha as MESMAS colunas como cartões.
+//                       PAGINADA por padrão (10 por página, com seletor 10/25/50/100): o navegador
+//                       desenha só uma página por vez. `pageSize={false}` desliga (só para listas curtas).
 //   sortRows()          ordena as linhas para Recentes / A-Z
 //   <PersonCell>        avatar + nome + @usuário (primeira coluna de qualquer pessoa)
 //   <CellTitle>         título + linha menor (primeira coluna dos demais registros)
@@ -71,6 +74,26 @@ type DataTableProps<T> = {
      * `hideHeader` (ações) vão para o rodapé e as demais viram pares "nome: valor".
      */
     view?: TableView
+    /**
+     * Itens por página no começo (padrão: 10). O usuário troca no rodapé. A tabela volta para a
+     * página 1 quando a busca, o filtro ou a ordem mudam o primeiro item. `false` mostra tudo.
+     */
+    pageSize?: number | false
+    /** Tamanhos oferecidos no seletor do rodapé (padrão: 10, 25, 50 e 100). */
+    pageSizeOptions?: readonly number[]
+    /**
+     * Paginação feita no SERVIDOR: `rows` já é só a página atual (a API traz uma página por vez) e o
+     * rodapé usa estes números. Veja `usePagedResource(...).server`. Sem isso, a tabela recorta `rows` aqui.
+     */
+    server?: {
+        page: number
+        pageSize: number
+        total: number
+        onPageChange: (page: number) => void
+        onPageSizeChange: (size: number) => void
+        /** Buscando outra página: a tabela fica esmaecida até chegar. */
+        fetching?: boolean
+    }
 }
 
 export function DataTable<T>({
@@ -86,7 +109,17 @@ export function DataTable<T>({
     minWidth = "640px",
     rowTone,
     view = "table",
+    pageSize = 10,
+    pageSizeOptions,
+    server,
 }: DataTableProps<T>) {
+    const paginate = pageSize !== false && !server
+    const pager = usePagination(rows, {
+        pageSize: paginate ? (pageSize as number) : undefined,
+        pageSizeOptions,
+        resetKey: rows.length > 0 ? getRowKey(rows[0]) : null,
+    })
+
     if (loading) {
         return view === "cards" ? (
             <LoadingState label={loadingLabel} shape="people" />
@@ -97,15 +130,37 @@ export function DataTable<T>({
 
     if (rows.length === 0) return <>{empty ?? <TableEmpty title="Nada por aqui ainda." />}</>
 
+    // Só as linhas da página atual vão para a tela.
+    const shown = paginate ? pager.items : rows
+
+    const serverSizes = pageSizeOptions ?? DEFAULT_PAGE_SIZES
+    const footer = server ? (
+        server.total > Math.min(...serverSizes) && (
+            <Pagination
+                page={server.page}
+                totalPages={Math.max(1, Math.ceil(server.total / server.pageSize))}
+                total={server.total}
+                pageSize={server.pageSize}
+                pageSizeOptions={[...new Set([...serverSizes, server.pageSize])].sort((a, b) => a - b)}
+                onPageChange={server.onPageChange}
+                onPageSizeChange={server.onPageSizeChange}
+                label={label}
+            />
+        )
+    ) : (
+        paginate && pager.visible && <Pagination {...pager.pagerProps} label={label} />
+    )
+
     if (view === "cards") {
         const [titleColumn, ...others] = columns
         const fields = others.filter((column) => !column.hideHeader)
         const actions = others.filter((column) => column.hideHeader)
 
         return (
-            <div className={`pa-dt-wrap ${className ?? ""}`} style={maxHeight ? { maxHeight } : undefined}>
+            <div className="pa-dt-root" aria-busy={server?.fetching || undefined} data-fetching={server?.fetching || undefined}>
+              <div className={`pa-dt-wrap ${className ?? ""}`} style={maxHeight ? { maxHeight } : undefined}>
                 <ul className="pa-dt-cards" aria-label={label}>
-                    {rows.map((row) => (
+                    {shown.map((row) => (
                         <li key={getRowKey(row)} className={`pa-dt-card ${rowTone?.(row) ?? ""}`}>
                             <div className="head">{titleColumn.cell(row)}</div>
                             {fields.length > 0 && (
@@ -128,11 +183,14 @@ export function DataTable<T>({
                         </li>
                     ))}
                 </ul>
+              </div>
+              {footer}
             </div>
         )
     }
 
     return (
+      <div className="pa-dt-root" aria-busy={server?.fetching || undefined} data-fetching={server?.fetching || undefined}>
         <div className={`pa-dt-wrap ${className ?? ""}`} style={maxHeight ? { maxHeight } : undefined}>
             <table className="pa-dt" style={{ minWidth }} aria-label={label}>
                 <thead>
@@ -150,7 +208,7 @@ export function DataTable<T>({
                     </tr>
                 </thead>
                 <tbody>
-                    {rows.map((row) => (
+                    {shown.map((row) => (
                         <tr key={getRowKey(row)} className={rowTone?.(row)}>
                             {columns.map((column) => (
                                 <td key={column.id} className={column.align === "right" ? "r" : undefined}>
@@ -162,6 +220,8 @@ export function DataTable<T>({
                 </tbody>
             </table>
         </div>
+        {footer}
+      </div>
     )
 }
 

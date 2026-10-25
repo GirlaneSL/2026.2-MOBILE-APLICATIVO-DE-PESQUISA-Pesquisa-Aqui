@@ -13,16 +13,16 @@ import {
     TableFilters,
     TableSearch,
     TableViewControls,
-    sortRows,
     type DataColumn,
     type TableSort,
     type TableView,
 } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/loadingState";
-import { formatDuration, getCollectionAudio, getCollections, type CollectionSummary } from "@/lib/collection";
+import { usePagedResource } from "@/hooks/usePagedResource";
+import { formatDuration, getCollection, getCollectionAudio, getCollectionsPage, getCollectionStats, type CollectionStats, type CollectionSummary } from "@/lib/collection";
 import { Clock, FileText, Headphones, Play, ShieldAlert, Inbox, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import RespostasColeta from "./RespostasColeta";
 
@@ -45,8 +45,6 @@ const initialsOf = (name?: string | null) =>
         .slice(0, 2)
         .map((p) => p[0]?.toUpperCase())
         .join('') || '?';
-
-const normalize = (v: string) => v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const timeOf = (value: string | null) => (value ? new Date(value).getTime() : 0) || 0;
 
@@ -71,21 +69,14 @@ interface ColetasPesquisaProps {
     openCollectionId?: number;
 }
 
-type ListState =
-    | { status: 'loading' }
-    | { status: 'forbidden'; message: string }
-    | { status: 'error'; message: string }
-    | { status: 'ready'; collections: CollectionSummary[] };
-
 export default function ColetasPesquisa({ researchId, recordInterview, openCollectionId }: ColetasPesquisaProps) {
-    const [state, setState] = useState<ListState>({ status: 'loading' });
     const [loadingAudioId, setLoadingAudioId] = useState<number | null>(null);
     const [viewing, setViewing] = useState<CollectionSummary | null>(null);
-    const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<Filter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
     const [view, setView] = useState<TableView>('table');
     const [now] = useState(() => Date.now());
+    const [stats, setStats] = useState<CollectionStats | null>(null);
     const [player, setPlayer] = useState<{
         collectionId: number;
         url: string;
@@ -93,26 +84,30 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
         error: string | null;
     } | null>(null);
 
+    // A API devolve uma página por vez (busca, gravação e ordem são feitas lá): nunca chegam todas as coletas.
+    const list = usePagedResource<CollectionSummary>(
+        (params) => getCollectionsPage(researchId, { ...params, audio: filter === 'ALL' ? undefined : filter, sort }),
+        { pageSize: 10, filters: { filter, sort, researchId } },
+    );
+
+    // Os quatro indicadores vêm prontos do servidor.
     useEffect(() => {
         let cancelled = false;
-
-        getCollections(researchId)
-            .then((collections) => {
-                if (cancelled) return;
-                setState({ status: 'ready', collections });
-                const target = openCollectionId === undefined ? undefined : collections.find((c) => c.id === openCollectionId);
-                if (target) setViewing(target);
-            })
-            .catch((err) => {
-                if (cancelled) return;
-                const status = (err as { status?: number })?.status;
-                const message = err instanceof Error ? err.message : 'Erro ao carregar as coletas';
-                setState(status === 403 ? { status: 'forbidden', message } : { status: 'error', message });
-            });
-
+        getCollectionStats(researchId)
+            .then((data) => { if (!cancelled) setStats(data); })
+            .catch((err) => console.error(err));
         return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- a coleta pedida só vale na primeira carga
     }, [researchId]);
+
+    // Abre a coleta pedida pelo buscador global (ela pode estar em qualquer página).
+    useEffect(() => {
+        if (openCollectionId === undefined) return;
+        let cancelled = false;
+        getCollection(openCollectionId)
+            .then((detail) => { if (!cancelled) setViewing(detail); })
+            .catch((err) => console.error(err));
+        return () => { cancelled = true; };
+    }, [openCollectionId]);
 
     // Libera o arquivo em memória quando o player troca ou a tela fecha.
     useEffect(() => {
@@ -131,38 +126,33 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
         }
     };
 
-    if (state.status === 'loading') {
+    if (list.loading) {
         return <LoadingState label="Carregando coletas..." shape="collections" />;
     }
 
-    if (state.status === 'forbidden') {
-        return (
-            <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
-                <ShieldAlert className="h-8 w-8 text-destructive" />
-                <p className="max-w-md text-sm">{state.message}</p>
-            </div>
-        );
-    }
+    if (list.error && list.items.length === 0) {
+        if (list.errorStatus === 403) {
+            return (
+                <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
+                    <ShieldAlert className="h-8 w-8 text-destructive" />
+                    <p className="max-w-md text-sm">{list.error}</p>
+                </div>
+            );
+        }
 
-    if (state.status === 'error') {
         return (
             <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
                 <p className="font-medium">Erro ao carregar as coletas</p>
-                <p>{state.message}</p>
+                <p>{list.error}</p>
             </div>
         );
     }
 
-    const { collections } = state;
-    const withAudio = collections.filter((c) => c.hasAudio).length;
-
     return (
         <ColetasView
-            collections={collections}
-            withAudio={withAudio}
+            list={list}
+            stats={stats}
             recordInterview={recordInterview}
-            search={search}
-            setSearch={setSearch}
             filter={filter}
             setFilter={setFilter}
             sort={sort}
@@ -184,11 +174,9 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
 type Player = { collectionId: number; url: string; sizeBytes: number; error: string | null } | null;
 
 interface ColetasViewProps {
-    collections: CollectionSummary[];
-    withAudio: number;
+    list: ReturnType<typeof usePagedResource<CollectionSummary>>;
+    stats: CollectionStats | null;
     recordInterview: boolean;
-    search: string;
-    setSearch: (v: string) => void;
     filter: Filter;
     setFilter: (f: Filter) => void;
     sort: TableSort;
@@ -206,27 +194,19 @@ interface ColetasViewProps {
 }
 
 function ColetasView({
-    collections, withAudio, recordInterview, search, setSearch, filter, setFilter, sort, setSort, view, setView, now,
+    list, stats, recordInterview, filter, setFilter, sort, setSort, view, setView, now,
     loadingAudioId, onListen, onView, viewing, onCloseView, player, onPlayerError,
 }: ColetasViewProps) {
-    const researchersCount = new Set(collections.map((c) => c.researcherName).filter(Boolean)).size;
-    const last = collections.reduce((max, c) => Math.max(max, timeOf(c.startedAt)), 0);
+    const { search, setSearch } = list;
+    const totalAll = stats?.total ?? list.total;
+    const withAudio = stats?.withAudio ?? 0;
+    const researchersCount = stats?.researchers ?? 0;
+    const last = stats?.lastAt ? timeOf(stats.lastAt) : 0;
     const lastDays = last ? Math.max(0, Math.floor((now - last) / 86400000)) : null;
     const lastText =
         lastDays === null ? '—' : lastDays === 0 ? 'Hoje' : lastDays === 1 ? 'Ontem' : `${lastDays} dias`;
-
-    const rows = useMemo(() => {
-        const term = normalize(search.trim());
-        return sortRows(
-            collections.filter((c) => {
-                if (filter === 'AUDIO' && !c.hasAudio) return false;
-                if (filter === 'NO_AUDIO' && c.hasAudio) return false;
-                return !term || normalize(c.researcherName ?? '').includes(term) || String(c.id).includes(term.replace('#', ''));
-            }),
-            sort,
-            { name: (c) => c.researcherName, date: (c) => timeOf(c.startedAt) }
-        );
-    }, [collections, search, filter, sort]);
+    const rows = list.items;
+    const isFiltered = search.trim().length > 0 || filter !== 'ALL';
 
     const columns: DataColumn<CollectionSummary>[] = [
         {
@@ -304,9 +284,9 @@ function ColetasView({
     ];
 
     const filters: { value: Filter; label: string; count: number }[] = [
-        { value: 'ALL', label: 'Todas', count: collections.length },
+        { value: 'ALL', label: 'Todas', count: totalAll },
         { value: 'AUDIO', label: 'Com gravação', count: withAudio },
-        { value: 'NO_AUDIO', label: 'Sem gravação', count: collections.length - withAudio },
+        { value: 'NO_AUDIO', label: 'Sem gravação', count: totalAll - withAudio },
     ];
 
     return (
@@ -316,7 +296,7 @@ function ColetasView({
                 <article className="pa-card dark introduction-card !p-5">
                     <Contour seed={3} rings={9} cx={0.9} cy={0.2} size={0.8} />
                     <p className="flex items-center gap-2 text-xs font-medium text-[var(--muted-dark)]"><Inbox className="size-3.5" /> Coletas recebidas</p>
-                    <p className="pa-stat mt-3 text-[var(--fg-dark)]">{collections.length}</p>
+                    <p className="pa-stat mt-3 text-[var(--fg-dark)]">{totalAll}</p>
                 </article>
                 <article className="pa-card mint introduction-card !p-5" style={{ animationDelay: '100ms' }}>
                     <p className="flex items-center gap-2 text-xs font-medium text-[var(--green-deep)]"><Headphones className="size-3.5" /> Com gravação</p>
@@ -336,10 +316,10 @@ function ColetasView({
             <div>
                 <DataTableHeader
                     title="Coletas recebidas"
-                    count={rows.length === collections.length ? collections.length : `${rows.length} de ${collections.length}`}
+                    count={list.total}
                 />
 
-                {collections.length > 0 && (
+                {(totalAll > 0 || isFiltered) && (
                     <DataTableToolbar>
                         <TableSearch
                             value={search}
@@ -364,8 +344,9 @@ function ColetasView({
                     getRowKey={(c) => c.id}
                     minWidth="860px"
                     view={view}
+                    server={list.server}
                     empty={
-                        collections.length === 0 ? (
+                        !isFiltered ? (
                             <TableEmpty
                                 icon={<Inbox />}
                                 title="Nenhuma coleta recebida ainda"

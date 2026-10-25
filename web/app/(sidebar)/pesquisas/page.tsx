@@ -6,10 +6,11 @@ import { Contour } from "@/components/ui/contour";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { TableSearch, TableViewControls, type TableView } from "@/components/ui/data-table";
 import { LoadingState } from "@/components/ui/loadingState";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useFieldSnapshot } from "@/hooks/useFieldSnapshot";
+import { ServerPagination } from "@/components/ui/pagination";
+import { usePagedResource } from "@/hooks/usePagedResource";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
-import { deleteResearch, getResearches, publishResearch, type Research } from "@/lib/research";
+import type { Research } from "@/lib/research";
+import { deleteResearch, getResearchesPage, getResearchSummary, publishResearch, type ResearchListItem, type ResearchSummary } from "@/lib/research";
 import type { UserItem } from "@/lib/user";
 import { ArrowDownAZ, CalendarClock, Plus, SearchX, Timer } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -31,82 +32,63 @@ const FILTERS: { value: Filter; label: string; kind: LegendItem["kind"] }[] = [
     { value: "CLOSED", label: "Encerradas", kind: "closed" },
 ];
 
-const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const PAGE_SIZES = [12, 24, 48, 96];
 
 export default function Pesquisas() {
-    const [researches, setResearches] = useState<Research[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [refresh, setRefresh] = useState(0);
+    const [summary, setSummary] = useState<ResearchSummary | null>(null);
     const [filter, setFilter] = useState<Filter>("ALL");
     const [sort, setSort] = useState<Sort>("recent");
-    const [query, setQuery] = useState("");
     const [view, setView] = useState<TableView>("cards");
     const [now] = useState(() => Date.now());
 
-    // Equipe e coletas da empresa só estão disponíveis para o administrador.
-    const { user } = useCurrentUser();
-    const isAdmin = user?.profile === "ADMINISTRATOR";
-    const { snapshot } = useFieldSnapshot(isAdmin);
-    const teamReady = isAdmin && !!snapshot;
-    const teamLoading = !teamReady;
+    // A API devolve uma página por vez (situação, busca e ordem são feitas lá): nunca chegam todas as pesquisas.
+    const list = usePagedResource<ResearchListItem>(
+        (params) => getResearchesPage({ ...params, status: filter === "ALL" ? undefined : filter, sort }),
+        { pageSize: 12, filters: { filter, sort } },
+    );
+    const { reload } = list;
+    const query = list.search;
+    const setQuery = list.setSearch;
+    const loading = list.loading;
+    const error = list.error;
+    const visible = list.items;
+    const researches = visible;
 
-    const forceRefresh = useCallback(() => setRefresh((n) => n + 1), []);
+    // Contagem por situação (legenda) e total de coletas, sem listar as pesquisas.
+    const loadSummary = useCallback(() => {
+        getResearchSummary()
+            .then(setSummary)
+            .catch((err) => {
+                if (!isSessionExpiredError(err)) console.error(err);
+            });
+    }, []);
 
     useEffect(() => {
-        let cancelled = false;
-        getResearches()
-            .then((data) => {
-                if (cancelled) return;
-                setResearches(data ?? []);
-                setError(null);
-            })
-            .catch((err) => {
-                if (cancelled || isSessionExpiredError(err)) return;
-                setError(err instanceof Error ? err.message : "Erro ao carregar pesquisas");
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [refresh]);
+        loadSummary();
+    }, [loadSummary]);
 
-    const counts = useMemo(() => {
-        const c = { ALL: researches.length, DRAFT: 0, PUBLISHED: 0, IN_FIELD: 0, CLOSED: 0 } as Record<Filter, number>;
-        for (const r of researches) c[r.status] += 1;
-        return c;
-    }, [researches]);
+    const forceRefresh = useCallback(() => {
+        reload();
+        loadSummary();
+    }, [reload, loadSummary]);
 
-    const collectionsByResearch = useMemo(() => {
-        const map = new Map<number, number>();
-        for (const c of snapshot?.collections ?? []) map.set(c.researchId, (map.get(c.researchId) ?? 0) + 1);
-        return map;
-    }, [snapshot]);
+    const counts = useMemo(
+        () => ({
+            ALL: summary?.total ?? 0,
+            DRAFT: summary?.byStatus.DRAFT ?? 0,
+            PUBLISHED: summary?.byStatus.PUBLISHED ?? 0,
+            IN_FIELD: summary?.byStatus.IN_FIELD ?? 0,
+            CLOSED: summary?.byStatus.CLOSED ?? 0,
+        }) as Record<Filter, number>,
+        [summary],
+    );
 
-    const researchersById = useMemo(() => new Map((snapshot?.researchers ?? []).map((u) => [u.id, u])), [snapshot]);
-
-    const visible = useMemo(() => {
-        const term = normalize(query.trim());
-        const list = researches.filter(
-            (r) =>
-                (filter === "ALL" || r.status === filter) &&
-                (!term || normalize(`${r.title} ${r.objective ?? ""} ${r.targetAudience ?? ""}`).includes(term))
-        );
-        return list.sort((a, b) =>
-            sort === "deadline"
-                ? new Date(a.endDate).getTime() - new Date(b.endDate).getTime()
-                : sort === "name"
-                  ? a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base", numeric: true })
-                  : new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime() || b.id - a.id
-        );
-    }, [researches, filter, query, sort]);
+    const collectionsByResearch = useMemo(() => new Map(visible.map((r) => [r.id, r.collected])), [visible]);
 
     // "Publicadas" só aparece na legenda quando existe alguma (ou quando é o filtro escolhido).
     const legend: LegendItem[] = FILTERS.filter((f) => f.value !== "PUBLISHED" || counts.PUBLISHED > 0 || filter === "PUBLISHED").map((f) => ({
         ...f,
-        count: loading ? null : counts[f.value],
+        count: summary ? counts[f.value] : null,
     }));
 
     /* ---------- ações (publicar e excluir pedem confirmação) ---------- */
@@ -139,7 +121,7 @@ export default function Pesquisas() {
         confirmToast(`delete-${id}`, `Tem certeza que deseja excluir "${item?.title ?? id}"?`, "Excluir", true, async () => {
             try {
                 await deleteResearch(id);
-                setResearches((prev) => prev.filter((r) => r.id !== id));
+                forceRefresh();
                 toast.success("Pesquisa excluída com sucesso!");
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Erro ao excluir pesquisa");
@@ -157,7 +139,8 @@ export default function Pesquisas() {
             async () => {
                 try {
                     const updated = await publishResearch(id);
-                    setResearches((prev) => prev.map((r) => (r.id === id ? { ...r, status: updated.status } : r)));
+                    list.mutate((items) => items.map((r) => (r.id === id ? { ...r, status: updated.status } : r)));
+                    loadSummary();
                     toast.success("Pesquisa publicada com sucesso!");
                 } catch (err) {
                     toast.error(err instanceof Error ? err.message : "Erro ao publicar pesquisa");
@@ -166,14 +149,16 @@ export default function Pesquisas() {
         );
     };
 
-    const handleUpdated = (updated: Research) =>
-        setResearches((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+    const handleUpdated = (updated: Research) => {
+        list.mutate((items) => items.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+        reload();
+    };
 
-    const itemProps = (research: Research) => ({
+    const itemProps = (research: ResearchListItem) => ({
         research,
-        team: (snapshot?.links[research.id] ?? []).map((id) => researchersById.get(id)).filter((u): u is UserItem => !!u),
-        collections: collectionsByResearch.get(research.id) ?? 0,
-        teamLoading,
+        team: research.team.map((u): UserItem => ({ ...u, profile: "RESEARCHER", companyId: research.companyId ?? null })),
+        collections: research.collected,
+        teamLoading: false,
         now,
         onPublish: handlePublish,
         onDelete: handleDelete,
@@ -204,15 +189,15 @@ export default function Pesquisas() {
             {/* Calendário de campo: também é o filtro de situação */}
             <CalendarioCampo
                 rows={visible}
-                all={researches}
+                all={visible}
                 legend={legend}
                 filter={filter}
                 onFilter={setFilter}
                 now={now}
                 loading={loading}
                 collectionsByResearch={collectionsByResearch}
-                collectionsReady={teamReady}
-                totalCollections={snapshot?.collections.length}
+                collectionsReady={!loading}
+                totalCollections={summary?.collections}
             />
 
             {/* Ferramentas */}
@@ -223,7 +208,7 @@ export default function Pesquisas() {
                     placeholder="Buscar por título, objetivo ou público..."
                     label="Buscar pesquisas"
                 />
-                {!loading && <span className="pq-found">{visible.length} {visible.length === 1 ? "pesquisa" : "pesquisas"}</span>}
+                {!loading && <span className="pq-found">{list.total} {list.total === 1 ? "pesquisa" : "pesquisas"}</span>}
                 <div className="grow">
                     <TableViewControls<Sort>
                         sort={sort}
@@ -247,7 +232,7 @@ export default function Pesquisas() {
                 <div className="pq-empty">
                     <Contour seed={1.9} rings={9} cx={0.5} cy={0.5} size={1} width={600} height={260} />
                     <SearchX aria-hidden="true" />
-                    {researches.length === 0 ? (
+                    {(summary?.total ?? 0) === 0 && filter === "ALL" && !query.trim() ? (
                         <>
                             <b>Nenhuma pesquisa ainda</b>
                             Crie a primeira com &quot;Nova pesquisa&quot; e ela aparece aqui.
@@ -263,16 +248,22 @@ export default function Pesquisas() {
                     )}
                 </div>
             ) : view === "table" ? (
-                <ListaPesquisas>
-                    {visible.map((research) => (
-                        <PesquisaLinha key={research.id} {...itemProps(research)} />
-                    ))}
-                </ListaPesquisas>
+                <div className="pa-dt-root" data-fetching={list.fetching || undefined}>
+                    <ListaPesquisas>
+                        {visible.map((research) => (
+                            <PesquisaLinha key={research.id} {...itemProps(research)} />
+                        ))}
+                    </ListaPesquisas>
+                    <ServerPagination server={list.server} label="Pesquisas" pageSizeOptions={PAGE_SIZES} />
+                </div>
             ) : (
-                <div className="pq-grid">
-                    {visible.map((research) => (
-                        <PesquisaCard key={research.id} {...itemProps(research)} />
-                    ))}
+                <div className="pa-dt-root" data-fetching={list.fetching || undefined}>
+                    <div className="pq-grid">
+                        {visible.map((research) => (
+                            <PesquisaCard key={research.id} {...itemProps(research)} />
+                        ))}
+                    </div>
+                    <ServerPagination server={list.server} label="Pesquisas" pageSizeOptions={PAGE_SIZES} />
                 </div>
             )}
         </section>

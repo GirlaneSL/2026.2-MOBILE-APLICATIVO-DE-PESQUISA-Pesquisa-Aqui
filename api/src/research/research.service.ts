@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma.service.js';
 import { AudioStorage } from '../collection/audio-storage.js';
 import { CreateResearchDto, ResearchStatus } from './dto/create-research.dto.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
+import { normalizeText, pageParams, runPaged, toPage, type CopiesPageQueryDto, type Page, type ResearchPageQueryDto, type TeamPageQueryDto } from '../common/pagination.js';
 import { UpdateResearchDto } from './dto/update-research.dto.js';
 import {
     assertStructureEditable,
@@ -130,6 +131,88 @@ export class ResearchService {
         }
 
         return await this.prisma.client.orm.public.Research.where({ companyId: currentUser.companyId }).all()
+    }
+
+    // Lista paginada (painel web): só a página pedida sai do servidor. Pesquisador continua na lista antiga.
+    async findPage(query: ResearchPageQueryDto, currentUser: UserPayLoad) {
+        const scoped = this.scopedResearches(currentUser);
+        const filtered = query.status ? scoped.where({ status: query.status }) : scoped;
+        const sorted =
+            query.sort === 'name'
+                ? filtered.orderBy([(r) => r.title.asc(), (r) => r.id.asc()])
+                : query.sort === 'deadline'
+                  ? filtered.orderBy([(r) => r.endDate.asc(), (r) => r.id.asc()])
+                  : filtered.orderBy([(r) => r.createdAt.desc(), (r) => r.id.desc()]);
+
+        type Row = Awaited<ReturnType<typeof sorted.all>>[number];
+        const page: Page<Row> = await runPaged<Row>(query, {
+            count: async () => (await filtered.aggregate((a) => ({ total: a.count() }))).total,
+            page: async (limit, offset) => [...(await sorted.limit(limit).offset(offset).all())],
+            all: async () => [...(await sorted.all())],
+            searchText: (r) => `${r.title} ${r.objective} ${r.targetAudience}`,
+        });
+
+        // Só para as pesquisas desta página, em 3 consultas no total (e não uma ou mais por pesquisa):
+        // coletas recebidas (contadas e agrupadas no banco), vínculos e as pessoas da equipe.
+        const orm = this.prisma.client.orm.public;
+        const ids = page.items.map((research) => research.id);
+        const TEAM_LIMIT = 50;
+
+        const collectedByResearch = new Map<number, number>();
+        const teamByResearch = new Map<number, { id: number; name: string; username: string }[]>();
+
+        if (ids.length > 0) {
+            const counts = await orm.Collection.where((c) => c.researchId.in(ids))
+                .groupBy('researchId')
+                .aggregate((a) => ({ total: a.count() }));
+            for (const row of counts) collectedByResearch.set(row.researchId, row.total);
+
+            const links = [...(await orm.ResearchResearcher.where((l) => l.researchId.in(ids)).all())];
+            const userIds = [...new Set(links.map((link) => link.userId))];
+            const users = userIds.length > 0 ? [...(await orm.User.where((u) => u.id.in(userIds)).all())] : [];
+            const userById = new Map(users.map((user) => [user.id, user]));
+
+            for (const link of links) {
+                const user = userById.get(link.userId);
+                if (!user) continue;
+                const team = teamByResearch.get(link.researchId) ?? [];
+                if (team.length < TEAM_LIMIT) team.push({ id: user.id, name: user.name, username: user.username });
+                teamByResearch.set(link.researchId, team);
+            }
+        }
+
+        const items = page.items.map((research) => ({
+            ...research,
+            collected: collectedByResearch.get(research.id) ?? 0,
+            team: teamByResearch.get(research.id) ?? [],
+        }));
+
+        return { ...page, items };
+    }
+
+    // Quantas pesquisas há em cada situação (legenda da tela de pesquisas), sem trazer as pesquisas.
+    async summary(currentUser: UserPayLoad) {
+        const scoped = this.scopedResearches(currentUser);
+        const statuses = ['DRAFT', 'PUBLISHED', 'IN_FIELD', 'CLOSED'] as const;
+        const counts = await Promise.all(
+            statuses.map(async (status) => (await scoped.where({ status }).aggregate((a) => ({ total: a.count() }))).total),
+        );
+        const byStatus = Object.fromEntries(statuses.map((status, i) => [status, counts[i]])) as Record<(typeof statuses)[number], number>;
+        // Coletas recebidas em todas as pesquisas do escopo (uma consulta só, sem listar nada).
+        const ids = [...(await scoped.all())].map((r) => r.id);
+        const collections =
+            ids.length === 0
+                ? 0
+                : (await this.prisma.client.orm.public.Collection.where((c) => c.researchId.in(ids)).aggregate((a) => ({ total: a.count() }))).total;
+        return { total: counts.reduce((sum, n) => sum + n, 0), byStatus, collections };
+    }
+
+    private scopedResearches(currentUser: UserPayLoad) {
+        const research = this.prisma.client.orm.public.Research;
+        if (currentUser.profile === 'SUPERADMINISTRATOR') return research.where((r) => r.id.gt(0));
+        if (!currentUser.companyId) throw new ForbiddenException('User is not associated with a company');
+        const companyId = currentUser.companyId;
+        return research.where((r) => r.companyId.eq(companyId));
     }
 
     async findOne(id: number, currentUser: UserPayLoad) {
@@ -307,6 +390,50 @@ export class ResearchService {
         return rows.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'pt-BR', { sensitivity: 'base' }));
     }
 
+    // Pesquisadores da empresa da pesquisa, com o vínculo de cada um (se houver), em PÁGINAS: vinculados primeiro,
+    // depois a ordem pedida. Traz também o resumo da equipe (total, vinculados e as 5 primeiras pessoas).
+    async teamPage(researchId: number, query: TeamPageQueryDto, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot list linked researchers');
+
+        const research = await this.findOne(researchId, currentUser);
+        const orm = this.prisma.client.orm.public;
+
+        const members = [...(await orm.User.where({ profile: 'RESEARCHER', companyId: research.companyId }).all())];
+        const linkRows = await this.listResearchers(researchId, currentUser);
+        const linkByUser = new Map(linkRows.map((link) => [link.userId, link]));
+
+        const rows = members.map((user) => {
+            const { passwordHash: _, ...safe } = user;
+            return { ...safe, link: linkByUser.get(user.id) ?? null };
+        });
+
+        const term = normalizeText(query.q?.trim());
+        let visible = rows.filter((row) => {
+            if (query.filter === 'LINKED' && !row.link) return false;
+            if (query.filter === 'AVAILABLE' && row.link) return false;
+            return !term || normalizeText(`${row.name} ${row.username}`).includes(term);
+        });
+
+        visible = visible.sort((a, b) => {
+            const group = (a.link ? 0 : 1) - (b.link ? 0 : 1);
+            if (group !== 0) return group;
+            if (query.sort === 'name') return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+
+        const params = pageParams(query);
+        const linkedMembers = rows.filter((row) => row.link);
+
+        return {
+            ...toPage(visible.slice(params.offset, params.offset + params.pageSize), visible.length, params),
+            summary: {
+                total: rows.length,
+                linked: linkedMembers.length,
+                linkedPreview: linkedMembers.slice(0, 5).map((row) => ({ id: row.id, name: row.name })),
+            },
+        };
+    }
+
     // Vincula o pesquisador à pesquisa, com a meta de coletas. Se já estava vinculado, só atualiza a meta (quando enviada).
     async addResearcher(researchId: number, userId: number, currentUser: UserPayLoad, targetCount?: number) {
         if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot link researchers');
@@ -395,6 +522,77 @@ export class ResearchService {
      * Quem está com a pesquisa: contador de cópias ativas, o motivo da trava e o histórico completo
      * (ativas primeiro; devolvidas e revogadas ficam registradas com data).
      */
+    // Mesma informação de `listCopies`, mas em partes limitadas (painel web): as cópias ativas, os usuários
+    // revogados (no máximo 100) e o histórico em PÁGINAS, com `?page=&pageSize=&status=&q=`.
+    async listCopiesPage(researchId: number, query: CopiesPageQueryDto, currentUser: UserPayLoad) {
+        const full = await this.listCopies(researchId, currentUser);
+        const { copies, ...lock } = full;
+        const LIMIT = 100;
+
+        const active = copies.filter((c) => c.status === 'ACTIVE');
+        const history = copies.filter((c) => c.status !== 'ACTIVE');
+
+        // Usuários revogados: quem teve ao menos uma cópia revogada, com o aparelho mais recente de cada um.
+        type Copy = (typeof copies)[number];
+        const revokedUsers = new Map<
+            string,
+            { key: string; name: string | null; username: string | null; devices: Copy[]; blocked: number; revocations: number }
+        >();
+        for (const c of copies) {
+            if (c.status !== 'REVOKED') continue;
+            const key = c.userId != null ? `u${c.userId}` : `d${c.deviceId}`;
+            const entry = revokedUsers.get(key) ?? {
+                key, name: c.researcherName, username: c.researcherUsername, devices: [], blocked: 0, revocations: 0,
+            };
+            entry.revocations += 1;
+            if (!entry.devices.some((d) => d.deviceId === c.deviceId)) {
+                entry.devices.push(c);
+                if (c.deviceBlocked) entry.blocked += 1;
+            }
+            revokedUsers.set(key, entry);
+        }
+        const revokedList = [...revokedUsers.values()].sort(
+            (a, b) => b.blocked - a.blocked || (a.name ?? '').localeCompare(b.name ?? ''),
+        );
+
+        // O botão de desbloquear aparece só na cópia mais recente de cada aparelho bloqueado.
+        const unblockableIds = new Set<number>();
+        const seenDevices = new Set<string>();
+        for (const c of history) {
+            if (c.deviceBlocked && !seenDevices.has(c.deviceId)) {
+                seenDevices.add(c.deviceId);
+                unblockableIds.add(c.id);
+            }
+        }
+
+        const term = normalizeText(query.q?.trim());
+        const terms = term.split(/\s+/).filter(Boolean);
+        const matching = history.filter((c) => {
+            if (query.status && query.status !== 'ALL' && c.status !== query.status) return false;
+            if (terms.length === 0) return true;
+            const haystack = normalizeText(
+                [c.researcherName, c.researcherUsername, c.deviceId, c.revokeReason, c.revokedByName, c.unblockedByName]
+                    .filter(Boolean)
+                    .join(' '),
+            );
+            return terms.every((t) => haystack.includes(t));
+        });
+        const params = pageParams(query);
+        const pageItems = matching
+            .slice(params.offset, params.offset + params.pageSize)
+            .map((c) => ({ ...c, unblockable: unblockableIds.has(c.id) }));
+
+        return {
+            ...lock,
+            active: active.slice(0, LIMIT),
+            activeTotal: active.length,
+            revokedUsers: revokedList.slice(0, LIMIT),
+            revokedUsersTotal: revokedList.length,
+            historyTotal: history.length,
+            history: toPage(pageItems, matching.length, params),
+        };
+    }
+
     async listCopies(researchId: number, currentUser: UserPayLoad) {
         if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot list copies');
 

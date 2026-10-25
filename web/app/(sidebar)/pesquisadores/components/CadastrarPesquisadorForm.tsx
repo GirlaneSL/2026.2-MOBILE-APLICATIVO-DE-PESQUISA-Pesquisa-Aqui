@@ -1,18 +1,13 @@
 'use client'
 
 import { Button } from "@/components/ui/button";
-import { ComboBoxLayout } from "@/components/ui/comboboxLayout";
+import { RemoteComboBox } from "@/components/ui/remoteCombobox";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { getCompanies } from "@/lib/company";
+import { getCompanyOptions } from "@/lib/company";
 import { createUser } from "@/lib/user";
-import { SubmitEventHandler, useEffect, useState } from "react";
+import { SubmitEventHandler, useState } from "react";
 import toast from "react-hot-toast";
-
-interface Company {
-    id: number;
-    legalName: string;
-}
 
 interface CadastrarPesquisadorFormProps {
     /** Perfil de quem está cadastrando. SUPERADMINISTRATOR precisa escolher a empresa. */
@@ -26,27 +21,7 @@ export default function CadastrarPesquisadorForm({ isSuperAdmin = false, onSucce
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [companyId, setCompanyId] = useState('');
-    const [companies, setCompanies] = useState<Company[]>([]);
     const [isSubmitLoading, setIsSubmitLoading] = useState(false);
-
-    useEffect(() => {
-        if (!isSuperAdmin) return;
-
-        getCompanies()
-            .then(setCompanies)
-            .catch((error) => {
-                console.error(error);
-                toast.error("Erro ao carregar empresas");
-            });
-    }, [isSuperAdmin]);
-
-    const sortedCompanies = [...companies].sort((a, b) =>
-        a.legalName.localeCompare(b.legalName, 'pt-BR', { sensitivity: 'base' })
-    );
-    const companyIds = sortedCompanies.map((c) => String(c.id));
-    const companyLabels: Record<string, string> = Object.fromEntries(
-        sortedCompanies.map((c) => [String(c.id), c.legalName])
-    );
 
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
@@ -144,12 +119,13 @@ export default function CadastrarPesquisadorForm({ isSuperAdmin = false, onSucce
                 {isSuperAdmin && (
                     <div>
                         <label>Empresa*</label>
-                        <ComboBoxLayout
-                            items={companyIds}
-                            labels={companyLabels}
+                        {/* Pesquisa e paginação no servidor: a lista de empresas nunca é baixada inteira. */}
+                        <RemoteComboBox
+                            fetchOptions={getCompanyOptions}
                             value={companyId}
                             onValueChange={setCompanyId}
-                            placeholder="Selecione a empresa"
+                            placeholder="Digite para pesquisar a empresa"
+                            emptyMessage="Nenhuma empresa encontrada!"
                         />
                     </div>
                 )}

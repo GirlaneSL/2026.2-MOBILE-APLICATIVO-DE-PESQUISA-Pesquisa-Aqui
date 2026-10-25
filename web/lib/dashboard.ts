@@ -34,6 +34,11 @@ export function countByMonth<T>(
     return MONTH_NAMES.map((month, i) => ({ month, [seriesKey]: counts[i] }));
 }
 
+/** Cadastros por mês que já vêm contados da API (12 números) no formato do <Chart />. */
+export function monthsToChart(counts: number[], seriesKey: string): ChartPoint[] {
+    return MONTH_NAMES.map((month, i) => ({ month, [seriesKey]: counts[i] ?? 0 }));
+}
+
 export type ActivityKind = "company" | "admin" | "research" | "researcher";
 
 export interface ActivityItem {

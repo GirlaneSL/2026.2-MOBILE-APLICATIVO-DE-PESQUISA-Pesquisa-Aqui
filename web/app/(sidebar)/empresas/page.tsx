@@ -4,11 +4,10 @@ import BannerComponent from "@/components/ui/bannerComponent";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { Button } from "@/components/ui/button";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
-import { getCompanies, type CompanyItem } from "@/lib/company";
-import { countByMonth } from "@/lib/dashboard";
-import { getUsersAdmin, type UserItem } from "@/lib/user";
+import { getCompanyStats, type CompanyStats } from "@/lib/company";
+import { monthsToChart } from "@/lib/dashboard";
 import { Building2, Plus, PowerOff, RefreshCw, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import InfoCard from "../(home)/components/infoCards";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -22,25 +21,20 @@ export default function EmpresaPage() {
     const { user } = useCurrentUser();
     const isSuperAdmin = user?.profile === 'SUPERADMINISTRATOR';
 
-    const [companies, setCompanies] = useState<CompanyItem[]>([]);
-    const [admins, setAdmins] = useState<UserItem[]>([]);
+    // Só os números e os gráficos vêm para cá; as listas são paginadas dentro de <ExibirEditar>.
+    const [companyStats, setCompanyStats] = useState<CompanyStats | null>(null);
     const [loadingData, setLoadingData] = useState(true);
     const [reloadKey, setReloadKey] = useState(0);
 
-    const handleAdminDeleted = useCallback((username: string) => {
-        setAdmins((prev) => prev.filter((a) => a.username !== username));
-    }, []);
-
-    const handleAdminUpdated = useCallback((updated: UserItem) => {
-        setAdmins((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
-    }, []);
-
-    const handleCompanyUpdated = useCallback((updated: CompanyItem) => {
-        setCompanies((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
-    }, []);
-
-    const handleCompanyDeleted = useCallback((id: number) => {
-        setCompanies((prev) => prev.filter((c) => c.id !== id));
+    const loadStats = useCallback(() => {
+        getCompanyStats()
+            .then(setCompanyStats)
+            .catch((error) => {
+                if (isSessionExpiredError(error)) return;
+                console.error(error);
+                toast.error('Erro ao carregar dados das empresas');
+            })
+            .finally(() => setLoadingData(false));
     }, []);
 
     const reloadData = useCallback(() => {
@@ -50,52 +44,24 @@ export default function EmpresaPage() {
 
     useEffect(() => {
         if (!isSuperAdmin) return;
+        loadStats();
+    }, [isSuperAdmin, loadStats, reloadKey]);
 
-        let cancelled = false;
+    const year = companyStats?.year ?? new Date().getFullYear();
+    const companiesChart = monthsToChart(companyStats?.companiesByMonth ?? [], 'Empresas');
+    const adminsChart = monthsToChart(companyStats?.adminsByMonth ?? [], 'Administradores');
 
-        Promise.all([getCompanies(), getUsersAdmin()])
-            .then(([companiesData, adminsData]) => {
-                if (cancelled) return;
-                setCompanies(companiesData ?? []);
-                setAdmins(adminsData ?? []);
-            })
-            .catch((error) => {
-                if (cancelled || isSessionExpiredError(error)) return;
-                console.error(error);
-                toast.error('Erro ao carregar dados das empresas');
-            })
-            .finally(() => {
-                if (!cancelled) setLoadingData(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [isSuperAdmin, reloadKey]);
-
-    const [year] = useState(() => new Date().getFullYear());
-
-    const companiesChart = useMemo(
-        () => countByMonth(companies, (c) => c.createdAt, year, 'Empresas'),
-        [companies, year]
-    );
-
-    const adminsChart = useMemo(
-        () => countByMonth(admins, (a) => a.createdAt, year, 'Administradores'),
-        [admins, year]
-    );
-
-    const stats = useMemo(() => {
-        const active = companies.filter((c) => c.situation === 'ACTIVE').length;
-        return {
-            total: companies.length,
-            active,
-            inactive: companies.length - active,
-            admins: admins.length,
-            activePct: companies.length ? Math.round((active / companies.length) * 100) : 0,
-            perCompany: companies.length ? (admins.length / companies.length).toFixed(1).replace('.', ',') : '0',
-        };
-    }, [companies, admins]);
+    const total = companyStats?.companies ?? 0;
+    const active = companyStats?.activeCompanies ?? 0;
+    const admins = companyStats?.admins ?? 0;
+    const stats = {
+        total,
+        active,
+        inactive: total - active,
+        admins,
+        activePct: total ? Math.round((active / total) * 100) : 0,
+        perCompany: total ? (admins / total).toFixed(1).replace('.', ',') : '0',
+    };
 
     const val = (n: number) => (loadingData ? "–" : n);
 
@@ -206,11 +172,12 @@ export default function EmpresaPage() {
                     CardContentClassName="max-h-[34rem] overflow-auto"
                     cardContent={
                         <ExibirEditar
-                            key={reloadKey}
-                            onAdminDeleted={handleAdminDeleted}
-                            onAdminUpdated={handleAdminUpdated}
-                            onCompanyUpdated={handleCompanyUpdated}
-                            onCompanyDeleted={handleCompanyDeleted}
+                            reloadKey={reloadKey}
+                            counts={companyStats ? { companies: companyStats.companies, activeCompanies: companyStats.activeCompanies, admins: companyStats.admins } : undefined}
+                            onAdminDeleted={loadStats}
+                            onAdminUpdated={loadStats}
+                            onCompanyUpdated={loadStats}
+                            onCompanyDeleted={loadStats}
                         />
                     }
                 />

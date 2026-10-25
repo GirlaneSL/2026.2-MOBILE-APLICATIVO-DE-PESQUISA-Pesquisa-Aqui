@@ -1,4 +1,5 @@
 import { apiFetch } from "./apiFetcher";
+import { asPage, pageQuery, type Page, type PageParams } from "./pagination";
 
 export const createUser = async (
     name: string,
@@ -121,6 +122,8 @@ export interface UserItem {
     /** Ausente em respostas antigas: tratar como ACTIVE. */
     situation?: UserSituation;
     companyId: number | null;
+    /** Vem nas listas paginadas (evita carregar todas as empresas só para mostrar o nome). */
+    companyName?: string | null;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -139,4 +142,40 @@ export const getUsers = async (): Promise<UserItem[]> => {
 export const getResearchers = async (): Promise<UserItem[]> => {
     const users = await getUsers();
     return users.filter((u) => u.profile === 'RESEARCHER');
+}
+
+export type UserPageParams = PageParams & { situation?: UserSituation };
+
+/** Uma página de pesquisadores (busca, situação e ordem no servidor). */
+export const getResearchersPage = async (params: UserPageParams): Promise<Page<UserItem>> => {
+    const response = await apiFetch(`/user${pageQuery(params, { profile: 'RESEARCHER' })}`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw new Error('Falha ao carregar pesquisadores');
+    return asPage<UserItem>(await response.json(), params);
+}
+
+/** Uma página de administradores (só o superadministrador). */
+export const getAdminsPage = async (params: UserPageParams): Promise<Page<UserItem>> => {
+    const response = await apiFetch(`/user/admins${pageQuery(params)}`, { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw new Error('Failed to get admins');
+    return asPage<UserItem>(await response.json(), params);
+}
+
+export interface ResearcherStats {
+    total: number;
+    active: number;
+    inactive: number;
+    /** Cadastrados nos últimos 30 dias. */
+    recent: number;
+    /** Empresas com ao menos um pesquisador. */
+    companies: number;
+    /** Cadastros por semana nas últimas 8 semanas (da mais antiga para a atual). */
+    weekly: number[];
+    referenceTime: number;
+}
+
+/** Totais do painel de pesquisadores, sem trazer a lista. */
+export const getResearcherStats = async (): Promise<ResearcherStats> => {
+    const response = await apiFetch('/user/researchers/stats', { method: 'GET', credentials: 'include' });
+    if (!response.ok) throw new Error('Falha ao carregar os números de pesquisadores');
+    return response.json();
 }

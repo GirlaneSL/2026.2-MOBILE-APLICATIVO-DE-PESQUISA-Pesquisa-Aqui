@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LoadingState } from "@/components/ui/loadingState";
+import { PaginatedList, ServerPagination } from "@/components/ui/pagination";
+import { usePagedResource } from "@/hooks/usePagedResource";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { getResearchCopies, revokeResearchCopy, unblockResearchDevice, type ResearchCopies, type ResearchCopy } from "@/lib/research";
+import { getResearchCopiesPage, revokeResearchCopy, unblockResearchDevice, type ResearchCopiesOverview, type ResearchCopy, type ResearchCopyHistoryItem } from "@/lib/research";
+import type { Page } from "@/lib/pagination";
 import { Lock, LockOpen, Search, ShieldCheck, ShieldOff, Smartphone, TriangleAlert, Undo2, UserX } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 
 const MAX_REASON = 300;
@@ -26,9 +29,6 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 // Aparelhos têm um identificador longo (device_<hora>_<sufixo>): mostra o fim, que é o que os diferencia.
 const shortDevice = (id: string) => (id.length > 18 ? `…${id.slice(-12)}` : id);
 
-// Busca sem diferenciar maiúsculas nem acentos ("joao" acha "João").
-const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-
 type HistoryFilter = 'ALL' | 'RETURNED' | 'REVOKED';
 const FILTERS: { value: HistoryFilter; label: string }[] = [
     { value: 'ALL', label: 'Todas' },
@@ -43,31 +43,26 @@ interface CopiasEmCampoProps {
 }
 
 export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoProps) {
-    const [data, setData] = useState<ResearchCopies | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    // Busca e filtro do histórico (feitos no servidor, que devolve uma página do histórico por vez).
+    const [filter, setFilter] = useState<HistoryFilter>('ALL');
+    const list = usePagedResource<ResearchCopyHistoryItem, Page<ResearchCopyHistoryItem> & { overview: ResearchCopiesOverview }>(
+        async (params) => {
+            const overview = await getResearchCopiesPage(researchId, { ...params, status: filter });
+            return { ...overview.history, overview };
+        },
+        { pageSize: 10, filters: { filter, researchId } },
+    );
+    const query = list.search;
+    const setQuery = list.setSearch;
+    const data = list.data?.overview ?? null;
+    const error = list.error;
+    const loading = list.loading;
+    const load = async () => { list.reload(); };
 
     // Revogação em andamento: a cópia escolhida, o motivo digitado e o envio.
     const [revoking, setRevoking] = useState<ResearchCopy | null>(null);
     const [reason, setReason] = useState('');
     const [submitting, setSubmitting] = useState(false);
-
-    const load = useCallback(async () => {
-        try {
-            setData(await getResearchCopies(researchId));
-            setError(null);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erro ao carregar as cópias em campo');
-        } finally {
-            setLoading(false);
-        }
-    }, [researchId]);
-
-    useEffect(() => { load(); }, [load]);
-
-    // Busca e filtro do histórico.
-    const [query, setQuery] = useState('');
-    const [filter, setFilter] = useState<HistoryFilter>('ALL');
 
     // Desbloqueio de aparelho em andamento.
     const [unblocking, setUnblocking] = useState<ResearchCopy | null>(null);
@@ -119,60 +114,14 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
             <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
                 <p className="font-medium">Não foi possível carregar as cópias em campo</p>
                 <p>{error}</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => { setLoading(true); load(); }}>Tentar de novo</Button>
+                <Button variant="outline" size="sm" className="mt-3" onClick={() => list.reload()}>Tentar de novo</Button>
             </div>
         );
     }
 
-    const active = data.copies.filter((c) => c.status === 'ACTIVE');
-    const history = data.copies.filter((c) => c.status !== 'ACTIVE');
-
-    // Histórico filtrado: por situação e por texto (pesquisador, usuário, aparelho, motivo, quem revogou).
-    const terms = normalize(query.trim()).split(/\s+/).filter(Boolean);
-    const filteredHistory = history.filter((c) => {
-        if (filter !== 'ALL' && c.status !== filter) return false;
-        if (terms.length === 0) return true;
-        const haystack = normalize(
-            [c.researcherName, c.researcherUsername, c.deviceId, c.revokeReason, c.revokedByName, c.unblockedByName]
-                .filter(Boolean)
-                .join(' '),
-        );
-        return terms.every((t) => haystack.includes(t));
-    });
-
-    // Usuários revogados: quem teve ao menos uma cópia revogada, com os aparelhos e a situação de cada um.
-    interface RevokedUser {
-        key: string;
-        name: string | null;
-        username: string | null;
-        devices: ResearchCopy[]; // a revogação mais recente de cada aparelho
-        blocked: number;
-        revocations: number;
-    }
-    const revokedUsers = new Map<string, RevokedUser>();
-    for (const c of data.copies) {
-        if (c.status !== 'REVOKED') continue;
-        const key = c.userId != null ? `u${c.userId}` : `d${c.deviceId}`;
-        const entry = revokedUsers.get(key) ?? {
-            key, name: c.researcherName, username: c.researcherUsername, devices: [], blocked: 0, revocations: 0,
-        };
-        entry.revocations += 1;
-        if (!entry.devices.some((d) => d.deviceId === c.deviceId)) {
-            entry.devices.push(c);
-            if (c.deviceBlocked) entry.blocked += 1;
-        }
-        revokedUsers.set(key, entry);
-    }
-    const revokedList = [...revokedUsers.values()].sort((a, b) => b.blocked - a.blocked || (a.name ?? '').localeCompare(b.name ?? ''));
-    // Um aparelho pode ter várias cópias revogadas: o botão aparece só na mais recente de cada aparelho bloqueado.
-    const unblockableIds = new Set<number>();
-    const seenDevices = new Set<string>();
-    for (const c of history) {
-        if (c.deviceBlocked && !seenDevices.has(c.deviceId)) {
-            seenDevices.add(c.deviceId);
-            unblockableIds.add(c.id);
-        }
-    }
+    const active = data.active;
+    const revokedList = data.revokedUsers;
+    const history = list.items;
 
     return (
         <div className="flex flex-col gap-5">
@@ -232,8 +181,8 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                             Ninguém está com a pesquisa baixada agora.
                         </p>
                     ) : (
-                        <ul className="mt-5 flex flex-col gap-3">
-                            {active.map((copy) => (
+                        <PaginatedList items={active} getKey={(copy) => copy.id} pageSize={5} pageSizeOptions={[5, 10, 25]} label="Cópias ativas" className="mt-5 flex flex-col gap-3">
+                            {(copy) => (
                                 <li key={copy.id} className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4 sm:flex-row sm:items-center">
                                     <div className="min-w-0 grow">
                                         <p className="truncate text-[15px] font-semibold tracking-tight">
@@ -257,8 +206,8 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                                         <ShieldOff />Revogar acesso
                                     </Button>
                                 </li>
-                            ))}
-                        </ul>
+                            )}
+                        </PaginatedList>
                     )}
                 </article>
 
@@ -276,8 +225,8 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                             </div>
                         </header>
 
-                        <ul className="mt-5 flex flex-col gap-3">
-                            {revokedList.map((user) => (
+                        <PaginatedList items={revokedList} getKey={(user) => user.key} pageSize={5} pageSizeOptions={[5, 10, 25]} label="Usuários revogados" className="mt-5 flex flex-col gap-3">
+                            {(user) => (
                                 <li key={user.key} className="rounded-2xl bg-muted/60 p-4">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="text-[15px] font-semibold tracking-tight">{user.name ?? 'Pesquisador removido'}</span>
@@ -310,14 +259,14 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                                         ))}
                                     </ul>
                                 </li>
-                            ))}
-                        </ul>
+                            )}
+                        </PaginatedList>
                     </article>
                 )}
             </div>
 
             {/* Histórico: tudo registrado */}
-            {history.length > 0 && (
+            {data.historyTotal > 0 && (
                 <article className="pa-card">
                     <header className="pa-card-h">
                         <div className="pa-ic"><Undo2 /></div>
@@ -356,15 +305,15 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
 
                     {(query.trim() || filter !== 'ALL') && (
                         <p className="mt-3 text-[13px] text-muted-foreground" aria-live="polite">
-                            {plural(filteredHistory.length, 'registro encontrado', 'registros encontrados')} de {history.length}.
-                            {filteredHistory.length === 0 && (
+                            {plural(list.total, 'registro encontrado', 'registros encontrados')} de {data.historyTotal}.
+                            {list.total === 0 && (
                                 <button type="button" className="ml-2 underline" onClick={() => { setQuery(''); setFilter('ALL'); }}>Limpar filtros</button>
                             )}
                         </p>
                     )}
 
-                    <ul className="mt-4 flex flex-col gap-2.5">
-                        {filteredHistory.map((copy) => (
+                    <ul aria-label="Histórico de cópias" className="mt-4 flex flex-col gap-2.5">
+                        {history.map((copy) => (
                             <li key={copy.id} className="flex flex-col gap-1 rounded-2xl border border-border p-3.5">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-sm font-semibold">{copy.researcherName ?? 'Pesquisador removido'}</span>
@@ -389,7 +338,7 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                                         Aparelho desbloqueado em {fmtDateTime(copy.unblockedAt)}{copy.unblockedByName ? ` por ${copy.unblockedByName}` : ''}
                                     </p>
                                 )}
-                                {unblockableIds.has(copy.id) && (
+                                {copy.unblockable && (
                                     <div className="mt-1.5 flex flex-wrap items-center gap-3">
                                         <span className="text-[13px] text-[#8a432f]">Este aparelho está bloqueado para esta pesquisa.</span>
                                         <Button variant="outline" size="sm" onClick={() => setUnblocking(copy)}>
@@ -400,6 +349,7 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                             </li>
                         ))}
                     </ul>
+                    <ServerPagination server={list.server} label="Histórico de cópias" pageSizeOptions={[10, 25, 50]} />
                 </article>
             )}
 
