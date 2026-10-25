@@ -11,7 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { getResearchCopiesPage, revokeResearchCopy, unblockResearchDevice, type ResearchCopiesOverview, type ResearchCopy, type ResearchCopyHistoryItem } from "@/lib/research";
 import type { Page } from "@/lib/pagination";
-import { CircleHelp, Lock, LockOpen, Search, ShieldCheck, ShieldOff, Smartphone, TriangleAlert, Undo2, UserX } from "lucide-react";
+import { CircleHelp, Lock, LockOpen, RefreshCw, Search, ShieldCheck, ShieldOff, Smartphone, TriangleAlert, Undo2, UserX } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -300,6 +300,9 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                                     {f.label}
                                 </Button>
                             ))}
+                            <Button variant="outline" size="sm" onClick={() => list.reload()} disabled={list.fetching} title="Atualizar o histórico">
+                                <RefreshCw className={list.fetching ? 'animate-spin' : undefined} />Atualizar
+                            </Button>
                         </div>
                     </div>
 

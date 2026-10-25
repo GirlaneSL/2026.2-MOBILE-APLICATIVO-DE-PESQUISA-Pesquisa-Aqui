@@ -337,7 +337,7 @@ function ColetasView({
                             <TableChip tone={recordInterview ? 'soon' : 'done'}>
                                 Gravação {recordInterview ? 'ligada' : 'desligada'}
                             </TableChip>
-                            <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} />
+                            <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} onRefresh={list.reload} refreshing={list.fetching} />
                         </div>
                     </DataTableToolbar>
                 )}

@@ -345,7 +345,7 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
                     />
                     <div className="grow flex flex-wrap items-center gap-2">
                         <TableFilters<Filter> label="Situação" value={filter} onChange={setFilter} options={filters} />
-                        <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} />
+                        <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} onRefresh={list.reload} refreshing={list.fetching} />
                     </div>
                 </DataTableToolbar>
 

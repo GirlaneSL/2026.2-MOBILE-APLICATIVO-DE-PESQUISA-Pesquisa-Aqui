@@ -151,7 +151,7 @@ export default function PesquisasEquipeTabela({ now }: PesquisasEquipeTabelaProp
                 <DataTableToolbar>
                     <TableSearch value={search} onChange={setSearch} placeholder="Buscar por título ou público..." label="Buscar pesquisas" />
                     <div className="grow flex flex-wrap items-center gap-2">
-                        <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} />
+                        <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} onRefresh={list.reload} refreshing={list.fetching} />
                     </div>
                 </DataTableToolbar>
             )}

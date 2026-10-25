@@ -218,6 +218,8 @@ export default function Pesquisas() {
                         onSortChange={setSort}
                         view={view}
                         onViewChange={setView}
+                        onRefresh={forceRefresh}
+                        refreshing={list.fetching}
                         sortOptions={[
                             { value: "recent", label: "Recentes", icon: <CalendarClock /> },
                             { value: "name", label: "A-Z", icon: <ArrowDownAZ /> },

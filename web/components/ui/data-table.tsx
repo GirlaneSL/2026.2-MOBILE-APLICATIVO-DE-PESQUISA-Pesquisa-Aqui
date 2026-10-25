@@ -1,12 +1,12 @@
 "use client"
 
-import { buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Contour } from "@/components/ui/contour"
 import { LoadingState } from "@/components/ui/loadingState"
 import { DEFAULT_PAGE_SIZES, Pagination, usePagination } from "@/components/ui/pagination"
 import { avatarTone, initialsOf } from "@/lib/fieldData"
 import { cn } from "@/lib/utils"
-import { ArrowDownAZ, CalendarClock, LayoutGrid, List, Search, SearchX, X } from "lucide-react"
+import { ArrowDownAZ, CalendarClock, LayoutGrid, List, RefreshCw, Search, SearchX, X } from "lucide-react"
 import Link from "next/link"
 import { Fragment, type ReactNode } from "react"
 import "./data-table.css"
@@ -323,12 +323,18 @@ export function TableViewControls<S extends string = TableSort>({
     view,
     onViewChange,
     sortOptions,
+    onRefresh,
+    refreshing = false,
 }: {
     sort: S
     onSortChange: (value: S) => void
     view: TableView
     onViewChange: (value: TableView) => void
     sortOptions?: SortOption<S>[]
+    /** Recarrega os dados da tabela (botão "Atualizar"). */
+    onRefresh?: () => void
+    /** Enquanto true, o ícone gira e o botão fica desativado. */
+    refreshing?: boolean
 }) {
     return (
         <>
@@ -347,7 +353,21 @@ export function TableViewControls<S extends string = TableSort>({
                     { value: "cards", label: "Cards", icon: <LayoutGrid /> },
                 ]}
             />
+            {onRefresh && <TableRefreshButton onRefresh={onRefresh} refreshing={refreshing} />}
         </>
+    )
+}
+
+/**
+ * Botão "Atualizar" da tabela (contorno, ícone girando enquanto busca). Já vem dentro de
+ * <TableViewControls onRefresh>.
+ */
+export function TableRefreshButton({ onRefresh, refreshing = false }: { onRefresh: () => void; refreshing?: boolean }) {
+    return (
+        <Button variant="outline" size="sm" className="pa-dt-refresh" onClick={onRefresh} disabled={refreshing} title="Atualizar agora">
+            <RefreshCw className={refreshing ? "animate-spin" : undefined} aria-hidden="true" />
+            Atualizar
+        </Button>
     )
 }
 

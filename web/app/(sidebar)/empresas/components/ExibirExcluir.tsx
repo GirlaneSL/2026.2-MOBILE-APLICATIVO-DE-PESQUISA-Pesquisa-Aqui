@@ -401,7 +401,7 @@ export default function ExibirEditar({
                             ]}
                         />
                     )}
-                    <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} />
+                    <TableViewControls sort={sort} onSortChange={setSort} view={view} onViewChange={setView} onRefresh={active.reload} refreshing={active.fetching} />
                 </div>
             </DataTableToolbar>
 

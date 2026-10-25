@@ -56,6 +56,7 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
     const [loading, setLoading] = useState(true);
     const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
     const [exporting, setExporting] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [closing, setClosing] = useState(false);
 
     const closed = (panel?.status ?? status) === 'CLOSED';
@@ -95,6 +96,16 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
         }, REFRESH_MS);
         return () => clearInterval(timer);
     }, [closed, load]);
+
+    // Botão "Atualizar": gira e fica desativado até a resposta chegar (mínimo de meio segundo, para dar para ver).
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([load(), new Promise((resolve) => setTimeout(resolve, 500))]);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     const handleExport = async () => {
         setExporting(true);
@@ -155,7 +166,7 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
                         Até
                         <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-foreground" />
                     </label>
-                    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground [&_[data-slot=input-group]]:h-10 [&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:bg-white">
                         Pesquisador
                         {/* Pesquisa e paginação no servidor: só uma página de pesquisadores por vez. */}
                         <RemoteComboBox
@@ -182,14 +193,16 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
 
                 <div className="flex flex-wrap items-center gap-2">
                     {filtered && (
-                        <Button variant="ghost" size="sm" onClick={() => { setFrom(''); setTo(''); setResearcherId(undefined); }}>Limpar filtros</Button>
+                        <Button variant="ghost" size="sm" className="h-10" onClick={() => { setFrom(''); setTo(''); setResearcherId(undefined); }}>Limpar filtros</Button>
                     )}
-                    <Button variant="outline" size="sm" onClick={() => load()} title="Atualizar agora"><RefreshCw />Atualizar</Button>
-                    <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+                    <Button variant="outline" size="sm" className="h-10" onClick={handleRefresh} disabled={refreshing} title="Atualizar agora">
+                        <RefreshCw className={refreshing ? 'animate-spin' : undefined} />Atualizar
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-10" onClick={handleExport} disabled={exporting}>
                         {exporting ? <Spinner /> : <Download />}Exportar CSV
                     </Button>
                     {!closed && status !== 'DRAFT' && (
-                        <Button variant="destructive" size="sm" onClick={handleClose} disabled={closing}>
+                        <Button variant="destructive" size="sm" className="h-10" onClick={handleClose} disabled={closing}>
                             {closing ? <Spinner /> : <Lock />}Encerrar
                         </Button>
                     )}

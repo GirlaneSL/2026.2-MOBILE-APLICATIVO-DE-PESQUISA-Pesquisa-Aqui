@@ -602,3 +602,13 @@
   transition: opacity 0.15s;
   pointer-events: none;
 }
+
+/* botão "Atualizar": mesma altura dos grupos de botões da barra */
+.pa-dt-refresh {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  align-self: center;
+}
