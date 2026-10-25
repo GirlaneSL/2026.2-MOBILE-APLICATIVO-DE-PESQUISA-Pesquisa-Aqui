@@ -2,6 +2,7 @@
 
 import BannerComponent from "@/components/ui/bannerComponent";
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { Contour } from "@/components/ui/contour";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { TableSearch, TableViewControls, type TableView } from "@/components/ui/data-table";
@@ -93,60 +94,42 @@ export default function Pesquisas() {
 
     /* ---------- ações (publicar e excluir pedem confirmação) ---------- */
 
-    const confirmToast = (id: string, message: string, label: string, destructive: boolean, onConfirm: () => void) =>
-        toast(
-            (t) => (
-                <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium">{message}</span>
-                    <div className="flex justify-end gap-2 pt-1">
-                        <Button variant="outline" size="sm" onClick={() => toast.dismiss(t.id)}>Cancelar</Button>
-                        <Button
-                            variant={destructive ? "destructive" : "default"}
-                            size="sm"
-                            onClick={() => {
-                                toast.dismiss(t.id);
-                                onConfirm();
-                            }}
-                        >
-                            {label}
-                        </Button>
-                    </div>
-                </div>
-            ),
-            { duration: 6000, id }
-        );
-
-    const handleDelete = (id: number) => {
+    const handleDelete = async (id: number) => {
         const item = researches.find((r) => r.id === id);
-        confirmToast(`delete-${id}`, `Tem certeza que deseja excluir "${item?.title ?? id}"?`, "Excluir", true, async () => {
-            try {
-                await deleteResearch(id);
-                forceRefresh();
-                toast.success("Pesquisa excluída com sucesso!");
-            } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Erro ao excluir pesquisa");
-            }
+        const confirmed = await confirmDialog({
+            title: "Excluir pesquisa",
+            description: `Tem certeza que deseja excluir a pesquisa "${item?.title ?? id}"? Esta ação não pode ser desfeita.`,
+            confirmLabel: "Excluir",
+            variant: "destructive",
         });
+        if (!confirmed) return;
+
+        try {
+            await deleteResearch(id);
+            forceRefresh();
+            toast.success("Pesquisa excluída com sucesso!");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao excluir pesquisa");
+        }
     };
 
-    const handlePublish = (id: number) => {
+    const handlePublish = async (id: number) => {
         const item = researches.find((r) => r.id === id);
-        confirmToast(
-            `publish-${id}`,
-            `Publicar "${item?.title ?? id}"? Depois de publicada, a pesquisa não pode mais ser excluída.`,
-            "Publicar",
-            false,
-            async () => {
-                try {
-                    const updated = await publishResearch(id);
-                    list.mutate((items) => items.map((r) => (r.id === id ? { ...r, status: updated.status } : r)));
-                    loadSummary();
-                    toast.success("Pesquisa publicada com sucesso!");
-                } catch (err) {
-                    toast.error(err instanceof Error ? err.message : "Erro ao publicar pesquisa");
-                }
-            }
-        );
+        const confirmed = await confirmDialog({
+            title: "Publicar pesquisa",
+            description: `Publicar "${item?.title ?? id}"? Depois de publicada, a pesquisa não pode mais ser excluída.`,
+            confirmLabel: "Publicar",
+        });
+        if (!confirmed) return;
+
+        try {
+            const updated = await publishResearch(id);
+            list.mutate((items) => items.map((r) => (r.id === id ? { ...r, status: updated.status } : r)));
+            loadSummary();
+            toast.success("Pesquisa publicada com sucesso!");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao publicar pesquisa");
+        }
     };
 
     const handleUpdated = (updated: Research) => {

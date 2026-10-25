@@ -6,6 +6,7 @@ import DialogLayout from "@/components/ui/dialogLayout";
 import { LoadingState } from "@/components/ui/loadingState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getResearchById, publishResearch, type Research } from "@/lib/research";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ArrowLeft, CalendarRange, Check, BarChart3, ClipboardList, FileText, Flag, ListChecks, Lock, Mic, MicOff, Quote, ShieldAlert, Smartphone, Target, UsersRound } from "lucide-react";
 import Link from "next/link";
@@ -139,6 +140,13 @@ export default function PesquisaDetalhePage() {
     const { research } = state;
 
     const handlePublish = async () => {
+        const confirmed = await confirmDialog({
+            title: 'Publicar pesquisa',
+            description: `Publicar "${research.title}"? Depois de publicada, a pesquisa não pode mais ser excluída.`,
+            confirmLabel: 'Publicar',
+        });
+        if (!confirmed) return;
+
         try {
             const updated = await publishResearch(research.id);
             setState({ status: 'success', research: { ...research, status: updated.status, locked: false, lockReason: null, lockMessage: null, activeCopies: 0 } });

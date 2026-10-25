@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { confirmDialog } from '@/components/ui/confirm-dialog';
 import {
     CellTitle,
     DataTable,
@@ -77,12 +78,21 @@ export default function TabelaPesquisas({ sort = 'recent', allowActions = true, 
         }
     };
 
-    const executeDelete = async (id: string, toastId: string) => {
-        toast.dismiss(toastId);
+    const handleDelete = async (id: string) => {
+        const item = rawResearches.find((r) => String(r.id) === id);
+
+        const confirmed = await confirmDialog({
+            title: 'Excluir pesquisa',
+            description: `Tem certeza que deseja excluir a pesquisa "${item?.title ?? id}"? Esta ação não pode ser desfeita.`,
+            confirmLabel: 'Excluir',
+            variant: 'destructive',
+        });
+        if (!confirmed) return;
+
         setActionError(null);
 
         try {
-            await deleteResearch(+id)
+            await deleteResearch(+id);
             setRawResearches((prev) => prev.filter((r) => String(r.id) !== id));
             toast.success('Pesquisa excluída com sucesso!');
 
@@ -96,42 +106,16 @@ export default function TabelaPesquisas({ sort = 'recent', allowActions = true, 
         }
     };
 
-    const handleDelete = (id: string) => {
+    const handlePublish = async (id: string) => {
         const item = rawResearches.find((r) => String(r.id) === id);
 
-        toast(
-            (t) => (
-                <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium">
-                        Tem certeza que deseja excluir &quot;{item?.title ?? id}&quot;?
-                    </span>
-                    <div className="flex justify-end gap-2 pt-1">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toast.dismiss(t.id)}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => executeDelete(id, t.id)}
-                        >
-                            Excluir
-                        </Button>
-                    </div>
-                </div>
-            ),
-            {
-                duration: 6000,
-                id: `delete-${id}`,
-            }
-        );
-    };
+        const confirmed = await confirmDialog({
+            title: 'Publicar pesquisa',
+            description: `Publicar "${item?.title ?? id}"? Depois de publicada, a pesquisa não pode mais ser excluída.`,
+            confirmLabel: 'Publicar',
+        });
+        if (!confirmed) return;
 
-    const executePublish = async (id: string, toastId: string) => {
-        toast.dismiss(toastId);
         setActionError(null);
 
         try {
@@ -149,40 +133,6 @@ export default function TabelaPesquisas({ sort = 'recent', allowActions = true, 
             setActionError(errorMsg);
             toast.error(errorMsg);
         }
-    };
-
-    const handlePublish = (id: string) => {
-        const item = rawResearches.find((r) => String(r.id) === id);
-
-        toast(
-            (t) => (
-                <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium">
-                        Publicar &quot;{item?.title ?? id}&quot;? Depois de publicada, a pesquisa não pode mais ser excluída.
-                    </span>
-                    <div className="flex justify-end gap-2 pt-1">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toast.dismiss(t.id)}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => executePublish(id, t.id)}
-                        >
-                            Publicar
-                        </Button>
-                    </div>
-                </div>
-            ),
-            {
-                duration: 6000,
-                id: `publish-${id}`,
-            }
-        );
     };
 
     const term = normalize(search.trim());

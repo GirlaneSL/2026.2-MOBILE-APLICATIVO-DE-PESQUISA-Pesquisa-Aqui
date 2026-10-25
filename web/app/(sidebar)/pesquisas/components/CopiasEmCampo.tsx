@@ -11,7 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { getResearchCopiesPage, revokeResearchCopy, unblockResearchDevice, type ResearchCopiesOverview, type ResearchCopy, type ResearchCopyHistoryItem } from "@/lib/research";
 import type { Page } from "@/lib/pagination";
-import { Lock, LockOpen, Search, ShieldCheck, ShieldOff, Smartphone, TriangleAlert, Undo2, UserX } from "lucide-react";
+import { CircleHelp, Lock, LockOpen, Search, ShieldCheck, ShieldOff, Smartphone, TriangleAlert, Undo2, UserX } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -357,8 +357,8 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
             <Dialog open={unblocking !== null} onOpenChange={(open) => { if (!open && !unblockSubmitting) setUnblocking(null); }}>
                 <DialogContent showCloseButton={false} className="sm:max-w-md">
                     <DialogHeader className="items-start gap-3">
-                        <div className="flex size-11 items-center justify-center rounded-full bg-white/70 text-[var(--green-deep)]">
-                            <ShieldCheck className="size-5" />
+                        <div className="flex size-11 items-center justify-center rounded-full bg-mint text-forest">
+                            <CircleHelp className="size-5" />
                         </div>
                         <DialogTitle className="text-xl tracking-tight">Desbloquear este aparelho?</DialogTitle>
                         <DialogDescription className="text-sm leading-relaxed">
