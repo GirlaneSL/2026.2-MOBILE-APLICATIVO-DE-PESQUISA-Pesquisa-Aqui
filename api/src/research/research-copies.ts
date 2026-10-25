@@ -74,6 +74,12 @@ export async function countActiveCopies(orm: Orm, researchId: number): Promise<n
     return rows.length;
 }
 
+/** Quantas vezes a pesquisa foi baixada em algum aparelho (cópias ativas, devolvidas e revogadas). */
+export async function countDownloads(orm: Orm, researchId: number): Promise<number> {
+    const rows: CopyRow[] = await orm.ResearchDownload.where({ researchId }).all();
+    return rows.length;
+}
+
 export interface LockState {
     locked: boolean;
     /** ACTIVE_COPIES: há cópia em campo. CLOSED: pesquisa encerrada (estado final). null: editável. */

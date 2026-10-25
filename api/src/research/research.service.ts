@@ -10,6 +10,7 @@ import {
     copyRevokedException,
     copyStatus,
     copyStatusOf,
+    countDownloads,
     getLockState,
     isDeviceRevoked,
     registerCopy,
@@ -159,6 +160,7 @@ export class ResearchService {
         const TEAM_LIMIT = 50;
 
         const collectedByResearch = new Map<number, number>();
+        const downloadedIds = new Set<number>();
         const teamByResearch = new Map<number, { id: number; name: string; username: string }[]>();
 
         if (ids.length > 0) {
@@ -166,6 +168,10 @@ export class ResearchService {
                 .groupBy('researchId')
                 .aggregate((a) => ({ total: a.count() }));
             for (const row of counts) collectedByResearch.set(row.researchId, row.total);
+
+            // Pesquisas desta página que já foram baixadas por algum pesquisador (não podem ser excluídas).
+            const downloads = [...(await orm.ResearchDownload.where((d) => d.researchId.in(ids)).all())];
+            for (const download of downloads) downloadedIds.add(download.researchId);
 
             const links = [...(await orm.ResearchResearcher.where((l) => l.researchId.in(ids)).all())];
             const userIds = [...new Set(links.map((link) => link.userId))];
@@ -185,6 +191,7 @@ export class ResearchService {
             ...research,
             collected: collectedByResearch.get(research.id) ?? 0,
             team: teamByResearch.get(research.id) ?? [],
+            canDelete: !downloadedIds.has(research.id),
         }));
 
         return { ...page, items };
@@ -244,6 +251,8 @@ export class ResearchService {
             lockReason: lock.reason,
             lockMessage: lock.message,
             activeCopies: lock.activeCopies,
+            // Nenhum pesquisador baixou a pesquisa: ainda dá para excluir.
+            canDelete: (await countDownloads(this.prisma.client.orm.public, id)) === 0,
         };
     }
 
@@ -310,6 +319,24 @@ export class ResearchService {
         await this.assertHasQuestions(id);
 
         return await this.prisma.client.orm.public.Research.where({ id }).update({ status: ResearchStatus.PUBLISHED });
+    }
+
+    // Voltar para rascunho: PUBLISHED -> DRAFT. Só enquanto nenhum pesquisador baixou a pesquisa
+    // (mesma condição da exclusão): depois do primeiro download ela já pode ter coletas em campo.
+    async unpublish(id: number, currentUser: UserPayLoad) {
+        if (currentUser.profile === 'RESEARCHER') throw new ForbiddenException('Researchers cannot unpublish research');
+
+        const research = await this.findOne(id, currentUser);
+
+        if (research.status !== ResearchStatus.PUBLISHED) {
+            throw new BadRequestException(`Only published research can go back to draft (current status: ${research.status})`);
+        }
+
+        if ((await countDownloads(this.prisma.client.orm.public, id)) > 0) {
+            throw new BadRequestException('Esta pesquisa já foi baixada por pesquisadores e não pode voltar para rascunho.');
+        }
+
+        return await this.prisma.client.orm.public.Research.where({ id }).update({ status: ResearchStatus.DRAFT });
     }
 
     /**
@@ -478,7 +505,11 @@ export class ResearchService {
     async delete(id: number, currentUser: UserPayLoad) {
         const research = await this.findOne(id, currentUser)
 
-        if (research.status !== ResearchStatus.DRAFT) throw new BadRequestException('Only draft research can be deleted.');
+        // Só dá para excluir enquanto nenhum pesquisador tiver baixado a pesquisa: depois do primeiro download
+        // pode haver coletas em campo, e excluir apagaria tudo.
+        if ((await countDownloads(this.prisma.client.orm.public, id)) > 0) {
+            throw new BadRequestException('Esta pesquisa já foi baixada por pesquisadores e não pode mais ser excluída.');
+        }
 
         const deleted = await this.prisma.client.orm.public.Research.where({ id }).delete();
 

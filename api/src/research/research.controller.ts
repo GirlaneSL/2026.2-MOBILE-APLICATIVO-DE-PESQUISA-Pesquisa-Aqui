@@ -60,6 +60,13 @@ export class ResearchController {
         return this.researchService.publish(id, currentUser);
     }
 
+    // Voltar para rascunho: só pesquisa publicada que nenhum pesquisador baixou.
+    @Post(':id/unpublish')
+    @HttpCode(200)
+    unpublish(@Param('id', ParseIntPipe) id: number, @CurrentUser() currentUser: UserPayLoad) {
+        return this.researchService.unpublish(id, currentUser);
+    }
+
     // Encerrar: bloqueia coleta nova e congela o resultado. Só administrador.
     @Post(':id/close')
     @HttpCode(200)

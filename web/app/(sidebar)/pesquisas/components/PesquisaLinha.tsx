@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import DialogLayout from "@/components/ui/dialogLayout";
 import type { Research } from "@/lib/research";
-import { Pencil, Send, Trash2 } from "lucide-react";
+import { Pencil, Send, Trash2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import ModalEditarPesquisa from "./ModalEditarPesquisa";
@@ -31,8 +31,8 @@ export function ListaPesquisas({ children }: { children: ReactNode }) {
     );
 }
 
-/** Linha de uma pesquisa na lista. Rascunhos também ganham editar, publicar e excluir (só ícones, antes do "Abrir"). */
-export default function PesquisaLinha({ research, team, collections, teamLoading = false, now, onPublish, onDelete, onUpdated }: PesquisaItemProps) {
+/** Linha de uma pesquisa na lista. Rascunhos também ganham editar e publicar; excluir aparece enquanto nenhum pesquisador baixou a pesquisa (só ícones, antes do "Abrir"). */
+export default function PesquisaLinha({ research, team, collections, teamLoading = false, now, onPublish, onUnpublish, onDelete, onUpdated }: PesquisaItemProps) {
     const view = viewOf(research, now, teamLoading ? null : collections);
     const isDraft = research.status === "DRAFT";
     const href = `/pesquisas/${research.id}`;
@@ -77,10 +77,17 @@ export default function PesquisaLinha({ research, team, collections, teamLoading
                         <Button size="sm" variant="outline" className="pq-ico" title="Publicar" aria-label={`Publicar ${research.title}`} onClick={() => onPublish(research.id)}>
                             <Send />
                         </Button>
-                        <Button size="sm" variant="destructive" className="pq-ico" title="Excluir" aria-label={`Excluir ${research.title}`} onClick={() => onDelete(research.id)}>
-                            <Trash2 />
-                        </Button>
                     </>
+                )}
+                {research.status === "PUBLISHED" && research.canDelete && (
+                    <Button size="sm" variant="outline" className="pq-ico" title="Voltar para rascunho" aria-label={`Voltar ${research.title} para rascunho`} onClick={() => onUnpublish(research.id)}>
+                        <Undo2 />
+                    </Button>
+                )}
+                {research.canDelete && (
+                    <Button size="sm" variant="destructive" className="pq-ico" title="Excluir" aria-label={`Excluir ${research.title}`} onClick={() => onDelete(research.id)}>
+                        <Trash2 />
+                    </Button>
                 )}
                 <Link href={href} className="pq-btn dark">Abrir</Link>
             </div>

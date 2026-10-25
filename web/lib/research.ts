@@ -21,6 +21,8 @@ export interface Research {
     lockMessage?: string | null;
     /** Quantos aparelhos estão com a pesquisa baixada agora. */
     activeCopies?: number;
+    /** true enquanto nenhum pesquisador baixou a pesquisa: só então ela pode ser excluída. */
+    canDelete?: boolean;
     companyId: number;
     createdAt?: string;
     updatedAt?: string;
@@ -167,6 +169,21 @@ export const publishResearch = async (id: number): Promise<Research> => {
     if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
         throw new Error(errorBody?.message || 'Failed to publish research');
+    }
+
+    return response.json();
+};
+
+/** Volta uma pesquisa publicada para rascunho (só se nenhum pesquisador a baixou). */
+export const unpublishResearch = async (id: number): Promise<Research> => {
+    const response = await apiFetch(`/research/${id}/unpublish`, {
+        method: 'POST',
+        credentials: 'include',
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || 'Failed to unpublish research');
     }
 
     return response.json();

@@ -11,7 +11,7 @@ import { ServerPagination } from "@/components/ui/pagination";
 import { usePagedResource } from "@/hooks/usePagedResource";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
 import type { Research } from "@/lib/research";
-import { deleteResearch, getResearchesPage, getResearchSummary, publishResearch, type ResearchListItem, type ResearchSummary } from "@/lib/research";
+import { deleteResearch, getResearchesPage, getResearchSummary, publishResearch, unpublishResearch, type ResearchListItem, type ResearchSummary } from "@/lib/research";
 import type { UserItem } from "@/lib/user";
 import { ArrowDownAZ, CalendarClock, Plus, SearchX, Timer } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -117,7 +117,7 @@ export default function Pesquisas() {
         const item = researches.find((r) => r.id === id);
         const confirmed = await confirmDialog({
             title: "Publicar pesquisa",
-            description: `Publicar "${item?.title ?? id}"? Depois de publicada, a pesquisa não pode mais ser excluída.`,
+            description: `Publicar "${item?.title ?? id}"? Depois que um pesquisador baixar a pesquisa, ela não poderá mais ser excluída.`,
             confirmLabel: "Publicar",
         });
         if (!confirmed) return;
@@ -129,6 +129,25 @@ export default function Pesquisas() {
             toast.success("Pesquisa publicada com sucesso!");
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Erro ao publicar pesquisa");
+        }
+    };
+
+    const handleUnpublish = async (id: number) => {
+        const item = researches.find((r) => r.id === id);
+        const confirmed = await confirmDialog({
+            title: "Voltar para rascunho",
+            description: `Voltar "${item?.title ?? id}" para rascunho? Ela deixa de ficar visível para o aplicativo e volta a poder ser editada.`,
+            confirmLabel: "Voltar para rascunho",
+        });
+        if (!confirmed) return;
+
+        try {
+            const updated = await unpublishResearch(id);
+            list.mutate((items) => items.map((r) => (r.id === id ? { ...r, status: updated.status } : r)));
+            loadSummary();
+            toast.success("Pesquisa voltou para rascunho!");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Erro ao voltar a pesquisa para rascunho");
         }
     };
 
@@ -144,6 +163,7 @@ export default function Pesquisas() {
         teamLoading: false,
         now,
         onPublish: handlePublish,
+        onUnpublish: handleUnpublish,
         onDelete: handleDelete,
         onUpdated: handleUpdated,
     });

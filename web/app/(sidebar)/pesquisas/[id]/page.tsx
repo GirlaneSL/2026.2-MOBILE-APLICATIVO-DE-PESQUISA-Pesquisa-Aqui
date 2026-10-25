@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { LoadingState } from "@/components/ui/loadingState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getResearchById, publishResearch, type Research } from "@/lib/research";
+import { deleteResearch, getResearchById, publishResearch, unpublishResearch, type Research } from "@/lib/research";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, CalendarRange, Check, BarChart3, ClipboardList, FileText, Flag, ListChecks, Lock, Mic, MicOff, Quote, ShieldAlert, Smartphone, Target, UsersRound } from "lucide-react";
+import { ArrowLeft, CalendarRange, Check, BarChart3, ClipboardList, FileText, Flag, ListChecks, Lock, Mic, MicOff, Quote, ShieldAlert, Smartphone, Target, Trash2, Undo2, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -142,7 +142,7 @@ export default function PesquisaDetalhePage() {
     const handlePublish = async () => {
         const confirmed = await confirmDialog({
             title: 'Publicar pesquisa',
-            description: `Publicar "${research.title}"? Depois de publicada, a pesquisa não pode mais ser excluída.`,
+            description: `Publicar "${research.title}"? Depois que um pesquisador baixar a pesquisa, ela não poderá mais ser excluída.`,
             confirmLabel: 'Publicar',
         });
         if (!confirmed) return;
@@ -153,6 +153,40 @@ export default function PesquisaDetalhePage() {
             toast.success('Pesquisa publicada! Ela já está visível para o aplicativo.');
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Erro ao publicar pesquisa');
+        }
+    };
+    const handleUnpublish = async () => {
+        const confirmed = await confirmDialog({
+            title: 'Voltar para rascunho',
+            description: `Voltar "${research.title}" para rascunho? Ela deixa de ficar visível para o aplicativo e volta a poder ser editada.`,
+            confirmLabel: 'Voltar para rascunho',
+        });
+        if (!confirmed) return;
+
+        try {
+            await unpublishResearch(research.id);
+            await refreshResearch();
+            toast.success('Pesquisa voltou para rascunho!');
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Erro ao voltar a pesquisa para rascunho');
+        }
+    };
+
+    const handleDelete = async () => {
+        const confirmed = await confirmDialog({
+            title: 'Excluir pesquisa',
+            description: `Tem certeza que deseja excluir a pesquisa "${research.title}"? Esta ação não pode ser desfeita.`,
+            confirmLabel: 'Excluir',
+            variant: 'destructive',
+        });
+        if (!confirmed) return;
+
+        try {
+            await deleteResearch(research.id);
+            toast.success('Pesquisa excluída com sucesso!');
+            router.push('/pesquisas');
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Erro ao excluir pesquisa');
         }
     };
     // As coletas e o áudio são dados pessoais: só o administrador da empresa da pesquisa vê (a API confere de novo).
@@ -281,6 +315,12 @@ export default function PesquisaDetalhePage() {
                         )}
                         {research.status === 'DRAFT' && (
                             <Button size="sm" onClick={handlePublish}><Flag />Publicar</Button>
+                        )}
+                        {research.status === 'PUBLISHED' && research.canDelete && (
+                            <Button size="sm" variant="outline" onClick={handleUnpublish}><Undo2 />Voltar para rascunho</Button>
+                        )}
+                        {research.canDelete && (
+                            <Button size="sm" variant="destructive" onClick={handleDelete}><Trash2 />Excluir</Button>
                         )}
                     </div>
                 </div>

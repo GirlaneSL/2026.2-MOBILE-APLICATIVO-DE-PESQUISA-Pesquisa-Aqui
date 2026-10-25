@@ -15,6 +15,7 @@ export type PesquisaItemProps = {
     teamLoading?: boolean;
     now: number;
     onPublish: (id: number) => void;
+    onUnpublish: (id: number) => void;
     onDelete: (id: number) => void;
     onUpdated: (updated: Research) => void;
 };

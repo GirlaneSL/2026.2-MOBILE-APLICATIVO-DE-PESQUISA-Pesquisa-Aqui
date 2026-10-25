@@ -111,7 +111,7 @@ export default function TabelaPesquisas({ sort = 'recent', allowActions = true, 
 
         const confirmed = await confirmDialog({
             title: 'Publicar pesquisa',
-            description: `Publicar "${item?.title ?? id}"? Depois de publicada, a pesquisa não pode mais ser excluída.`,
+            description: `Publicar "${item?.title ?? id}"? Depois que um pesquisador baixar a pesquisa, ela não poderá mais ser excluída.`,
             confirmLabel: 'Publicar',
         });
         if (!confirmed) return;
