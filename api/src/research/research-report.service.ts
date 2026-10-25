@@ -63,26 +63,29 @@ export class ResearchReportService {
         const links = await orm.ResearchResearcher.where({ researchId: research.id }).all();
 
         // Pesquisadores: os vinculados + quem entregou coleta e foi desvinculado depois (a coleta continua na pesquisa).
-        const ids = new Set<number>([...links.map((l) => l.userId), ...allCollections.map((c) => c.researcherId)]);
+        const ids = [...new Set<number>([...links.map((l) => l.userId), ...allCollections.map((c) => c.researcherId)])];
         const linkOf = new Map(links.map((l) => [l.userId, l]));
 
+        // Uma consulta para todos os usuários e outra para todas as sincronizações (antes eram duas por pesquisador).
+        const users = ids.length > 0 ? [...(await orm.User.where((u) => u.id.in(ids)).all())] : [];
+        const syncs = ids.length > 0 ? ([...(await orm.SyncLog.where((l) => l.researcherId.in(ids)).all())] as { researcherId: number; receivedAt: string }[]) : [];
+        const lastSyncOf = new Map<number, string>();
+        for (const sync of syncs) {
+            const current = lastSyncOf.get(sync.researcherId);
+            if (current === undefined || new Date(sync.receivedAt) > new Date(current)) lastSyncOf.set(sync.researcherId, sync.receivedAt);
+        }
+
         const researchers: ReportResearcher[] = [];
-        for (const userId of ids) {
-            const user = await orm.User.where({ id: userId }).first();
+        for (const user of users) {
             // Nunca mostra gente de outra empresa, mesmo que um dado inconsistente aponte para ela.
-            if (!user || user.companyId !== research.companyId) continue;
-            const syncs = (await orm.SyncLog.where({ researcherId: userId }).all()) as { receivedAt: string }[];
-            const lastSyncAt = syncs.reduce<string | null>(
-                (latest, s) => (latest === null || new Date(s.receivedAt) > new Date(latest) ? s.receivedAt : latest),
-                null,
-            );
+            if (user.companyId !== research.companyId) continue;
             researchers.push({
-                userId,
+                userId: user.id,
                 name: user.name,
                 username: user.username,
-                targetCount: linkOf.get(userId)?.targetCount ?? null,
-                linked: linkOf.has(userId),
-                lastSyncAt,
+                targetCount: linkOf.get(user.id)?.targetCount ?? null,
+                linked: linkOf.has(user.id),
+                lastSyncAt: lastSyncOf.get(user.id) ?? null,
             });
         }
 
@@ -103,18 +106,31 @@ export class ResearchReportService {
 
     private async loadQuestions(researchId: number): Promise<ReportQuestion[]> {
         const orm = this.prisma.client.orm.public;
-        const sections = await orm.Section.where({ researchId }).all();
+        const sections = [...(await orm.Section.where({ researchId }).all())];
+        if (sections.length === 0) return [];
+        const sectionIds = sections.map((s) => s.id);
+        const sectionOrder = new Map(sections.map((s) => [s.id, s.order]));
+        // Questões e alternativas de toda a pesquisa em duas consultas (antes: uma por seção e uma por questão).
+        const rows = [...(await orm.Question.where((q) => q.sectionId.in(sectionIds)).all())];
+        const questionIds = rows.map((q) => q.id);
+        const allOptions = questionIds.length > 0 ? [...(await orm.QuestionOption.where((o) => o.questionId.in(questionIds)).all())] : [];
+        const optionsOf = new Map<number, typeof allOptions>();
+        for (const option of allOptions) {
+            const list = optionsOf.get(option.questionId);
+            if (list) list.push(option);
+            else optionsOf.set(option.questionId, [option]);
+        }
+        // Mesma ordem de antes: por seção (na ordem em que vieram) e, dentro dela, as questões.
         const questions: ReportQuestion[] = [];
         for (const section of sections) {
-            for (const q of await orm.Question.where({ sectionId: section.id }).all()) {
-                const options = await orm.QuestionOption.where({ questionId: q.id }).all();
+            for (const q of rows.filter((row) => row.sectionId === section.id)) {
                 questions.push({
                     id: q.id,
                     statement: q.statement,
                     type: q.type,
-                    sectionOrder: section.order,
+                    sectionOrder: sectionOrder.get(section.id) ?? section.order,
                     order: q.order,
-                    options: options.map((o) => ({ id: o.id, text: o.text, order: o.order })),
+                    options: (optionsOf.get(q.id) ?? []).map((o) => ({ id: o.id, text: o.text, order: o.order })),
                 });
             }
         }
@@ -123,13 +139,15 @@ export class ResearchReportService {
 
     private async loadAnswers(questions: ReportQuestion[], collections: ReportCollection[]): Promise<ReportAnswer[]> {
         const orm = this.prisma.client.orm.public;
-        const ids = new Set(collections.map((c) => c.id));
+        if (questions.length === 0 || collections.length === 0) return [];
+        const collectionIds = new Set(collections.map((c) => c.id));
+        const questionIds = questions.map((q) => q.id);
+        // Uma consulta para todas as respostas das questões (antes: uma por questão).
+        const rows = [...(await orm.Answer.where((a) => a.questionId.in(questionIds)).all())];
         const answers: ReportAnswer[] = [];
-        for (const q of questions) {
-            for (const a of await orm.Answer.where({ questionId: q.id }).all()) {
-                if (a.collectionId !== null && ids.has(a.collectionId)) {
-                    answers.push({ id: a.id, questionId: a.questionId, collectionId: a.collectionId, value: a.value });
-                }
+        for (const a of rows) {
+            if (a.collectionId !== null && collectionIds.has(a.collectionId)) {
+                answers.push({ id: a.id, questionId: a.questionId, collectionId: a.collectionId, value: a.value });
             }
         }
         return answers;

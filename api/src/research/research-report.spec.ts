@@ -7,8 +7,12 @@ type Row = Record<string, any>;
 
 function makeDb(tables: Record<string, Row[]>) {
   const model = (name: string) => ({
-    where: (filter: Row) => {
-      const match = () => (tables[name] ?? []).filter((r) => Object.entries(filter).every(([k, v]) => r[k] === v));
+    // Aceita { campo: valor } e também (linha) => linha.campo.in(lista), como o ORM de verdade.
+    where: (filter: Row | ((column: any) => (row: Row) => boolean)) => {
+      const columns = new Proxy({}, { get: (_t, key: string) => ({ in: (list: unknown[]) => (row: Row) => list.includes(row[key]) }) });
+      const test: (row: Row) => boolean =
+        typeof filter === 'function' ? (filter as any)(columns) : (r) => Object.entries(filter).every(([k, v]) => r[k] === v);
+      const match = () => (tables[name] ?? []).filter(test);
       return {
         first: async () => match()[0] ?? null,
         all: async () => match(),
