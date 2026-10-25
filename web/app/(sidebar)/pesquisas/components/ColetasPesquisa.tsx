@@ -22,7 +22,8 @@ import { LoadingState } from "@/components/ui/loadingState";
 import { usePagedResource } from "@/hooks/usePagedResource";
 import { formatDuration, getCollection, getCollectionAudio, getCollectionsPage, getCollectionStats, type CollectionStats, type CollectionSummary } from "@/lib/collection";
 import { Clock, FileText, Headphones, Play, ShieldAlert, Inbox, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useBusySet } from "@/hooks/useBusySet";
 import toast from "react-hot-toast";
 import RespostasColeta from "./RespostasColeta";
 
@@ -70,7 +71,9 @@ interface ColetasPesquisaProps {
 }
 
 export default function ColetasPesquisa({ researchId, recordInterview, openCollectionId }: ColetasPesquisaProps) {
-    const [loadingAudioId, setLoadingAudioId] = useState<number | null>(null);
+    const loadingAudio = useBusySet<number>();
+    // Só a resposta do último "Ouvir" clicado pode abrir o player (respostas antigas são descartadas).
+    const lastListenRef = useRef(0);
     const [viewing, setViewing] = useState<CollectionSummary | null>(null);
     const [filter, setFilter] = useState<Filter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
@@ -115,14 +118,16 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
     }, [player]);
 
     const handleListen = async (collectionId: number) => {
-        setLoadingAudioId(collectionId);
+        const request = ++lastListenRef.current;
+        loadingAudio.start(collectionId);
         try {
             const blob = await getCollectionAudio(collectionId);
+            if (request !== lastListenRef.current) return;
             setPlayer({ collectionId, url: URL.createObjectURL(blob), sizeBytes: blob.size, error: null });
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Erro ao carregar o áudio');
         } finally {
-            setLoadingAudioId(null);
+            loadingAudio.stop(collectionId);
         }
     };
 
@@ -160,7 +165,7 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
             view={view}
             setView={setView}
             now={now}
-            loadingAudioId={loadingAudioId}
+            loadingAudioIds={loadingAudio.ids}
             onListen={handleListen}
             onView={setViewing}
             viewing={viewing}
@@ -184,7 +189,7 @@ interface ColetasViewProps {
     view: TableView;
     setView: (v: TableView) => void;
     now: number;
-    loadingAudioId: number | null;
+    loadingAudioIds: ReadonlySet<number>;
     onListen: (id: number) => void;
     onView: (c: CollectionSummary) => void;
     viewing: CollectionSummary | null;
@@ -195,7 +200,7 @@ interface ColetasViewProps {
 
 function ColetasView({
     list, stats, recordInterview, filter, setFilter, sort, setSort, view, setView, now,
-    loadingAudioId, onListen, onView, viewing, onCloseView, player, onPlayerError,
+    loadingAudioIds, onListen, onView, viewing, onCloseView, player, onPlayerError,
 }: ColetasViewProps) {
     const { search, setSearch } = list;
     const totalAll = stats?.total ?? list.total;
@@ -270,8 +275,8 @@ function ColetasView({
             cell: (c) => (
                 <RowActions>
                     {c.hasAudio && (
-                        <Button variant="outline" size="sm" disabled={loadingAudioId === c.id} onClick={() => onListen(c.id)}>
-                            {loadingAudioId === c.id ? <Spinner className="size-3.5" /> : <Play />}
+                        <Button variant="outline" size="sm" disabled={loadingAudioIds.has(c.id)} onClick={() => onListen(c.id)}>
+                            {loadingAudioIds.has(c.id) ? <Spinner className="size-3.5" /> : <Play />}
                             Ouvir
                         </Button>
                     )}

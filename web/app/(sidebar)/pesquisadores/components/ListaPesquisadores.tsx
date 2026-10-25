@@ -25,6 +25,7 @@ import { Building2, CalendarClock, Pencil, Power, PowerOff, Sparkles, Trash2, Us
 import { ServerPagination } from "@/components/ui/pagination";
 import { usePagedResource } from "@/hooks/usePagedResource";
 import { useEffect, useState } from "react";
+import { useBusySet } from "@/hooks/useBusySet";
 import toast from "react-hot-toast";
 type ViewMode = 'cards' | 'table';
 type SortMode = 'recent' | 'name';
@@ -119,9 +120,9 @@ export default function ListaPesquisadores({
     referenceTime = 0,
     maxHeightClassName = "max-h-96",
 }: ListaPesquisadoresProps) {
-    const [deleting, setDeleting] = useState<string | null>(null);
+    const deleting = useBusySet<string>();
     const [editing, setEditing] = useState<UserItem | null>(null);
-    const [togglingSituation, setTogglingSituation] = useState<string | null>(null);
+    const togglingSituation = useBusySet<string>();
     const [status, setStatus] = useState<StatusFilter>('ALL');
     const [view, setView] = useState<ViewMode>('table');
     const [sort, setSort] = useState<SortMode>('recent');
@@ -160,7 +161,7 @@ export default function ListaPesquisadores({
         });
         if (!confirmed) return;
 
-        setDeleting(user.username);
+        deleting.start(user.username);
         try {
             await deleteUser(user.username);
             toast.success("Pesquisador excluído com sucesso!");
@@ -170,7 +171,7 @@ export default function ListaPesquisadores({
             console.error(error);
             toast.error(error instanceof Error ? error.message : "Erro ao excluir pesquisador");
         } finally {
-            setDeleting(null);
+            deleting.stop(user.username);
         }
     };
 
@@ -187,7 +188,7 @@ export default function ListaPesquisadores({
             if (!confirmed) return;
         }
 
-        setTogglingSituation(user.username);
+        togglingSituation.start(user.username);
         try {
             const updated = await setUserSituation(user.username, deactivating ? 'INACTIVE' : 'ACTIVE');
             toast.success(deactivating ? "Pesquisador desativado" : "Pesquisador reativado");
@@ -197,7 +198,7 @@ export default function ListaPesquisadores({
             console.error(error);
             toast.error(error instanceof Error ? error.message : "Erro ao alterar a situação do pesquisador");
         } finally {
-            setTogglingSituation(null);
+            togglingSituation.stop(user.username);
         }
     };
 
@@ -258,20 +259,20 @@ export default function ListaPesquisadores({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                disabled={togglingSituation === r.username}
+                                disabled={togglingSituation.has(r.username)}
                                 onClick={() => handleToggleSituation(r)}
                             >
-                                {togglingSituation === r.username ? 'Aguarde...' : isActive(r) ? 'Desativar' : 'Reativar'}
+                                {togglingSituation.has(r.username) ? 'Aguarde...' : isActive(r) ? 'Desativar' : 'Reativar'}
                             </Button>
                         )}
                         {canDelete && (
                             <Button
                                 variant="destructive"
                                 size="sm"
-                                disabled={deleting === r.username}
+                                disabled={deleting.has(r.username)}
                                 onClick={() => handleDelete(r)}
                             >
-                                {deleting === r.username ? 'Excluindo...' : 'Excluir'}
+                                {deleting.has(r.username) ? 'Excluindo...' : 'Excluir'}
                             </Button>
                         )}
                     </RowActions>
@@ -392,7 +393,7 @@ export default function ListaPesquisadores({
                                                         type="button"
                                                         aria-label={`${isActive(r) ? 'Desativar' : 'Reativar'} ${r.name}`}
                                                         title={isActive(r) ? 'Desativar pesquisador' : 'Reativar pesquisador'}
-                                                        disabled={togglingSituation === r.username}
+                                                        disabled={togglingSituation.has(r.username)}
                                                         onClick={() => handleToggleSituation(r)}
                                                         className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-all hover:bg-[#e9ede9] hover:text-foreground disabled:opacity-50 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
                                                     >
@@ -415,7 +416,7 @@ export default function ListaPesquisadores({
                                                         type="button"
                                                         aria-label={`Excluir ${r.name}`}
                                                         title="Excluir pesquisador"
-                                                        disabled={deleting === r.username}
+                                                        disabled={deleting.has(r.username)}
                                                         onClick={() => handleDelete(r)}
                                                         className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-all hover:bg-[#f3e0d9] hover:text-[#8a432f] disabled:opacity-50 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
                                                     >

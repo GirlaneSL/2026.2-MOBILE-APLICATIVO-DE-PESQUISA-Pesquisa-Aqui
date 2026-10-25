@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useBusySet } from '@/hooks/useBusySet';
 import { usePagedResource } from '@/hooks/usePagedResource';
 import { deleteUser, getAdminsPage, setUserSituation, type UserItem } from '@/lib/user';
 import { Button } from '@/components/ui/button';
@@ -49,7 +50,7 @@ export default function ListaAdministradores({
 }: ListaAdministradoresProps) {
     const [actionError, setActionError] = useState<string | null>(null);
     const [deletingAdmin, setDeletingAdmin] = useState<string | null>(null);
-    const [togglingAdmin, setTogglingAdmin] = useState<string | null>(null);
+    const togglingAdmin = useBusySet<string>();
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
 
     const [sort, setSort] = useState<TableSort>('recent');
@@ -85,7 +86,7 @@ export default function ListaAdministradores({
         }
 
         setActionError(null);
-        setTogglingAdmin(username);
+        togglingAdmin.start(username);
 
         try {
             const updated = await setUserSituation(username, deactivating ? 'INACTIVE' : 'ACTIVE');
@@ -96,7 +97,7 @@ export default function ListaAdministradores({
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Erro ao alterar a situação do administrador');
         } finally {
-            setTogglingAdmin(null);
+            togglingAdmin.stop(username);
         }
     };
 
@@ -167,10 +168,10 @@ export default function ListaAdministradores({
                         <Button
                             variant="outline"
                             size="sm"
-                            disabled={togglingAdmin === a.username}
+                            disabled={togglingAdmin.has(a.username)}
                             onClick={() => handleToggleAdminSituation(a.username)}
                         >
-                            {togglingAdmin === a.username ? 'Aguarde...' : a.situation === 'INACTIVE' ? 'Reativar' : 'Desativar'}
+                            {togglingAdmin.has(a.username) ? 'Aguarde...' : a.situation === 'INACTIVE' ? 'Reativar' : 'Desativar'}
                         </Button>
                         <Button
                             variant="destructive"

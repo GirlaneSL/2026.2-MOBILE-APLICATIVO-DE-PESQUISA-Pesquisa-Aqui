@@ -56,7 +56,15 @@ const parseTarget = (raw: string): number | null => {
 export default function PesquisadoresVinculados({ researchId }: { researchId: number; companyId: number }) {
     // Meta digitada por pesquisador (ainda não salva)
     const [drafts, setDrafts] = useState<Record<number, string>>({});
-    const [busyId, setBusyId] = useState<number | null>(null);
+    // Vários pesquisadores podem estar em andamento ao mesmo tempo (um Set de ids, não um único id).
+    const [busyIds, setBusyIds] = useState<ReadonlySet<number>>(() => new Set());
+    const startBusy = (id: number) => setBusyIds((prev) => new Set(prev).add(id));
+    const stopBusy = (id: number) =>
+        setBusyIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+        });
     const [filter, setFilter] = useState<Filter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
     const [view, setView] = useState<TableView>('table');
@@ -71,8 +79,14 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
     const summary = list.data?.summary;
     const loading = list.loading;
 
-    const load = async () => {
-        setDrafts({});
+    // Limpa só a meta digitada do pesquisador concluído (não apaga a dos outros em andamento).
+    const load = async (userId: number) => {
+        setDrafts((prev) => {
+            if (!(userId in prev)) return prev;
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+        });
         list.reload();
     };
 
@@ -95,7 +109,7 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
             target = parsed;
         }
 
-        setBusyId(user.id);
+        startBusy(user.id);
         try {
             if (isLinked) {
                 await unlinkResearcher(researchId, user.id);
@@ -104,11 +118,11 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
                 await linkResearcher(researchId, user.id, target);
                 toast.success('Pesquisador vinculado');
             }
-            await load();
+            await load(user.id);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Erro ao atualizar vínculo');
         } finally {
-            setBusyId(null);
+            stopBusy(user.id);
         }
     };
 
@@ -118,15 +132,15 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
             toast.error('A meta deve ser um número inteiro a partir de 1.');
             return;
         }
-        setBusyId(user.id);
+        startBusy(user.id);
         try {
             await updateResearcherTarget(researchId, user.id, parsed);
             toast.success('Meta atualizada');
-            await load();
+            await load(user.id);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Erro ao alterar a meta');
         } finally {
-            setBusyId(null);
+            stopBusy(user.id);
         }
     };
 
@@ -183,7 +197,7 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
             minWidth: '11rem',
             cell: (user) => {
                 const isLinked = !!user.link;
-                const busy = busyId === user.id;
+                const busy = busyIds.has(user.id);
                 const saved = user.link?.targetCount;
                 const draft = draftOf(user);
                 const changed = isLinked && draft !== (saved == null ? '' : String(saved));
@@ -246,7 +260,7 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
             align: 'right',
             cell: (user) => {
                 const isLinked = !!user.link;
-                const busy = busyId === user.id;
+                const busy = busyIds.has(user.id);
                 return (
                     <RowActions>
                         <Button variant={isLinked ? 'outline' : 'default'} size="sm" disabled={busy} onClick={() => toggle(user)}>
