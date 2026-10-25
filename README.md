@@ -6,7 +6,7 @@ Plataforma para criar, aplicar e acompanhar pesquisas de campo. O projeto reúne
 - **Web** (`web/`): painel administrativo em Next.js, usado por administradores para montar pesquisas e acompanhar resultados.
 - **Mobile** (`mobile/`): aplicativo Expo / React Native, usado pelos pesquisadores em campo para coletar respostas, inclusive sem internet.
 
-> Esta é a documentação da branch **`dev-kaiky`**. Ela contém a evolução mais recente do painel web (dashboard com dados reais), da API e do app mobile.
+> Esta é a documentação da branch **`dev-kaiky`**. Ela contém a evolução mais recente do painel web (dashboard com dados reais, paginação e busca no servidor), da API e do app mobile.
 
 ---
 
@@ -25,6 +25,7 @@ Plataforma para criar, aplicar e acompanhar pesquisas de campo. O projeto reúne
 - [Perfis de usuário](#perfis-de-usuário)
 - [Modelo de dados](#modelo-de-dados)
 - [Endpoints da API](#endpoints-da-api)
+- [Paginação e limites de dados](#paginação-e-limites-de-dados)
 - [Regras de negócio importantes](#regras-de-negócio-importantes)
 - [Testes e qualidade de código](#testes-e-qualidade-de-código)
 - [Fluxo de trabalho com branches](#fluxo-de-trabalho-com-branches)
@@ -46,12 +47,16 @@ O fluxo de uso do sistema é:
 
 ### Painel web
 - Login com sessão por cookie (`access_token`) e rotas protegidas.
-- Dashboards diferentes para superadministrador e administrador (cards, gráficos, tabela de pesquisas e últimas atualizações, ligados a dados reais).
+- Dashboards diferentes para superadministrador e administrador (cards, gráficos, mapa de calor de coletas, equipe em campo e últimas atualizações), calculados no servidor.
 - Cadastro e gestão de empresas e administradores.
-- Cadastro e listagem de pesquisadores.
-- Criação, edição e publicação de pesquisas.
+- Cadastro, edição, ativação/desativação e listagem de pesquisadores (lista ou cartões).
+- Criação, edição, publicação e encerramento de pesquisas, com lista em cartões ou linhas e calendário de campo.
 - Montagem do questionário: seções, questões, opções, reordenação e regras de exibição condicional.
-- Vinculação de pesquisadores a uma pesquisa e consulta das coletas recebidas.
+- Vinculação de pesquisadores a uma pesquisa, com meta de coletas por pesquisador.
+- Consulta das coletas recebidas (com resposta a resposta, fotos e áudio), painel de resultados com filtros, relatório por questão e exportação em CSV.
+- **Cópias em campo**: quem está com a pesquisa baixada, histórico de devoluções e revogações, revogação forçada e desbloqueio de aparelho.
+- **Busca global** (atalho no topo) por pesquisas, pesquisadores, empresas, administradores e coletas.
+- **Paginação em todas as listas e tabelas**, com busca, filtro e ordem feitos no servidor, e **seletores com pesquisa e rolagem infinita** (veja [Paginação e limites de dados](#paginação-e-limites-de-dados)).
 
 ### Aplicativo mobile
 - Login com token guardado em armazenamento seguro (`expo-secure-store`).
@@ -65,7 +70,11 @@ O fluxo de uso do sistema é:
 ### API
 - Autenticação JWT, via cookie (web) e via cabeçalho `Authorization: Bearer` (mobile).
 - CRUD de empresas, usuários, pesquisas, seções, questões, opções e regras.
-- Recebimento de coletas com upload de áudio e validação de consentimento.
+- Recebimento de coletas (em lote, com reenvio seguro) com validação de consentimento, e envio de fotos e áudios à parte, inclusive em pedaços para redes ruins.
+- Armazenamento de mídias no Cloudinary (privado) ou, só em desenvolvimento, em disco.
+- Controle de cópias da pesquisa por aparelho (download, devolução, revogação e desbloqueio).
+- Painel de resultados, relatório por questão e exportação em CSV.
+- **Listagens paginadas com limite de 100 itens por página** e endpoints de totais prontos para os dashboards.
 - Validação automática de entradas (`class-validator`, com `whitelist` e `transform`).
 
 ## Tecnologias
@@ -83,30 +92,33 @@ O fluxo de uso do sistema é:
 ├── api/                      # Back-end NestJS
 │   ├── src/
 │   │   ├── auth/             # Login, logout, /auth/me, guard JWT
-│   │   ├── user/             # Usuários (admins e pesquisadores)
-│   │   ├── company/          # Empresas
-│   │   ├── research/         # Pesquisas, publicação, pesquisadores, download
+│   │   ├── user/             # Usuários (admins e pesquisadores) e totais de pesquisadores
+│   │   ├── company/          # Empresas e totais de empresas
+│   │   ├── research/         # Pesquisas, publicação, encerramento, painel, relatório, CSV, equipe e cópias
 │   │   ├── section/          # Seções do questionário
 │   │   ├── question/         # Questões e opções
 │   │   ├── question-rule/    # Regras de exibição condicional
-│   │   ├── collection/       # Coletas (respostas, consentimento, áudio)
-│   │   └── prisma/           # Contrato do banco (contract.prisma), cliente e seed
+│   │   ├── collection/       # Coletas (respostas, consentimento, mídias, sincronização)
+│   │   ├── dashboard/        # Painel do administrador já calculado (GET /dashboard/admin)
+│   │   ├── common/           # Paginação compartilhada (pagination.ts)
+│   │   └── prisma/           # Contrato do banco (contract.prisma), cliente e seeds
 │   ├── migrations/           # Snapshots de contrato do Prisma Next
 │   ├── test/                 # Testes e2e
 │   └── .env.example
 ├── web/                      # Painel administrativo Next.js
 │   ├── app/
 │   │   ├── (autenticacao)/login
-│   │   └── (sidebar)/        # Home, empresas, pesquisadores, pesquisas
-│   ├── components/ui/        # Componentes de interface (shadcn/ui)
-│   ├── lib/                  # Clientes da API (auth, research, company...)
+│   │   └── (sidebar)/        # Home (dashboards), empresa, empresas, pesquisadores, pesquisas
+│   ├── components/ui/        # Componentes de interface (shadcn/ui), DataTable, Pagination e RemoteComboBox
+│   ├── hooks/                # useCurrentUser, useFieldSnapshot, usePagedResource
+│   ├── lib/                  # Clientes da API (auth, research, company, user, collection...) e pagination.ts
 │   └── proxy.ts              # Proteção de rotas por JWT
 └── mobile/                   # App Expo / React Native
     ├── app/                  # Rotas (login, home, pesquisas, sincronização, usuário, coleta)
     ├── components/           # Componentes (QuestionInput, ConsentModal, OfflineBanner...)
     ├── context/              # AuthContext
     ├── hooks/                # useInterviewRecording, useNetworkStatus...
-    └── lib/                  # API, cache de pesquisas, fila de coletas, regras de exibição
+    └── lib/                  # API, cache de pesquisas, fila de coletas, envio de arquivos, regras de exibição
 ```
 
 ## Pré-requisitos
@@ -162,6 +174,16 @@ A API sobe em `http://localhost:3001` (ou na porta definida em `PORT`).
 | Perfil | `SUPERADMINISTRATOR` |
 
 Troque essa senha antes de qualquer uso fora do ambiente local.
+
+**Dados de demonstração (opcional):** para testar a paginação e os dashboards com volume, rode o seed de demonstração (é idempotente: pode rodar mais de uma vez sem duplicar).
+
+```bash
+npx tsx src/prisma/seed-demo.ts
+# mais coletas na primeira pesquisa:
+SEED_COLLECTIONS=250 npx tsx src/prisma/seed-demo.ts
+```
+
+Ele cria a empresa *Empresa Demo (seed)*, o administrador `demo.admin`, pesquisadores `demo.ana`, `demo.bruno` etc. (senha `demo123`) e cinco pesquisas em situações diferentes, com coletas.
 
 ### 2. Web
 
@@ -225,8 +247,11 @@ npm run ios          # simulador iOS
 | `DATABASE_URL` | Sim | String de conexão PostgreSQL, ex.: `postgresql://user:password@localhost:5432/mydb` |
 | `JWT_SECRET` | Sim | Segredo usado para assinar e validar os tokens JWT |
 | `PORT` | Não | Porta da API (padrão `3001`) |
-| `AUDIO_STORAGE_DIR` | Não | Pasta onde ficam os áudios das entrevistas (padrão `./storage/audio`) |
+| `CLOUDINARY_URL` | Recomendada | Credenciais do Cloudinary (`cloudinary://API_KEY:API_SECRET@CLOUD_NAME`), onde ficam todas as fotos e áudios como arquivos privados. Alternativa: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` e `CLOUDINARY_API_SECRET` |
+| `CLOUDINARY_FOLDER` | Não | Pasta raiz no Cloudinary; cada pesquisa ganha uma subpasta própria |
+| `AUDIO_STORAGE_DIR` | Não | Só para desenvolvimento **sem** Cloudinary: pasta em disco dos áudios (padrão `./storage/audio`) |
 | `AUDIO_MAX_BYTES` | Não | Tamanho máximo do áudio de uma coleta, em bytes (padrão `157286400`, ou 150 MB) |
+| `PHOTO_MAX_BYTES` | Não | Tamanho máximo de cada foto, em bytes (padrão `31457280`, ou 30 MB) |
 
 ### Web (`web/.env.local`)
 
@@ -262,7 +287,8 @@ Principais entidades (definidas em `api/src/prisma/contract.prisma`):
 - **Collection**: uma entrevista feita por um pesquisador (respostas, consentimento, áudio opcional).
 - **Answer**: resposta a uma questão dentro de uma coleta.
 - **ResearchResearcher**: vínculo entre pesquisa e pesquisadores.
-- **ResearchDownload**: controle de downloads da pesquisa por aparelho.
+- **ResearchDownload**: cópia da pesquisa baixada por um aparelho (data, devolução, revogação e desbloqueio).
+- **SyncLog**: registro de cada sincronização em lote (aparelho, horário e resultado por coleta).
 
 Tipos de questão (`QuestionType`): `FREE_TEXT`, `NUMERIC`, `DATE`, `TIME`, `YES_NO`, `SINGLE_CHOICE`, `MULTIPLE_CHOICE`, `SCALE_1_5`, `PHOTO`, `MULTIPLE_PHOTOS`, `LOCATION`, `AUDIO`.
 
@@ -273,13 +299,70 @@ Todas as rotas, exceto `POST /auth/login` e `POST /auth/logout`, exigem autentic
 | Recurso | Rotas |
 | --- | --- |
 | Auth | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` |
-| Usuários | `POST /user`, `GET /user`, `GET /user/admins`, `DELETE /user/:username` |
-| Empresas | `GET /company`, `POST /company`, `PATCH /company/:id` |
-| Pesquisas | `POST /research`, `GET /research`, `GET /research/:id`, `PATCH /research/:id`, `DELETE /research/:id`, `POST /research/:id/publish`, `GET /research/:id/researchers`, `POST /research/:id/researchers/:userId`, `DELETE /research/:id/researchers/:userId`, `GET /research/:id/download` |
+| Usuários | `POST /user`, `GET /user` ⁽ᵖ⁾, `GET /user/admins` ⁽ᵖ⁾, `GET /user/researchers/stats`, `PATCH /user/:username`, `PATCH /user/:username/situation`, `DELETE /user/:username` |
+| Empresas | `GET /company` ⁽ᵖ⁾, `GET /company/stats`, `POST /company`, `PUT /company/:id`, `PATCH /company/:id`, `DELETE /company/:id` |
+| Pesquisas | `POST /research`, `GET /research` ⁽ᵖ⁾, `GET /research/summary`, `GET /research/:id`, `PATCH /research/:id`, `DELETE /research/:id`, `POST /research/:id/publish`, `POST /research/:id/close` |
+| Resultados | `GET /research/:id/panel`, `GET /research/:id/report`, `GET /research/:id/export.csv` |
+| Equipe da pesquisa | `GET /research/:id/researchers` ⁽ᵖ⁾, `GET /research/:id/team` ⁽ᵖ⁾, `POST /research/:id/researchers/:userId`, `PATCH /research/:id/researchers/:userId`, `DELETE /research/:id/researchers/:userId` |
+| Cópias em campo | `GET /research/:id/copies` ⁽ᵖ⁾, `POST /research/:id/copies/:copyId/revoke`, `POST /research/:id/copies/:copyId/unblock`, `POST /research/:id/return`, `GET /research/:id/download` |
 | Seções | `POST /section`, `POST /section/reorder`, `GET /section`, `GET /section/:id`, `PATCH /section/:id`, `DELETE /section/:id` |
 | Questões | `POST /question`, `POST /question/reorder`, `GET /question`, `GET /question/:id`, `PATCH /question/:id`, `DELETE /question/:id`, `POST /question/:id/option`, `GET /question/:id/options`, `PATCH /question/option/:id`, `DELETE /question/option/:id` |
 | Regras | `POST /question-rule`, `GET /question-rule`, `DELETE /question-rule/:id` |
-| Coletas | `POST /collection`, `POST /collection/sync`, `GET /collection`, `GET /collection/:id/audio` |
+| Coletas | `POST /collection`, `POST /collection/sync`, `POST /collection/:clientId/files`, `GET /collection/:clientId/files/progress`, `POST /collection/:clientId/files/chunk`, `GET /collection?researchId=` ⁽ᵖ⁾, `GET /collection/stats?researchId=`, `GET /collection/:id`, `GET /collection/:id/media/:name`, `GET /collection/:id/audio` |
+| Dashboard | `GET /dashboard/admin` (administrador) |
+
+⁽ᵖ⁾ = aceita paginação (veja a próxima seção).
+
+## Paginação e limites de dados
+
+O painel web **nunca baixa uma lista inteira**: cada tabela, cartão ou seletor pede à API uma página por vez, e a API recusa páginas maiores que **100 itens**.
+
+### Contrato da API
+
+As rotas marcadas com ⁽ᵖ⁾ aceitam estes parâmetros de consulta:
+
+| Parâmetro | Descrição |
+| --- | --- |
+| `page` | Número da página, a partir de 1 |
+| `pageSize` | Itens por página (1 a 100; padrão 20) |
+| `q` | Busca por texto, sem diferenciar maiúsculas nem acentos |
+| `sort` | `recent` (padrão), `name` ou `deadline` (só pesquisas) |
+| filtros | Dependem da rota: `status` (pesquisas), `situation` e `profile` (usuários e empresas), `audio` (coletas), `filter=ALL\|LINKED\|AVAILABLE` (equipe da pesquisa), `status=ALL\|RETURNED\|REVOKED` (histórico de cópias) |
+
+A resposta tem este formato:
+
+```json
+{ "items": [], "total": 87, "page": 1, "pageSize": 20, "totalPages": 5 }
+```
+
+**Compatibilidade com o app mobile:** sem `page` e sem `pageSize` as rotas continuam devolvendo a lista inteira, no formato antigo (um array). O painel web sempre envia os dois parâmetros.
+
+Para os números dos dashboards existem rotas que devolvem só totais, sem listar nada: `GET /research/summary`, `GET /company/stats`, `GET /user/researchers/stats`, `GET /collection/stats` e `GET /dashboard/admin` (que recebe `tzOffset`, o fuso do navegador, para o mapa de calor e as coletas de hoje).
+
+### Como funciona no painel web
+
+| Peça | Onde | Para que serve |
+| --- | --- | --- |
+| `usePagedResource` | `web/hooks/` | Busca uma página por vez, com pausa na digitação, descarte de respostas atrasadas e página anterior na tela enquanto a nova carrega |
+| `DataTable` | `web/components/ui/data-table.tsx` | Tabela/cartões. Pagina sozinha no navegador (10 por página) ou, com `server={list.server}`, usa a paginação da API |
+| `Pagination`, `usePagination`, `PaginatedList` | `web/components/ui/pagination.tsx` | Rodapé de paginação (intervalo, itens por página, números) e paginação de listas curtas que já estão na tela |
+| `RemoteComboBox` | `web/components/ui/remoteCombobox.tsx` | Seletor para opções vindas da API: pesquisa no servidor e rolagem infinita (carrega a próxima página perto do fim da lista) |
+| `lib/pagination.ts` | `web/lib/` | Tipo `Page<T>` e montagem da query (`pageQuery`) |
+
+### Como adicionar uma nova lista paginada
+
+1. **API:** no controller, receba `@Query() query: PageQueryDto` (ou um DTO que o estenda, em `api/src/common/pagination.ts`) e, se `isPaged(query)`, chame um método `findPage` que use `runPaged(...)`. Se não for paginado, devolva a lista antiga.
+2. **Web:** crie o fetcher em `web/lib/` usando `pageQuery` e `asPage`, e use `usePagedResource` na tela.
+3. **Tabela:** passe `rows={list.items}` e `server={list.server}` ao `DataTable`.
+4. **Seletor:** use `RemoteComboBox` com um `fetchOptions` que repasse `page`, `pageSize` e `q`.
+
+### Limitações conhecidas
+
+- Com texto na busca (`q`), o servidor ainda lê as linhas do escopo da empresa e filtra em memória (o ORM atual não expõe `or`); só a resposta é limitada. Pode pesar com dezenas de milhares de registros.
+- A ordenação A-Z no banco depende do agrupamento (collation) do PostgreSQL.
+- A busca global traz todos os resultados em páginas de 100 (com trava de 50 páginas por fonte); com 1 ou 2 letras pode disparar muitas requisições.
+- O calendário de campo mostra as pesquisas da página atual.
+- O editor de questionário e as respostas de uma única coleta não são paginados.
 
 ## Regras de negócio importantes
 
@@ -287,7 +370,9 @@ Todas as rotas, exceto `POST /auth/login` e `POST /auth/logout`, exigem autentic
 - **Consentimento**: em pesquisas que gravam a entrevista, a coleta só é aceita se o consentimento tiver sido registrado de forma explícita, com data e hora, **antes** do início da coleta. Caso contrário a API responde `400` com o código `CONSENT_REQUIRED`.
 - **Idempotência das coletas**: cada coleta carrega um `clientId` único gerado no aparelho, então reenvios após falha de rede não geram duplicidade.
 - **Sincronização em lote** (`POST /collection/sync`): o aparelho envia `{ deviceId, collections: [...] }` (até 100 coletas, cada uma com `clientId` em UUID, `researchId`, `startedAt`, `finishedAt`, `consent` e `answers`). A resposta traz, **por coleta**, `ACCEPTED`, `ALREADY_EXISTS` (mesmo UUID já recebido: pode sair da fila) ou `REJECTED` com `code`, `reason` e `retryable` (`false` = recusa definitiva; `true` = falha temporária, continuar tentando). Uma recusa nunca derruba o lote: pesquisa encerrada (`RESEARCH_CLOSED`), questão que não existe na pesquisa (`QUESTION_NOT_FOUND`, com os `questionIds`), consentimento ausente (`CONSENT_REQUIRED`), datas inconsistentes (`INVALID_DATES`) e dados malformados (`INVALID_PAYLOAD`) afetam só a coleta em questão. Cada envio fica registrado em `SyncLog` (aparelho, horário e resultado por coleta). O áudio da entrevista não viaja no lote.
-- **Áudio**: limitado por `AUDIO_MAX_BYTES` (150 MB por padrão).
+- **Mídias**: o áudio é limitado por `AUDIO_MAX_BYTES` (150 MB por padrão) e cada foto por `PHOTO_MAX_BYTES` (30 MB). Fotos e áudios sobem depois das respostas, ligados à coleta pelo UUID, e arquivos grandes podem subir em pedaços retomáveis. Reenviar o mesmo arquivo responde `ALREADY_EXISTS`.
+- **Cópias da pesquisa**: cada pesquisador baixa a pesquisa por aparelho (`X-Device-ID`). Enquanto houver cópias ativas, o **questionário** (seções, questões, opções e regras) fica travado para edição e a API responde `403` com o código `RESEARCH_LOCKED`; uma pesquisa encerrada também fica travada. A cópia sai quando o aparelho a devolve, ou quando o administrador a **revoga** (aparelho perdido, pesquisador que saiu); um aparelho revogado pode ser **desbloqueado** depois.
+- **Encerramento**: encerrar uma pesquisa bloqueia coletas novas e congela o resultado (`POST /research/:id/close`, só administrador).
 - **Sessão expirada**: ao receber `401`, o web faz logout e o mobile limpa o token e volta para a tela de login.
 
 ## Testes e qualidade de código
