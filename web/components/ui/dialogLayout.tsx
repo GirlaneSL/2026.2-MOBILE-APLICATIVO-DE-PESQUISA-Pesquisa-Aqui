@@ -6,6 +6,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
+import { useState } from "react"
 import {
     Button
 } from "@/components/ui/button"
@@ -13,7 +14,8 @@ import {
 type DialogLayoutProps = {
     triggerButtonVariant?: "link" | "default" | "outline" | "secondary" | "ghost" | "destructive"
     dialogTrigger?: React.ReactNode;
-    dialogContent?: React.ReactNode;
+    /** Conteúdo do diálogo. Pode ser uma função que recebe `close` para fechar o diálogo (ex.: depois de salvar). */
+    dialogContent?: React.ReactNode | ((close: () => void) => React.ReactNode);
     dialogTitle?: React.ReactNode;
     dialogDescription?: React.ReactNode;
     dialogContentClassName?: React.ReactNode;
@@ -21,8 +23,10 @@ type DialogLayoutProps = {
 };
 
 export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dialogTitle, dialogDescription, dialogContent, dialogContentClassName, triggerButtonSize }: DialogLayoutProps) {
+    const [open, setOpen] = useState(false)
+
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger render={<Button variant={triggerButtonVariant} size={triggerButtonSize} />}>
                 {dialogTrigger}
             </DialogTrigger>
@@ -37,7 +41,7 @@ export default function DialogLayout({ triggerButtonVariant, dialogTrigger, dial
                 </DialogHeader>
 
                 <div className={`${dialogContentClassName} max-h-200 flex-1 overflow-y-auto pr-2 custom-scrollbar`}>
-                    {dialogContent}
+                    {typeof dialogContent === "function" ? dialogContent(() => setOpen(false)) : dialogContent}
                 </div>
             </DialogContent>
         </Dialog>

@@ -129,7 +129,7 @@ const adminEntry = (u: UserItem): SearchEntry => ({
     title: u.name,
     subtitle: `@${u.username}`,
     extra: u.username,
-    href: "/empresas",
+    href: "/administradores",
 });
 
 const companyEntry = (c: CompanyItem): SearchEntry => ({

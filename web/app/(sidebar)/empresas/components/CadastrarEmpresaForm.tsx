@@ -17,7 +17,12 @@ export const situationLabels: Record<Situation, string> = {
     INACTIVE: "Inativo",
 };
 
-export default function CadastrarEmpresaForm() {
+interface CadastrarEmpresaFormProps {
+    /** Chamado depois que a empresa é cadastrada (a página recarrega os dados e fecha o diálogo). */
+    onSuccess?: () => void;
+}
+
+export default function CadastrarEmpresaForm({ onSuccess }: CadastrarEmpresaFormProps) {
     const [legalName, setLegalName] = useState('');
     const [contact, setContact] = useState('');
     const [situation, setSituation] = useState<Situation | ''>('');
@@ -42,6 +47,7 @@ export default function CadastrarEmpresaForm() {
             setLegalName('');
             setContact('');
             setSituation('');
+            onSuccess?.();
         } catch (error) {
             console.error(error);
 

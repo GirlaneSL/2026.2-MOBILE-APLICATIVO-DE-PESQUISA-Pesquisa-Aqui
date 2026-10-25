@@ -67,12 +67,15 @@ export default function PesquisadoresPage() {
                             dialogTrigger={<><UserPlus />Novo pesquisador</>}
                             dialogTitle="Novo pesquisador"
                             dialogDescription="Informe os dados de acesso do pesquisador."
-                            dialogContent={
+                            dialogContent={(close) => (
                                 <CadastrarPesquisadorForm
                                     isSuperAdmin={isSuperAdmin}
-                                    onSuccess={loadResearchers}
+                                    onSuccess={() => {
+                                        loadResearchers();
+                                        close();
+                                    }}
                                 />
-                            }
+                            )}
                         />
                     ) : (
                         <Spinner className="size-6" />

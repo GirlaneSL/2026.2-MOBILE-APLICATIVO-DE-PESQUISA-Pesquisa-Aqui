@@ -9,7 +9,12 @@ import { createUser } from "@/lib/user";
 import { SubmitEventHandler, useState } from "react";
 import toast from "react-hot-toast";
 
-export default function CadastrarAdministradorForm() {
+interface CadastrarAdministradorFormProps {
+    /** Chamado depois que o administrador é cadastrado (a página recarrega os dados e fecha o diálogo). */
+    onSuccess?: () => void;
+}
+
+export default function CadastrarAdministradorForm({ onSuccess }: CadastrarAdministradorFormProps) {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -40,6 +45,7 @@ export default function CadastrarAdministradorForm() {
             setPassword('');
             setConfirmPassword('');
             setCompanyId('');
+            onSuccess?.();
         } catch (error) {
             console.error(error);
             toast.error(error instanceof Error ? error.message : "Erro ao cadastrar administrador")

@@ -6,7 +6,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useFieldSnapshot } from "@/hooks/useFieldSnapshot"
 import { logout } from "@/lib/auth"
 import { avatarTone, teamRowsOf } from "@/lib/fieldData"
-import { Building2, ChevronLeft, LayoutDashboard, LogIn, LogOut, NotebookPen, UsersRound, type LucideIcon } from "lucide-react"
+import { Building2, ChevronLeft, LayoutDashboard, LogIn, LogOut, NotebookPen, ShieldCheck, UsersRound, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useMemo, useState } from "react"
@@ -23,6 +23,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
     { href: "/", label: "Início", icon: LayoutDashboard, profiles: ["SUPERADMINISTRATOR", "ADMINISTRATOR", "RESEARCHER"] },
     { href: "/empresas", label: "Empresas", icon: Building2, profiles: ["SUPERADMINISTRATOR"] },
+    { href: "/administradores", label: "Administradores", icon: ShieldCheck, profiles: ["SUPERADMINISTRATOR"] },
     { href: "/empresa", label: "Empresa", icon: Building2, profiles: ["ADMINISTRATOR"] },
     { href: "/pesquisadores", label: "Pesquisadores", icon: UsersRound, profiles: ["ADMINISTRATOR"], count: "researchers" },
     { href: "/pesquisas", label: "Pesquisas", icon: NotebookPen, profiles: ["ADMINISTRATOR", "RESEARCHER"], count: "researches" },
