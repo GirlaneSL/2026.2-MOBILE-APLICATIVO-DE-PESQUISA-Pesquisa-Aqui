@@ -1,5 +1,6 @@
 'use client'
 
+import { CountUp } from "@/components/ui/count-up";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/loadingState";
 import { PaginatedList, Pagination, usePagination } from "@/components/ui/pagination";
@@ -230,15 +231,15 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
 
             {/* Números principais */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <Stat icon={<Users />} label="Coletas recebidas" value={String(panel.totalCollections)} />
+                <Stat icon={<Users />} label="Coletas recebidas" value={<CountUp value={panel.totalCollections} />} />
                 <Stat
                     icon={<Gauge />}
                     label="Meta atingida"
-                    value={panel.goalPercent === null ? 'Sem meta' : `${panel.goalPercent}%`}
+                    value={panel.goalPercent === null ? 'Sem meta' : <><CountUp value={panel.goalPercent} />%</>}
                     hint={panel.targetTotal ? `meta total de ${panel.targetTotal} coletas` : 'defina a meta na aba Pesquisadores'}
                     progress={panel.goalPercent}
                 />
-                <Stat icon={<Clock />} label="Tempo médio de coleta" value={formatSeconds(panel.averageSeconds)} hint="do início ao fim da entrevista" />
+                <Stat icon={<Clock />} label="Tempo médio de coleta" value={panel.averageSeconds === null ? formatSeconds(null) : <CountUp value={panel.averageSeconds} format={formatSeconds} />} hint="do início ao fim da entrevista" />
                 <Stat icon={<RefreshCw />} label="Última sincronização" value={panel.lastSyncAt ? fmtDateTime(panel.lastSyncAt) : 'Nenhuma'} small />
             </div>
 
@@ -304,12 +305,12 @@ function ResearcherTable({ researchers }: { researchers: ResearchPanel["research
                                 {r.name}
                                 {!r.linked && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">desvinculado</span>}
                             </td>
-                            <td className="py-3 tabular-nums">{r.collected}{r.targetCount ? ` / ${r.targetCount}` : ''}</td>
+                            <td className="py-3 tabular-nums"><CountUp value={r.collected} />{r.targetCount ? ` / ${r.targetCount}` : ''}</td>
                             <td className="py-3">
                                 {r.progress === null ? <span className="text-muted-foreground">Sem meta</span> : (
                                     <div className="flex items-center gap-2">
                                         <div className="h-2 w-24 rounded-full bg-muted"><div className="h-full rounded-full bg-[var(--green-deep)]" style={{ width: `${r.progress}%` }} /></div>
-                                        <span className="tabular-nums">{r.progress}%</span>
+                                        <span className="tabular-nums"><CountUp value={r.progress} />%</span>
                                     </div>
                                 )}
                             </td>
@@ -332,7 +333,7 @@ function ResearcherTable({ researchers }: { researchers: ResearchPanel["research
     );
 }
 
-function Stat({ icon, label, value, hint, progress, small }: { icon: React.ReactNode; label: string; value: string; hint?: string; progress?: number | null; small?: boolean }) {
+function Stat({ icon, label, value, hint, progress, small }: { icon: React.ReactNode; label: string; value: React.ReactNode; hint?: string; progress?: number | null; small?: boolean }) {
     return (
         <article className="pa-card">
             <header className="pa-card-h">

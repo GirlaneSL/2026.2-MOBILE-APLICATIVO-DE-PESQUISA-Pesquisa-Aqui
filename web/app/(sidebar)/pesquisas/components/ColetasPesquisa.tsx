@@ -1,5 +1,6 @@
 'use client'
 
+import { CountUp } from "@/components/ui/count-up";
 import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
 import {
@@ -301,15 +302,15 @@ function ColetasView({
                 <article className="pa-card dark introduction-card !p-5">
                     <Contour seed={3} rings={9} cx={0.9} cy={0.2} size={0.8} />
                     <p className="flex items-center gap-2 text-xs font-medium text-[var(--muted-dark)]"><Inbox className="size-3.5" /> Coletas recebidas</p>
-                    <p className="pa-stat mt-3 text-[var(--fg-dark)]">{totalAll}</p>
+                    <p className="pa-stat mt-3 text-[var(--fg-dark)]"><CountUp value={totalAll} /></p>
                 </article>
                 <article className="pa-card mint introduction-card !p-5" style={{ animationDelay: '100ms' }}>
                     <p className="flex items-center gap-2 text-xs font-medium text-[var(--green-deep)]"><Headphones className="size-3.5" /> Com gravação</p>
-                    <p className="pa-stat mt-3">{withAudio}</p>
+                    <p className="pa-stat mt-3"><CountUp value={withAudio} /></p>
                 </article>
                 <article className="pa-card introduction-card !p-5" style={{ animationDelay: '200ms' }}>
                     <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Users className="size-3.5" /> Pesquisadores ativos</p>
-                    <p className="pa-stat mt-3">{researchersCount}</p>
+                    <p className="pa-stat mt-3"><CountUp value={researchersCount} /></p>
                 </article>
                 <article className="pa-card introduction-card !p-5" style={{ animationDelay: '300ms' }}>
                     <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Clock className="size-3.5" /> Última coleta</p>

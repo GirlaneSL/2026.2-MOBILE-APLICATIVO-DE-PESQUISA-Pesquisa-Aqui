@@ -54,7 +54,7 @@ export function SectionCard({
     const required = section.questions.filter((q) => q.required).length;
 
     return (
-        <section className="overflow-hidden rounded-[26px] border border-border bg-white shadow-[0_24px_40px_-34px_rgba(10,20,16,0.3)]">
+        <section className="pa-enter overflow-hidden rounded-[26px] border border-border bg-white shadow-[0_24px_40px_-34px_rgba(10,20,16,0.3)]">
             <header className="relative flex flex-wrap items-center gap-3 rounded-t-[25px] border-b border-l-4 border-border border-l-[var(--green)] bg-gradient-to-r from-[#eef5f0] to-white px-4 py-4 sm:flex-nowrap sm:px-5">
 
                 <span className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-[var(--mint)] text-lg font-bold text-[var(--green-deep)]">

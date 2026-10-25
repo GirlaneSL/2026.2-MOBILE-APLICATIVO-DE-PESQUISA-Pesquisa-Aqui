@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import InfoCard from "./infoCards";
+import { CountUp } from "@/components/ui/count-up";
 
 export type StatusRow = { label: string; count: number; tone?: "green" | "clay" };
 
@@ -40,6 +41,7 @@ export default function StatusPanel({ title, description, icon, highlighted, tot
                                 return (
                                     <line
                                         key={i}
+                                        style={{ "--i": i } as CSSProperties}
                                         x1={(100 + r1 * Math.cos(a)).toFixed(2)}
                                         y1={(100 + r1 * Math.sin(a)).toFixed(2)}
                                         x2={(100 + r2 * Math.cos(a)).toFixed(2)}
@@ -51,16 +53,16 @@ export default function StatusPanel({ title, description, icon, highlighted, tot
                                 );
                             })}
                         </svg>
-                        <div className="v"><b>{pct}%</b><span>{caption}</span></div>
+                        <div className="v"><b><CountUp value={pct} />%</b><span>{caption}</span></div>
                     </div>
                     <div className="pa-mrows">
                         {rows.map((row) => {
                             const share = total > 0 ? Math.round((row.count / total) * 100) : 0;
                             return (
                                 <div className="pa-mrow" key={row.label}>
-                                    <div className="n"><b>{row.label}</b><span>{row.count} de {total}</span></div>
+                                    <div className="n"><b>{row.label}</b><span><CountUp value={row.count} /> de <CountUp value={total} /></span></div>
                                     <div className="meter" aria-hidden="true"><i className={row.tone === "clay" ? "clay" : ""} style={{ width: `${share}%` }} /></div>
-                                    <em>{share}%</em>
+                                    <em><CountUp value={share} />%</em>
                                 </div>
                             );
                         })}

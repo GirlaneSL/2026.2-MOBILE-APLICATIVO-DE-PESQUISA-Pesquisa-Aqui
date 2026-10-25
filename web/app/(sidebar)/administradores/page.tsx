@@ -3,6 +3,7 @@
 import BannerComponent from "@/components/ui/bannerComponent";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { Button } from "@/components/ui/button";
+import { CountUp } from "@/components/ui/count-up";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
 import { getCompanyStats, type CompanyStats } from "@/lib/company";
 import { getAdminsPage } from "@/lib/user";
@@ -108,7 +109,7 @@ export default function AdministradoresPage() {
                         <div className="flex flex-col gap-7">
                             <div className="flex items-end gap-4">
                                 <p className="pa-stat text-[var(--fg-dark)]" style={{ fontSize: 88 }}>
-                                    {val(admins)}
+                                    <CountUp value={val(admins)} />
                                 </p>
                                 <p className="pb-2 text-sm text-[var(--muted-dark)]">
                                     {admins === 1 ? 'administrador cadastrado' : 'administradores cadastrados'}
@@ -136,21 +137,21 @@ export default function AdministradoresPage() {
                                             <i className="size-2 rounded-full bg-[var(--mint)]" />
                                             Ativos
                                         </dt>
-                                        <dd className="mt-1 text-2xl font-light tabular-nums">{val(active)}</dd>
+                                        <dd className="mt-1 text-2xl font-light tabular-nums"><CountUp value={val(active)} /></dd>
                                     </div>
                                     <div className="sm:px-5">
                                         <dt className="flex items-center gap-2 text-xs text-[var(--muted-dark)]">
                                             <i className="size-2 rounded-full bg-[var(--clay)]" />
                                             Inativos
                                         </dt>
-                                        <dd className="mt-1 text-2xl font-light tabular-nums">{val(inactive)}</dd>
+                                        <dd className="mt-1 text-2xl font-light tabular-nums"><CountUp value={val(inactive)} /></dd>
                                         <p className="mt-0.5 text-xs text-[var(--muted-dark)]">
                                             {!loadingData && inactive === 0 ? 'Nenhum administrador bloqueado' : 'Sem acesso ao sistema'}
                                         </p>
                                     </div>
                                     <div className="sm:pl-5">
                                         <dt className="text-xs text-[var(--muted-dark)]">Empresas</dt>
-                                        <dd className="mt-1 text-2xl font-light tabular-nums">{val(companies)}</dd>
+                                        <dd className="mt-1 text-2xl font-light tabular-nums"><CountUp value={val(companies)} /></dd>
                                         <p className="mt-0.5 text-xs text-[var(--muted-dark)]">
                                             {loadingData ? '…' : `${perCompany} por empresa, em média`}
                                         </p>

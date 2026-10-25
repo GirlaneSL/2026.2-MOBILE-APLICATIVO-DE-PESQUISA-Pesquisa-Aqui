@@ -1,5 +1,6 @@
 "use client"
 
+import { CountUp } from "@/components/ui/count-up";
 import { BrandMark, Contour } from "@/components/ui/contour"
 import { GlobalSearch } from "@/components/ui/global-search"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
@@ -112,7 +113,7 @@ export function AppSidebar() {
                                 <span className="t"><Icon strokeWidth={1.7} /></span>
                                 <span className="l">{label}</span>
                                 {count && isAdmin && counts[count] !== undefined && (
-                                    <span className="n" aria-label={`${counts[count]} no total`}>{counts[count]}</span>
+                                    <span className="n" aria-label={`${counts[count]} no total`}><CountUp value={counts[count]} /></span>
                                 )}
                             </Link>
                         ))}

@@ -3,6 +3,7 @@
 import BannerComponent from "@/components/ui/bannerComponent";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { Button } from "@/components/ui/button";
+import { CountUp } from "@/components/ui/count-up";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
 import { getCompanyStats, type CompanyStats } from "@/lib/company";
 import { monthsToChart } from "@/lib/dashboard";
@@ -98,7 +99,7 @@ export default function EmpresaPage() {
                         <div className="flex flex-col gap-7">
                             <div className="flex items-end gap-4">
                                 <p className="pa-stat text-[var(--fg-dark)]" style={{ fontSize: 88 }}>
-                                    {val(total)}
+                                    <CountUp value={val(total)} />
                                 </p>
                                 <p className="pb-2 text-sm text-[var(--muted-dark)]">
                                     {total === 1 ? 'empresa cadastrada' : 'empresas cadastradas'}
@@ -126,21 +127,21 @@ export default function EmpresaPage() {
                                             <i className="size-2 rounded-full bg-[var(--mint)]" />
                                             Ativas
                                         </dt>
-                                        <dd className="mt-1 text-2xl font-light tabular-nums">{val(active)}</dd>
+                                        <dd className="mt-1 text-2xl font-light tabular-nums"><CountUp value={val(active)} /></dd>
                                     </div>
                                     <div className="sm:px-5">
                                         <dt className="flex items-center gap-2 text-xs text-[var(--muted-dark)]">
                                             <i className="size-2 rounded-full bg-[var(--clay)]" />
                                             Inativas
                                         </dt>
-                                        <dd className="mt-1 text-2xl font-light tabular-nums">{val(inactive)}</dd>
+                                        <dd className="mt-1 text-2xl font-light tabular-nums"><CountUp value={val(inactive)} /></dd>
                                         <p className="mt-0.5 text-xs text-[var(--muted-dark)]">
                                             {!loadingData && inactive === 0 ? 'Nenhuma empresa bloqueada' : 'Sem acesso ao aplicativo'}
                                         </p>
                                     </div>
                                     <div className="sm:pl-5">
                                         <dt className="text-xs text-[var(--muted-dark)]">Administradores</dt>
-                                        <dd className="mt-1 text-2xl font-light tabular-nums">{val(admins)}</dd>
+                                        <dd className="mt-1 text-2xl font-light tabular-nums"><CountUp value={val(admins)} /></dd>
                                         <Link
                                             href="/administradores"
                                             className="mt-0.5 inline-flex items-center gap-0.5 rounded text-xs font-medium text-[var(--mint)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mint)]"
@@ -180,7 +181,7 @@ export default function EmpresaPage() {
                             Empresas cadastradas
                             {!loadingData && (
                                 <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold tabular-nums text-[var(--green-deep)]">
-                                    {total}
+                                    <CountUp value={total} />
                                 </span>
                             )}
                         </span>

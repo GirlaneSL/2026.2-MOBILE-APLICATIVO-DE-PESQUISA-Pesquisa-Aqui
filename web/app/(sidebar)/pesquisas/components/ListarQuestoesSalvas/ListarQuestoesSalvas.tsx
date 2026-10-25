@@ -1,5 +1,6 @@
 'use client'
 
+import { CountUp } from "@/components/ui/count-up";
 import { useEffect, useState } from "react";
 import {
     loadQuestionnaire,
@@ -523,7 +524,7 @@ export default function ListarQuestoesSalvas({ researchId, readOnly = false, rea
                     {stats.map((st, i) => (
                         <div key={st.label} className={`flex items-baseline gap-1.5 ${i > 0 ? "sm:border-l sm:border-border sm:pl-6" : ""}`}>
                             <dt className="order-2 text-[12.5px] text-muted-foreground">{st.label}</dt>
-                            <dd className="order-1 text-[26px] font-light leading-none tracking-tighter tabular-nums">{st.n}</dd>
+                            <dd className="order-1 text-[26px] font-light leading-none tracking-tighter tabular-nums"><CountUp value={st.n} /></dd>
                         </div>
                     ))}
                 </dl>

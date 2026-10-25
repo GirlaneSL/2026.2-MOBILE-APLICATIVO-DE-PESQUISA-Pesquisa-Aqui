@@ -85,7 +85,7 @@ export default function Login() {
                     </div>
 
                     {error && (
-                        <p role="alert" className="mb-4 rounded-xl bg-[#f3e0d9] px-3.5 py-2.5 text-[13px] font-medium text-[#8a432f]">
+                        <p role="alert" key={error} className="pa-shake mb-4 rounded-xl bg-[#f3e0d9] px-3.5 py-2.5 text-[13px] font-medium text-[#8a432f]">
                             {error}
                         </p>
                     )}
@@ -93,7 +93,7 @@ export default function Login() {
                     <button
                         type="submit"
                         disabled={isLoadingLogin}
-                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-ink text-[15px] font-medium text-white transition-colors hover:bg-[#26332c] active:translate-y-px disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
+                        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-ink text-[15px] font-medium text-white transition-[background-color,transform,opacity] duration-150 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-[#26332c] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
                     >
                         {isLoadingLogin ? (<><Spinner />Entrando...</>) : 'Entrar'}
                     </button>

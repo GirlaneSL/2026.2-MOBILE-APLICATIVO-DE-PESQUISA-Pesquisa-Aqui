@@ -158,7 +158,7 @@
 }
 
 .introduction-card {
-  @apply animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out fill-mode-both;
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) backwards;
 }
 
 /* ------------------------------------------------------------------
@@ -919,6 +919,7 @@
 }
 
 .pa-gauge .v b {
+  font-variant-numeric: tabular-nums;
   font-size: 56px;
   font-weight: 300;
   letter-spacing: -0.06em;
@@ -926,9 +927,14 @@
 }
 
 .pa-gauge .v span {
-  font-size: 12.5px;
+  font-size: 12px;
+  line-height: 1.25;
   color: #456456;
   margin-top: 4px;
+  /* o círculo interno tem ~140px; a legenda quebra em linhas dentro dele, sem tocar nas marcas */
+  max-width: 100px;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .pa-mrows {
@@ -2041,5 +2047,777 @@
   }
   .pa-rs-bar .end {
     margin-left: 0;
+  }
+}
+
+
+/* ==================================================================
+   MOVIMENTO  (skill motion-design, personalidade "Corporate")
+   ------------------------------------------------------------------
+   Identidade de movimento do painel:
+   - Curva assinatura ..... (0.2, 0, 0, 1)      -> --pa-ease
+   - Entradas ............. (0.05, 0.7, 0.1, 1) -> --pa-ease-out
+   - Saídas ............... (0.3, 0, 1, 1)      -> --pa-ease-in
+   - Durações ............. rápida 150ms | padrão 280ms | lenta 420ms
+   - Entrada padrão ....... sobe 10-12px + aparece, sem overshoot
+   - Cascata (stagger) .... 45ms por item, no máximo 6 itens (< 400ms)
+   Só usamos transform e opacity para manter 60fps.
+   ================================================================== */
+:root {
+  --pa-ease: cubic-bezier(0.2, 0, 0, 1);
+  --pa-ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --pa-ease-in: cubic-bezier(0.3, 0, 1, 1);
+  --pa-dur-quick: 150ms;
+  --pa-dur-std: 280ms;
+  --pa-dur-slow: 420ms;
+  --pa-step: 45ms;
+}
+
+@keyframes pa-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pa-rise-sm {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pa-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pa-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes pa-tick-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pa-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* ---------- troca de página (app/(sidebar)/template.tsx) ---------- */
+.pa-page {
+  animation: pa-rise-sm 320ms var(--pa-ease-out) backwards;
+}
+
+/* ---------- cascata: grades de cartões e linhas de tabela ----------
+   Os filhos entram um depois do outro. A partir do 7º item todos
+   usam o mesmo atraso, para a cascata nunca passar de ~400ms. */
+.pa-app .pa-rc,
+.pa-app .pq-card {
+  /* "backwards" (e não "both") libera o transform do :hover depois da entrada */
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) backwards;
+  transition:
+    transform var(--pa-dur-std) var(--pa-ease),
+    border-color var(--pa-dur-std) var(--pa-ease),
+    box-shadow var(--pa-dur-std) var(--pa-ease);
+}
+
+.pa-app .pa-rc-grid > :nth-child(1),
+.pa-app .pq-grid > :nth-child(1) { animation-delay: 0ms; }
+.pa-app .pa-rc-grid > :nth-child(2),
+.pa-app .pq-grid > :nth-child(2) { animation-delay: calc(var(--pa-step) * 1); }
+.pa-app .pa-rc-grid > :nth-child(3),
+.pa-app .pq-grid > :nth-child(3) { animation-delay: calc(var(--pa-step) * 2); }
+.pa-app .pa-rc-grid > :nth-child(4),
+.pa-app .pq-grid > :nth-child(4) { animation-delay: calc(var(--pa-step) * 3); }
+.pa-app .pa-rc-grid > :nth-child(5),
+.pa-app .pq-grid > :nth-child(5) { animation-delay: calc(var(--pa-step) * 4); }
+.pa-app .pa-rc-grid > :nth-child(n + 6),
+.pa-app .pq-grid > :nth-child(n + 6) { animation-delay: calc(var(--pa-step) * 5); }
+
+.pa-app .pa-table tbody tr,
+.pa-app .pa-dt tbody tr,
+.pa-app .pa-dt-cards > li {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) backwards;
+}
+
+/* Linhas de tabela: cascata curta (micro cascade, 30ms por linha) */
+.pa-app .pa-table tbody tr:nth-child(1),
+.pa-app .pa-dt tbody tr:nth-child(1),
+.pa-app .pa-dt-cards > li:nth-child(1) { animation-delay: 0ms; }
+.pa-app .pa-table tbody tr:nth-child(2),
+.pa-app .pa-dt tbody tr:nth-child(2),
+.pa-app .pa-dt-cards > li:nth-child(2) { animation-delay: 30ms; }
+.pa-app .pa-table tbody tr:nth-child(3),
+.pa-app .pa-dt tbody tr:nth-child(3),
+.pa-app .pa-dt-cards > li:nth-child(3) { animation-delay: 60ms; }
+.pa-app .pa-table tbody tr:nth-child(4),
+.pa-app .pa-dt tbody tr:nth-child(4),
+.pa-app .pa-dt-cards > li:nth-child(4) { animation-delay: 90ms; }
+.pa-app .pa-table tbody tr:nth-child(5),
+.pa-app .pa-dt tbody tr:nth-child(5),
+.pa-app .pa-dt-cards > li:nth-child(5) { animation-delay: 120ms; }
+.pa-app .pa-table tbody tr:nth-child(n + 6),
+.pa-app .pa-dt tbody tr:nth-child(n + 6),
+.pa-app .pa-dt-cards > li:nth-child(n + 6) { animation-delay: 150ms; }
+
+/* ---------- feedback de interação ---------- */
+/* Painéis do dashboard: a sombra e a borda respondem ao hover (sem mover o gráfico) */
+.pa-card {
+  transition:
+    border-color var(--pa-dur-std) var(--pa-ease),
+    box-shadow var(--pa-dur-std) var(--pa-ease);
+}
+
+.pa-card:hover {
+  box-shadow: 0 30px 46px -32px rgba(10, 20, 16, 0.36);
+}
+
+/* Cartões clicáveis: levantam no hover e afundam um pouco ao clicar */
+.pa-app .pa-rc:hover,
+.pa-app .pq-card:hover {
+  transform: translateY(-3px);
+}
+
+.pa-app .pa-rc:active,
+.pa-app .pq-card:active {
+  transform: translateY(-1px) scale(0.995);
+  transition-duration: var(--pa-dur-quick);
+}
+
+/* Menu lateral: o ícone reage ao hover e o item afunda ao pressionar */
+.pa-snav a {
+  transition:
+    background-color var(--pa-dur-quick) var(--pa-ease),
+    transform var(--pa-dur-quick) var(--pa-ease);
+}
+
+.pa-snav a .t {
+  transition:
+    background-color var(--pa-dur-std) var(--pa-ease),
+    color var(--pa-dur-std) var(--pa-ease),
+    transform var(--pa-dur-std) var(--pa-ease);
+}
+
+.pa-snav a:hover .t {
+  transform: scale(1.06);
+}
+
+.pa-snav a:active {
+  transform: scale(0.98);
+}
+
+.pa-snav a.on .t {
+  animation: pa-tile-pop var(--pa-dur-std) var(--pa-ease-out) backwards;
+}
+
+@keyframes pa-tile-pop {
+  from {
+    transform: scale(0.88);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.pa-collapse {
+  transition:
+    transform var(--pa-dur-std) var(--pa-ease),
+    scale var(--pa-dur-quick) var(--pa-ease),
+    background-color var(--pa-dur-quick) var(--pa-ease);
+}
+
+.pa-collapse:active {
+  scale: 0.92;
+}
+
+.pa-suser .out {
+  transition:
+    background-color var(--pa-dur-quick) var(--pa-ease),
+    color var(--pa-dur-quick) var(--pa-ease),
+    transform var(--pa-dur-quick) var(--pa-ease);
+}
+
+.pa-suser .out:active {
+  transform: scale(0.92);
+}
+
+.pa-open {
+  transition:
+    opacity var(--pa-dur-quick) var(--pa-ease),
+    background-color var(--pa-dur-quick) var(--pa-ease),
+    transform var(--pa-dur-quick) var(--pa-ease);
+}
+
+.pa-open:active {
+  transform: scale(0.96);
+}
+
+/* ---------- barras e medidor entram crescendo ---------- */
+.pa-mrow .meter i {
+  transform-origin: left center;
+  animation: pa-grow-x 600ms var(--pa-ease-out) 200ms backwards;
+}
+
+.pa-gauge svg line {
+  animation: pa-tick-in 240ms var(--pa-ease) backwards;
+  animation-delay: calc(var(--i, 0) * 7ms + 150ms);
+}
+
+/* Indicadores numéricos: sobem logo depois do painel que os contém */
+.pa-kpis > div,
+.pa-hero .big,
+.pa-minis > div {
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) 140ms backwards;
+}
+
+.pa-kpis > div:nth-child(2) { animation-delay: 190ms; }
+.pa-kpis > div:nth-child(3) { animation-delay: 240ms; }
+.pa-minis > div:nth-child(2) { animation-delay: 190ms; }
+.pa-minis > div:nth-child(3) { animation-delay: 240ms; }
+
+/* ---------- login ---------- */
+.pa-login-copy {
+  animation: pa-slide-in-left 520ms var(--pa-ease-out) 80ms backwards;
+}
+
+.pa-login-card {
+  animation: pa-rise 520ms var(--pa-ease-out) 160ms backwards;
+}
+
+.pa-login-card form > * {
+  animation: pa-rise-sm var(--pa-dur-slow) var(--pa-ease-out) backwards;
+}
+
+.pa-login-card form > :nth-child(1) { animation-delay: 240ms; }
+.pa-login-card form > :nth-child(2) { animation-delay: 285ms; }
+.pa-login-card form > :nth-child(3) { animation-delay: 330ms; }
+.pa-login-card form > :nth-child(4) { animation-delay: 375ms; }
+.pa-login-card form > :nth-child(n + 5) { animation-delay: 420ms; }
+
+/* Erro de login: dois a três balanços curtos, sem overshoot (tom firme) */
+.pa-shake,
+.pa-login-card form > .pa-shake {
+  animation: pa-shake 380ms var(--pa-ease) 0ms both;
+}
+
+/* ---------- movimento reduzido: remove deslocamentos e esperas ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .pa-page,
+  .introduction-card,
+  .pa-app .pa-rc,
+  .pa-app .pq-card,
+  .pa-app .pa-table tbody tr,
+  .pa-app .pa-dt tbody tr,
+  .pa-app .pa-dt-cards > li,
+  .pa-kpis > div,
+  .pa-hero .big,
+  .pa-minis > div,
+  .pa-mrow .meter i,
+  .pa-gauge svg line,
+  .pa-snav a.on .t,
+  .pa-login-copy,
+  .pa-login-card,
+  .pa-login-card form > *,
+  .pa-shake,
+  .pa-login-card form > .pa-shake {
+    animation: none;
+  }
+
+  .pa-app .pa-rc:hover,
+  .pa-app .pq-card:hover,
+  .pa-app .pa-rc:active,
+  .pa-app .pq-card:active,
+  .pa-snav a:hover .t,
+  .pa-snav a:active,
+  .pa-open:active,
+  .pa-suser .out:active {
+    transform: none;
+  }
+
+  .pa-collapse:active {
+    scale: none;
+  }
+}
+
+/* ==================================================================
+   MOVIMENTO, parte 2: mais camadas (secundária e ambiente)
+   ================================================================== */
+@keyframes pa-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pa-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes pa-dot-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+/* ---------- carregamento: brilho que passa pelo esqueleto ---------- */
+.pa-shimmer {
+  background-color: var(--muted);
+  background-image: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.75) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  animation: pa-shimmer 1.5s linear infinite;
+}
+
+/* ---------- cabeçalho de cada página: título, texto e ações em sequência ---------- */
+.pa-top > * {
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) backwards;
+}
+
+.pa-top > :nth-child(2) { animation-delay: 60ms; }
+.pa-top > :nth-child(n + 3) { animation-delay: 120ms; }
+
+/* ---------- menu lateral: itens entram em sequência na primeira carga ---------- */
+.pa-snav a {
+  animation: pa-slide-in-left var(--pa-dur-slow) var(--pa-ease-out) backwards;
+}
+
+.pa-snav a:nth-child(1) { animation-delay: 60ms; }
+.pa-snav a:nth-child(2) { animation-delay: 100ms; }
+.pa-snav a:nth-child(3) { animation-delay: 140ms; }
+.pa-snav a:nth-child(4) { animation-delay: 180ms; }
+.pa-snav a:nth-child(5) { animation-delay: 220ms; }
+.pa-snav a:nth-child(n + 6) { animation-delay: 260ms; }
+
+.pa-suser {
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) 300ms backwards;
+}
+
+/* ---------- mapa de calor: células surgem em onda (dia x horário) ---------- */
+.pa-heat .row i {
+  animation: pa-pop var(--pa-dur-std) var(--pa-ease-out) backwards;
+  animation-delay: calc(var(--r, 0) * 30ms + var(--c, 0) * 14ms + 200ms);
+  transition: transform var(--pa-dur-quick) var(--pa-ease);
+}
+
+.pa-heat .row i:hover {
+  transform: scale(1.18);
+}
+
+.pa-heat .row:nth-child(1) { --r: 0; }
+.pa-heat .row:nth-child(2) { --r: 1; }
+.pa-heat .row:nth-child(3) { --r: 2; }
+.pa-heat .row:nth-child(4) { --r: 3; }
+.pa-heat .row:nth-child(5) { --r: 4; }
+.pa-heat .row:nth-child(6) { --r: 5; }
+.pa-heat .row:nth-child(n + 7) { --r: 6; }
+
+/* o 1º filho de cada linha é o rótulo do dia, então as células começam no 2º */
+.pa-heat .row > :nth-child(2) { --c: 0; }
+.pa-heat .row > :nth-child(3) { --c: 1; }
+.pa-heat .row > :nth-child(4) { --c: 2; }
+.pa-heat .row > :nth-child(5) { --c: 3; }
+.pa-heat .row > :nth-child(6) { --c: 4; }
+.pa-heat .row > :nth-child(7) { --c: 5; }
+.pa-heat .row > :nth-child(8) { --c: 6; }
+.pa-heat .row > :nth-child(9) { --c: 7; }
+.pa-heat .row > :nth-child(10) { --c: 8; }
+.pa-heat .row > :nth-child(11) { --c: 9; }
+.pa-heat .row > :nth-child(12) { --c: 10; }
+.pa-heat .row > :nth-child(13) { --c: 11; }
+
+/* ---------- listas: últimas atualizações, equipe e linhas de métricas ---------- */
+.pa-timeline > li,
+.pa-team > li,
+.pa-mrows > .pa-mrow {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) 180ms backwards;
+}
+
+.pa-timeline > li:nth-child(2),
+.pa-team > li:nth-child(2),
+.pa-mrows > .pa-mrow:nth-child(2) { animation-delay: 230ms; }
+.pa-timeline > li:nth-child(3),
+.pa-team > li:nth-child(3),
+.pa-mrows > .pa-mrow:nth-child(3) { animation-delay: 280ms; }
+.pa-timeline > li:nth-child(4),
+.pa-team > li:nth-child(4),
+.pa-mrows > .pa-mrow:nth-child(4) { animation-delay: 330ms; }
+.pa-timeline > li:nth-child(n + 5),
+.pa-team > li:nth-child(n + 5),
+.pa-mrows > .pa-mrow:nth-child(n + 5) { animation-delay: 380ms; }
+
+/* ---------- selos, chips e estados vazios ---------- */
+.pa-chip,
+.pa-rc-tag,
+.pa-snav .n {
+  animation: pa-pop var(--pa-dur-std) var(--pa-ease-out) 200ms backwards;
+}
+
+.pa-empty {
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) backwards;
+}
+
+/* ---------- avatares empilhados: o avatar sob o mouse sobe ---------- */
+.pa-stack .avatar-pa {
+  position: relative;
+  transition: transform var(--pa-dur-quick) var(--pa-ease);
+}
+
+.pa-stack .avatar-pa:hover {
+  transform: translateY(-3px) scale(1.08);
+  z-index: 2;
+}
+
+/* ---------- "ao vivo" e equipe em campo: ponto que respira (camada ambiente) ---------- */
+.pa-team .st:not(.off) i {
+  animation: pa-dot-breathe 2.8s ease-in-out infinite;
+}
+
+/* ---------- campos de formulário: realce suave no foco ---------- */
+.pa-field input:focus-visible,
+.pa-field select:focus-visible {
+  box-shadow: 0 0 0 3px rgba(68, 119, 98, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-shimmer,
+  .pa-top > *,
+  .pa-snav a,
+  .pa-suser,
+  .pa-heat .row i,
+  .pa-timeline > li,
+  .pa-team > li,
+  .pa-mrows > .pa-mrow,
+  .pa-chip,
+  .pa-rc-tag,
+  .pa-snav .n,
+  .pa-empty,
+  .pa-team .st:not(.off) i {
+    animation: none;
+  }
+
+  .pa-heat .row i:hover,
+  .pa-stack .avatar-pa:hover {
+    transform: none;
+  }
+}
+
+/* ==================================================================
+   MOVIMENTO, parte 3: cobertura geral (todos os elementos)
+   ================================================================== */
+
+/* Base: todo botão, link e campo ganha transição suave por padrão.
+   Fica em @layer base, então qualquer transition própria do componente vence. */
+@layer base {
+  button,
+  a,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  summary {
+    transition-property: color, background-color, border-color, box-shadow, opacity, scale;
+    transition-duration: var(--pa-dur-quick);
+    transition-timing-function: var(--pa-ease);
+  }
+}
+
+/* Feedback de clique em qualquer botão (a escala usa a propriedade "scale",
+   que não briga com transform de hover ou de rotação). */
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active {
+  scale: 0.98;
+}
+
+/* Entrada genérica para qualquer bloco: adicione a classe .pa-enter.
+   Irmãos entram em cascata curta (máx. 5 passos). */
+.pa-enter {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) backwards;
+}
+
+.pa-enter:nth-child(2) { animation-delay: 40ms; }
+.pa-enter:nth-child(3) { animation-delay: 80ms; }
+.pa-enter:nth-child(4) { animation-delay: 120ms; }
+.pa-enter:nth-child(5) { animation-delay: 160ms; }
+.pa-enter:nth-child(n + 6) { animation-delay: 200ms; }
+
+/* Páginas: os blocos de primeiro nível entram em cascata, mesmo nas telas
+   que não usam os componentes de painel (ex.: detalhe da pesquisa, formulários). */
+.pa-page > :not(.introduction-card):not(.pa-top):not(.pa-rc-grid):not(.pa-bento) {
+  animation: pa-rise-sm var(--pa-dur-slow) var(--pa-ease-out) 60ms backwards;
+}
+
+.pa-page > :nth-child(3):not(.introduction-card):not(.pa-top):not(.pa-rc-grid):not(.pa-bento) { animation-delay: 100ms; }
+.pa-page > :nth-child(4):not(.introduction-card):not(.pa-top):not(.pa-rc-grid):not(.pa-bento) { animation-delay: 140ms; }
+.pa-page > :nth-child(n + 5):not(.introduction-card):not(.pa-top):not(.pa-rc-grid):not(.pa-bento) { animation-delay: 180ms; }
+
+/* Blocos de segundo nível (ex.: seções dentro de <section class="flex flex-col">) */
+.pa-page > section:not(.introduction-card) > :not(.introduction-card):not(.pa-top) {
+  animation: pa-rise-sm var(--pa-dur-slow) var(--pa-ease-out) 120ms backwards;
+}
+
+.pa-page > section:not(.introduction-card) > :nth-child(2):not(.introduction-card) { animation-delay: 170ms; }
+.pa-page > section:not(.introduction-card) > :nth-child(3):not(.introduction-card) { animation-delay: 220ms; }
+.pa-page > section:not(.introduction-card) > :nth-child(n + 4):not(.introduction-card) { animation-delay: 270ms; }
+
+/* Abas: o conteúdo de cada aba entra ao ser aberta */
+[data-slot="tabs-content"] {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) backwards;
+}
+
+/* Selos (Badge) */
+[data-slot="badge"] {
+  animation: pa-pop var(--pa-dur-std) var(--pa-ease-out) backwards;
+}
+
+/* Formulários dentro de modais: os campos entram em sequência depois do modal abrir */
+[data-slot="dialog-content"] form > *,
+[data-slot="dialog-content"] .pa-form > * {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) 140ms backwards;
+}
+
+[data-slot="dialog-content"] form > :nth-child(2),
+[data-slot="dialog-content"] .pa-form > :nth-child(2) { animation-delay: 180ms; }
+[data-slot="dialog-content"] form > :nth-child(3),
+[data-slot="dialog-content"] .pa-form > :nth-child(3) { animation-delay: 220ms; }
+[data-slot="dialog-content"] form > :nth-child(4),
+[data-slot="dialog-content"] .pa-form > :nth-child(4) { animation-delay: 260ms; }
+[data-slot="dialog-content"] form > :nth-child(n + 5),
+[data-slot="dialog-content"] .pa-form > :nth-child(n + 5) { animation-delay: 300ms; }
+
+/* Cabeçalho e rodapé do modal */
+[data-slot="dialog-header"] {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) 80ms backwards;
+}
+
+[data-slot="dialog-footer"] {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) 200ms backwards;
+}
+
+/* Links: o sublinhado aparece suavemente */
+.pa-link {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--pa-dur-quick) var(--pa-ease), color var(--pa-dur-quick) var(--pa-ease);
+}
+
+.pa-link:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Ícones de ação: pequenos empurrões que indicam a direção da ação */
+svg.lucide {
+  transition: transform var(--pa-dur-std) var(--pa-ease);
+}
+
+:is(a, button):hover > svg.lucide-arrow-up-right { transform: translate(2px, -2px); }
+:is(a, button):hover > svg.lucide-arrow-right { transform: translateX(3px); }
+:is(a, button):hover > svg.lucide-arrow-left { transform: translateX(-3px); }
+:is(a, button):hover > svg.lucide-plus,
+:is(a, button):hover > svg.lucide-calendar-plus { transform: rotate(90deg) scale(1.05); }
+:is(a, button):hover > svg.lucide-refresh-cw { transform: rotate(180deg); }
+:is(a, button):hover > svg.lucide-search { transform: scale(1.1); }
+:is(a, button):hover > svg.lucide-trash-2,
+:is(a, button):hover > svg.lucide-trash { transform: rotate(-8deg) scale(1.08); }
+:is(a, button):hover > svg.lucide-pencil { transform: rotate(-12deg) scale(1.08); }
+
+/* Paginação e filtros (Pesquisas e tabelas) */
+.pa-pg nav button,
+.pa-dt-seg button,
+.pq-btn,
+.pq-chip,
+.pq-list-tab {
+  transition:
+    background-color var(--pa-dur-quick) var(--pa-ease),
+    border-color var(--pa-dur-quick) var(--pa-ease),
+    color var(--pa-dur-quick) var(--pa-ease),
+    box-shadow var(--pa-dur-quick) var(--pa-ease),
+    scale var(--pa-dur-quick) var(--pa-ease),
+    transform var(--pa-dur-quick) var(--pa-ease);
+}
+
+.pa-pg nav button.on,
+.pa-dt-seg button.on,
+.pq-list-tab.on {
+  animation: pa-pop var(--pa-dur-std) var(--pa-ease-out) backwards;
+}
+
+/* Calendário de campo: hero e ações */
+.pa-cal {
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) backwards;
+}
+
+.pa-cal .today {
+  animation: pa-pop var(--pa-dur-slow) var(--pa-ease-out) 200ms backwards;
+}
+
+/* Barras de ferramentas e buscas */
+.pq-tools,
+.pa-rs-bar,
+.pa-table-head,
+.pa-dt-toolbar {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) 80ms backwards;
+}
+
+.pa-rs-hero {
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) backwards;
+}
+
+.pa-rs-hero .tiles > * {
+  animation: pa-pop var(--pa-dur-slow) var(--pa-ease-out) 150ms backwards;
+}
+
+.pa-rs-hero .tiles > :nth-child(2) { animation-delay: 200ms; }
+.pa-rs-hero .tiles > :nth-child(3) { animation-delay: 250ms; }
+.pa-rs-hero .tiles > :nth-child(n + 4) { animation-delay: 300ms; }
+
+/* Busca global: atalho e resultados */
+.pa-gs-group {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) backwards;
+}
+
+.pa-gs-group:nth-child(2) { animation-delay: 40ms; }
+.pa-gs-group:nth-child(n + 3) { animation-delay: 80ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    scale: none;
+  }
+
+  .pa-enter,
+  .pa-page > *,
+  .pa-page > section > *,
+  [data-slot="tabs-content"],
+  [data-slot="badge"],
+  [data-slot="dialog-content"] form > *,
+  [data-slot="dialog-content"] .pa-form > *,
+  [data-slot="dialog-header"],
+  [data-slot="dialog-footer"],
+  .pa-pg nav button.on,
+  .pa-dt-seg button.on,
+  .pq-list-tab.on,
+  .pa-cal,
+  .pa-cal .today,
+  .pq-tools,
+  .pa-rs-bar,
+  .pa-table-head,
+  .pa-dt-toolbar,
+  .pa-rs-hero,
+  .pa-rs-hero .tiles > *,
+  .pa-gs-group {
+    animation: none;
+  }
+
+  svg.lucide,
+  :is(a, button):hover > svg.lucide {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* ==================================================================
+   MOVIMENTO, parte 4: cobertura de todas as páginas
+   (painéis das abas, grades internas, estados de erro e vazios)
+   ================================================================== */
+
+/* Painéis que não usam <InfoCard> (Painel de resultados, Cópias em campo, etc.) */
+.pa-card:not(.introduction-card) {
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) backwards;
+}
+
+/* Conteúdo de cada aba: o bloco interno entra em cascata, bloco por bloco */
+[data-slot="tabs-content"] > :is(div, section) > :not(.introduction-card) {
+  animation: pa-rise-sm var(--pa-dur-slow) var(--pa-ease-out) 60ms backwards;
+}
+
+[data-slot="tabs-content"] > :is(div, section) > :nth-child(2):not(.introduction-card) { animation-delay: 110ms; }
+[data-slot="tabs-content"] > :is(div, section) > :nth-child(3):not(.introduction-card) { animation-delay: 160ms; }
+[data-slot="tabs-content"] > :is(div, section) > :nth-child(4):not(.introduction-card) { animation-delay: 210ms; }
+[data-slot="tabs-content"] > :is(div, section) > :nth-child(n + 5):not(.introduction-card) { animation-delay: 260ms; }
+
+/* Grades dentro das páginas (ex.: página Empresa e detalhe da pesquisa) */
+.pa-page section[class~="grid"] > :not(.introduction-card) {
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) 120ms backwards;
+}
+
+.pa-page section[class~="grid"] > :nth-child(2):not(.introduction-card) { animation-delay: 180ms; }
+.pa-page section[class~="grid"] > :nth-child(3):not(.introduction-card) { animation-delay: 240ms; }
+.pa-page section[class~="grid"] > :nth-child(n + 4):not(.introduction-card) { animation-delay: 300ms; }
+
+/* Mensagens de erro e aviso: entram com um pequeno balanço vertical */
+[role="alert"]:not(.pa-shake) {
+  animation: pa-rise-sm var(--pa-dur-std) var(--pa-ease-out) backwards;
+}
+
+/* Estados de página inteira (acesso negado, não encontrada, erro ao abrir) */
+.pa-page > div[class*="py-16"] > * {
+  animation: pa-rise var(--pa-dur-slow) var(--pa-ease-out) backwards;
+}
+
+.pa-page > div[class*="py-16"] > :nth-child(2) { animation-delay: 60ms; }
+.pa-page > div[class*="py-16"] > :nth-child(3) { animation-delay: 120ms; }
+.pa-page > div[class*="py-16"] > :nth-child(n + 4) { animation-delay: 180ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-card:not(.introduction-card),
+  [data-slot="tabs-content"] > :is(div, section) > *,
+  .pa-page section[class~="grid"] > *,
+  [role="alert"],
+  .pa-page > div[class*="py-16"] > * {
+    animation: none;
   }
 }

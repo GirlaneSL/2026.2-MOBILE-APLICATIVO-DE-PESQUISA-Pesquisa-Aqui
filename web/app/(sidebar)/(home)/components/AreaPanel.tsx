@@ -1,5 +1,6 @@
 'use client'
 
+import { CountUp } from "@/components/ui/count-up";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import InfoCard from "./infoCards";
 
@@ -98,9 +99,9 @@ export default function AreaPanel({ title, description, icon, data, unit, curren
             cardContent={
                 <>
                     <div className="pa-kpis">
-                        <div><b>{formatNumber(stats.current)}</b><span className="l">{unit} neste mês</span></div>
-                        <div><b>{formatNumber(stats.average)}</b><span className="l">média por mês</span></div>
-                        <div><span className="pa-chip light"><i />Pico em {stats.peakLabel.toLowerCase() || "—"}: {formatNumber(stats.peak)}</span></div>
+                        <div><b><CountUp value={stats.current} format={formatNumber} /></b><span className="l">{unit} neste mês</span></div>
+                        <div><b><CountUp value={stats.average} format={formatNumber} /></b><span className="l">média por mês</span></div>
+                        <div><span className="pa-chip light"><i />Pico em {stats.peakLabel.toLowerCase() || "—"}: <CountUp value={stats.peak} format={formatNumber} /></span></div>
                     </div>
                     <div className="pa-chart-box">
                         <svg

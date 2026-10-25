@@ -53,7 +53,7 @@ export default function InfoCard({
 
     return (
         <article
-            style={{ animationDelay: `${animationDelayN * 120}ms` }}
+            style={{ animationDelay: `${Math.min(Math.max(animationDelayN, 0), 5) * 70}ms` }}
             className={`pa-card introduction-card ${toneClass} ${cardClassName}`}
         >
             {contour && <Contour {...contour} style={tone === "mint" ? { opacity: 0.5 } : undefined} />}

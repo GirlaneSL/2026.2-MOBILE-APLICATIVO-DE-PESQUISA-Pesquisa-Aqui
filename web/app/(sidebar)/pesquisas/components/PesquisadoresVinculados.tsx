@@ -1,5 +1,6 @@
 'use client'
 
+import { CountUp } from "@/components/ui/count-up";
 import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
 import {
@@ -312,7 +313,7 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
                         )}
                         <div className="text-right">
                             <p className="pa-stat !text-[44px]">
-                                {linkedCount}<span className="text-[22px] text-[var(--green-deep)]">/{total}</span>
+                                <CountUp value={linkedCount} /><span className="text-[22px] text-[var(--green-deep)]">/<CountUp value={total} /></span>
                             </p>
                         </div>
                     </div>

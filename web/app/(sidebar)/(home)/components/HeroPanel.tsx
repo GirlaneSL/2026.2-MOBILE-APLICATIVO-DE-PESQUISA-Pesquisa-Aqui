@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CountUp } from "@/components/ui/count-up";
 import { Contour } from "@/components/ui/contour";
 
 type Mini = { value: ReactNode; label: string };
@@ -21,7 +22,7 @@ export default function HeroPanel({ greeting, value, caption, delta, minis, chil
             <div className="pa-hero-l">
                 <div>
                     <p className="hi">{greeting}</p>
-                    <div className="big">{value}</div>
+                    <div className="big"><CountUp value={value} /></div>
                     <p className="cap">{caption}</p>
                     {delta && (
                         <div className="delta">
@@ -33,7 +34,7 @@ export default function HeroPanel({ greeting, value, caption, delta, minis, chil
                     {minis.map((mini) => (
                         <div key={mini.label}>
                             <dt>{mini.label}</dt>
-                            <dd>{mini.value}</dd>
+                            <dd><CountUp value={mini.value} /></dd>
                         </div>
                     ))}
                 </dl>

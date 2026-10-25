@@ -3,6 +3,7 @@
 import BannerComponent from "@/components/ui/bannerComponent";
 import DialogLayout from "@/components/ui/dialogLayout";
 import { Button } from "@/components/ui/button";
+import { CountUp } from "@/components/ui/count-up";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { getResearcherStats, type ResearcherStats } from "@/lib/user";
 import { Building2, RefreshCw, TrendingUp, UserPlus, UsersRound } from "lucide-react";
@@ -95,7 +96,7 @@ export default function PesquisadoresPage() {
                     cardDescription={isSuperAdmin ? "Em todas as empresas" : "Na sua empresa"}
                     cardContent={
                         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-                            <p className="pa-stat !text-[64px] text-[var(--fg-dark)]">{statValue(total)}</p>
+                            <p className="pa-stat !text-[64px] text-[var(--fg-dark)]"><CountUp value={statValue(total)} /></p>
 
                             <div className="w-full sm:max-w-[260px]">
                                 <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[var(--muted-dark)]">
@@ -141,7 +142,7 @@ export default function PesquisadoresPage() {
                     cardDescription={isSuperAdmin ? "Empresas com ao menos um pesquisador" : "Cadastrados recentemente"}
                     cardContent={
                         <div className="flex flex-col gap-4">
-                            <p className="pa-stat !text-[64px]">{statValue(isSuperAdmin ? companies : recent)}</p>
+                            <p className="pa-stat !text-[64px]"><CountUp value={statValue(isSuperAdmin ? companies : recent)} /></p>
 
                             {!isSuperAdmin && (
                                 <div>

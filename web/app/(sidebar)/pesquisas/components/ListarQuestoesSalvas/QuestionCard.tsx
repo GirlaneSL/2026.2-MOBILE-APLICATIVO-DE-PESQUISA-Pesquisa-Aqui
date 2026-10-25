@@ -123,7 +123,7 @@ export function QuestionCard({ sectionId, q, qIndex, totalQuestions, qActions, o
     const summary = [typeLabel, hasOptions(q.type) ? `${q.options?.length ?? 0} opções` : null].filter(Boolean).join(" · ");
 
     return (
-        <div className="relative">
+        <div className="pa-enter relative">
             {/* Linha-resumo: sempre visível */}
             <div
                 className={cn(

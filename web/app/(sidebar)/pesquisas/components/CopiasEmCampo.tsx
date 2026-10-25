@@ -1,5 +1,6 @@
 'use client'
 
+import { CountUp } from "@/components/ui/count-up";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,7 +159,7 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                     </div>
 
                     <div className="text-right">
-                        <p className="text-[34px] font-light leading-none tracking-tighter tabular-nums">{data.activeCopies}</p>
+                        <p className="text-[34px] font-light leading-none tracking-tighter tabular-nums"><CountUp value={data.activeCopies} /></p>
                         <p className="text-[12.5px] text-muted-foreground">{data.activeCopies === 1 ? 'cópia ativa' : 'cópias ativas'}</p>
                     </div>
                 </div>

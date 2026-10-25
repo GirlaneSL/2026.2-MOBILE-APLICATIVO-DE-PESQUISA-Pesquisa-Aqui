@@ -31,7 +31,7 @@ function DialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-forest/40 duration-100 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-forest/40 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-open:duration-300 data-open:ease-[cubic-bezier(0.2,0,0,1)] data-closed:animate-out data-closed:fade-out-0 data-closed:duration-200 data-closed:ease-[cubic-bezier(0.3,0,1,1)] motion-reduce:animate-none",
         className
       )}
       {...props}
@@ -53,7 +53,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-[28px] bg-popover p-6 text-sm text-popover-foreground ring-1 ring-foreground/10 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.55)] duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-[28px] bg-popover p-6 text-sm text-popover-foreground ring-1 ring-foreground/10 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.55)] outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-open:slide-in-from-bottom-3 data-open:duration-300 data-open:ease-[cubic-bezier(0.05,0.7,0.1,1)] data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-closed:duration-200 data-closed:ease-[cubic-bezier(0.3,0,1,1)] motion-reduce:animate-none",
           className
         )}
         {...props}
