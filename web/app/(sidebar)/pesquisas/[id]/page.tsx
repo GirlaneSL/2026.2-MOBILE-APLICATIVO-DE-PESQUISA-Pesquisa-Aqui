@@ -44,6 +44,9 @@ const fmtLong = (iso?: string) => {
     return t === null ? "-" : new Date(t).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+/** Abas da pesquisa. No celular a inativa vira só ícone (40px) e a ativa abre com o nome. */
+const TAB_CLASS = "group/tab h-10 px-4 data-active:bg-ink data-active:text-white max-sm:w-10 max-sm:flex-none max-sm:px-0 max-sm:data-active:w-auto max-sm:data-active:flex-1 max-sm:data-active:px-3.5";
+const TAB_LABEL = "max-sm:group-[:not([data-active])]/tab:sr-only";
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** Onde estamos na vigência: texto e percentual (0 a 100). */
@@ -284,20 +287,21 @@ export default function PesquisaDetalhePage() {
 
             <Tabs value={tab} onValueChange={(value) => setTab(String(value))} className="w-full flex flex-col gap-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <TabsList className="relative h-12 max-w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border border-border bg-white p-1 shadow-[0_14px_26px_-22px_rgba(10,20,16,0.4)]">
-                        <TabsTrigger value="details" className="h-10 px-4 data-active:bg-ink data-active:text-white"><FileText />Visão Geral</TabsTrigger>
-                        <TabsTrigger value="questions" className="h-10 px-4 data-active:bg-ink data-active:text-white"><ListChecks />Questões</TabsTrigger>
-                        <TabsTrigger value="researchers" className="h-10 px-4 data-active:bg-ink data-active:text-white"><UsersRound />Pesquisadores</TabsTrigger>
-                        {canSeeCollections && research.status !== 'DRAFT' && <TabsTrigger value="panel" className="h-10 px-4 data-active:bg-ink data-active:text-white"><BarChart3 />Painel</TabsTrigger>}
-                        {canSeeCollections && <TabsTrigger value="collections" className="h-10 px-4 data-active:bg-ink data-active:text-white"><ClipboardList />Coletas</TabsTrigger>}
+                    {/* Celular: só a aba ativa mostra o nome; as outras viram ícones, e as 6 abas cabem sem rolar */}
+                    <TabsList className="relative h-12 max-w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border border-border bg-white p-1 shadow-[0_14px_26px_-22px_rgba(10,20,16,0.4)] max-sm:w-full max-sm:justify-between">
+                        <TabsTrigger value="details" className={TAB_CLASS} aria-label="Visão Geral" title="Visão Geral"><FileText /><span className={TAB_LABEL}>Visão Geral</span></TabsTrigger>
+                        <TabsTrigger value="questions" className={TAB_CLASS} aria-label="Questões" title="Questões"><ListChecks /><span className={TAB_LABEL}>Questões</span></TabsTrigger>
+                        <TabsTrigger value="researchers" className={TAB_CLASS} aria-label="Pesquisadores" title="Pesquisadores"><UsersRound /><span className={TAB_LABEL}>Pesquisadores</span></TabsTrigger>
+                        {canSeeCollections && research.status !== 'DRAFT' && <TabsTrigger value="panel" className={TAB_CLASS} aria-label="Painel" title="Painel"><BarChart3 /><span className={TAB_LABEL}>Painel</span></TabsTrigger>}
+                        {canSeeCollections && <TabsTrigger value="collections" className={TAB_CLASS} aria-label="Coletas" title="Coletas"><ClipboardList /><span className={TAB_LABEL}>Coletas</span></TabsTrigger>}
                         {canSeeCopies && research.status !== 'DRAFT' && (
-                            <TabsTrigger value="copies" className="h-10 px-4 data-active:bg-ink data-active:text-white">
-                                <Smartphone />Em campo{activeCopies > 0 && <span className="ml-1 rounded-full bg-[#f3e0d9] px-1.5 text-[11px] font-semibold text-[#8a432f]">{activeCopies}</span>}
+                            <TabsTrigger value="copies" className={TAB_CLASS} aria-label="Em campo" title="Em campo">
+                                <Smartphone /><span className={TAB_LABEL}>Em campo</span>{activeCopies > 0 && <span className="ml-1 rounded-full bg-[#f3e0d9] px-1.5 text-[11px] font-semibold text-[#8a432f] max-sm:group-[:not([data-active])]/tab:absolute max-sm:group-[:not([data-active])]/tab:right-0 max-sm:group-[:not([data-active])]/tab:top-0 max-sm:group-[:not([data-active])]/tab:ml-0 max-sm:group-[:not([data-active])]/tab:px-1">{activeCopies}</span>}
                             </TabsTrigger>
                         )}
                     </TabsList>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {locked && lockReason === 'ACTIVE_COPIES' && (
                             <Button variant="outline" size="sm" onClick={() => setTab('copies')} title={research.lockMessage ?? undefined}>
                                 <Lock />Questionário travado · {plural(activeCopies, 'cópia', 'cópias')}

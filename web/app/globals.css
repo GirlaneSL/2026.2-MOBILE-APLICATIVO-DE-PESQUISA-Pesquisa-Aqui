@@ -2928,6 +2928,9 @@ svg.lucide {
 
   .pa-shell {
     padding: 18px 16px 48px;
+    /* com margin auto o shell não estica na coluna e crescia com o conteúdo
+       (abas, tabelas, linha do tempo), cortando a tela à direita */
+    width: 100%;
   }
 }
 
