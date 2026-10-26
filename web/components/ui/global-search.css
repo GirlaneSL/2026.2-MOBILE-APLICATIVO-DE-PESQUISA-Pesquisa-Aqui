@@ -45,23 +45,25 @@
   white-space: nowrap;
 }
 
-.pa-side.c .pa-gs-trigger {
-  justify-content: center;
-  padding: 10px;
-}
-
-.pa-side.c .pa-gs-trigger .l,
-.pa-side.c .pa-gs-trigger .k {
-  display: none;
-}
-
-@media (max-width: 900px) {
-  .pa-side .pa-gs-trigger {
+@media (min-width: 901px) {
+  .pa-side.c .pa-gs-trigger {
     justify-content: center;
     padding: 10px;
   }
-  .pa-side .pa-gs-trigger .l,
-  .pa-side .pa-gs-trigger .k {
+
+  .pa-side.c .pa-gs-trigger .l,
+  .pa-side.c .pa-gs-trigger .k {
+    display: none;
+  }
+}
+
+/* celular: sem atalho de teclado, botão mais alto para o toque */
+@media (max-width: 900px) {
+  .pa-gs-trigger {
+    min-height: 44px;
+  }
+
+  .pa-gs-trigger .k {
     display: none;
   }
 }
@@ -313,7 +315,8 @@
 .pa-gs-foot .r svg { width: 13px; height: 13px; }
 
 @media (max-width: 640px) {
-  .pa-gs-back { padding-top: 6vh; }
+  .pa-gs-back { padding: calc(env(safe-area-inset-top, 0px) + 12px) 10px 10px; }
+  .pa-gs { max-height: calc(100dvh - 24px); border-radius: 20px; }
   .pa-gs-foot span:not(.r) { display: none; }
   .pa-gs-esc { display: none; }
 }

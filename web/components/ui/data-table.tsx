@@ -8,7 +8,7 @@ import { avatarTone, initialsOf } from "@/lib/fieldData"
 import { cn } from "@/lib/utils"
 import { ArrowDownAZ, CalendarClock, LayoutGrid, List, RefreshCw, Search, SearchX, X } from "lucide-react"
 import Link from "next/link"
-import { Fragment, type ReactNode } from "react"
+import { Fragment, useSyncExternalStore, type ReactNode } from "react"
 import "./data-table.css"
 
 // Padrão ÚNICO de tabela do painel. Toda listagem em linhas e colunas (pesquisas, pesquisadores,
@@ -47,6 +47,15 @@ export type DataColumn<T> = {
 
 /** Modo de exibição: tabela em linhas ("table", o botão "Lista") ou cartões ("cards"). */
 export type TableView = "table" | "cards"
+
+// Celular (até 640px): mesma largura usada no data-table.css para esconder o seletor Lista/Cards.
+const COMPACT_QUERY = "(max-width: 640px)"
+const subscribeCompact = (onChange: () => void) => {
+    const media = window.matchMedia(COMPACT_QUERY)
+    media.addEventListener("change", onChange)
+    return () => media.removeEventListener("change", onChange)
+}
+const readCompact = () => window.matchMedia(COMPACT_QUERY).matches
 
 /** Ordem padrão: mais recentes primeiro ou alfabética. */
 export type TableSort = "recent" | "name"
@@ -108,11 +117,14 @@ export function DataTable<T>({
     className,
     minWidth = "640px",
     rowTone,
-    view = "table",
+    view: requestedView = "table",
     pageSize = 10,
     pageSizeOptions,
     server,
 }: DataTableProps<T>) {
+    // No celular a tabela não cabe: sempre cartões, independente do modo escolhido.
+    const compact = useSyncExternalStore(subscribeCompact, readCompact, () => false)
+    const view: TableView = compact ? "cards" : requestedView
     const paginate = pageSize !== false && !server
     const pager = usePagination(rows, {
         pageSize: paginate ? (pageSize as number) : undefined,

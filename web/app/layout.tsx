@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
@@ -12,6 +12,13 @@ const hankenGrotesk = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "Pesquisa Aqui",
   description: "Sistema de pesquisas",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f2f4f1",
 };
 
 export default function RootLayout({

@@ -7,10 +7,10 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useFieldSnapshot } from "@/hooks/useFieldSnapshot"
 import { logout } from "@/lib/auth"
 import { avatarTone, teamRowsOf } from "@/lib/fieldData"
-import { Building2, ChevronLeft, LayoutDashboard, LogIn, LogOut, NotebookPen, ShieldCheck, UsersRound, type LucideIcon } from "lucide-react"
+import { Building2, ChevronLeft, LayoutDashboard, LogIn, LogOut, Menu, NotebookPen, ShieldCheck, UsersRound, X, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 type NavItem = {
     href: string
@@ -48,6 +48,29 @@ export function AppSidebar() {
     const pathname = usePathname()
     const { user } = useCurrentUser()
     const [collapsed, setCollapsed] = useState(false)
+    // Celular: o menu é uma gaveta que abre pelo botão da barra superior.
+    const [menuOpen, setMenuOpen] = useState(false)
+    const closeMenu = () => setMenuOpen(false)
+
+    useEffect(() => {
+        if (!menuOpen) return
+
+        document.body.classList.add("pa-menu-open")
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setMenuOpen(false)
+        }
+        // Se a tela crescer (ex.: girar o aparelho) a gaveta deixa de existir: libera a rolagem.
+        const media = window.matchMedia("(min-width: 901px)")
+        const onResize = () => { if (media.matches) setMenuOpen(false) }
+
+        window.addEventListener("keydown", onKeyDown)
+        media.addEventListener("change", onResize)
+        return () => {
+            document.body.classList.remove("pa-menu-open")
+            window.removeEventListener("keydown", onKeyDown)
+            media.removeEventListener("change", onResize)
+        }
+    }, [menuOpen])
 
     const items = NAV_ITEMS.filter((item) => user && item.profiles.includes(user.profile))
 
@@ -75,13 +98,36 @@ export function AppSidebar() {
     }
 
     return (
-        <aside className={`pa-side ${collapsed ? "c" : ""}`}>
-            <div className="pa-side-in">
+        <aside className={`pa-side ${collapsed ? "c" : ""} ${menuOpen ? "open" : ""}`}>
+            {/* Barra superior: só aparece no celular */}
+            <header className="pa-mbar">
+                <Link href="/" className="pa-brand" aria-label="Pesquisa Aqui, ir para o início">
+                    <BrandMark />
+                    <span>Pesquisa Aqui</span>
+                </Link>
+                <button
+                    type="button"
+                    className="pa-burger"
+                    onClick={() => setMenuOpen(true)}
+                    aria-label="Abrir menu"
+                    aria-expanded={menuOpen}
+                    aria-controls="pa-menu"
+                >
+                    <Menu strokeWidth={1.8} />
+                </button>
+            </header>
+
+            <button type="button" className="pa-side-back" onClick={closeMenu} aria-label="Fechar menu" tabIndex={-1} />
+
+            <div className="pa-side-in" id="pa-menu">
                 <div className="pa-side-head">
                     <Link href="/" className="pa-brand" aria-label="Pesquisa Aqui, ir para o início">
                         <BrandMark />
                         <span>Pesquisa Aqui</span>
                     </Link>
+                    <button type="button" className="pa-close" onClick={closeMenu} aria-label="Fechar menu">
+                        <X strokeWidth={1.8} />
+                    </button>
                     <button
                         type="button"
                         className="pa-collapse"
@@ -109,6 +155,7 @@ export function AppSidebar() {
                                 className={isActive(href) ? "on" : undefined}
                                 aria-current={isActive(href) ? "page" : undefined}
                                 title={collapsed ? label : undefined}
+                                onClick={closeMenu}
                             >
                                 <span className="t"><Icon strokeWidth={1.7} /></span>
                                 <span className="l">{label}</span>

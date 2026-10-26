@@ -290,7 +290,7 @@
 /* ---------- modo Cards: as mesmas colunas da tabela, em cartões ---------- */
 .pa-dt-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 12px;
   margin: 0;
   padding: 0;
@@ -611,4 +611,11 @@
   font-size: 13px;
   font-weight: 500;
   align-self: center;
+}
+
+/* celular: a lista vira cartões (ver data-table.tsx), então o seletor Lista/Cards some */
+@media (max-width: 640px) {
+  .pa-dt-seg[aria-label="Modo de exibição"] {
+    display: none;
+  }
 }

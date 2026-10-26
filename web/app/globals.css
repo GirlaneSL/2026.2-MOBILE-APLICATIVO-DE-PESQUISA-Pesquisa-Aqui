@@ -288,6 +288,7 @@
   display: flex;
   align-items: flex-start;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .pa-shell {
@@ -296,6 +297,7 @@
   max-width: 1260px;
   margin: 0 auto;
   padding: 30px 32px 80px;
+  overflow-x: clip;
 }
 
 .pa-side {
@@ -490,42 +492,45 @@
   height: 16px;
 }
 
-.pa-side.c .pa-side-in {
-  width: 84px;
-}
+/* Menu recolhido: só no desktop (no celular o menu é uma gaveta) */
+@media (min-width: 901px) {
+  .pa-side.c .pa-side-in {
+    width: 84px;
+  }
 
-.pa-side.c .pa-brand span,
-.pa-side.c .pa-snav a span.l,
-.pa-side.c .pa-snav .n,
-.pa-side.c .pa-live,
-.pa-side.c .pa-suser .who,
-.pa-side.c .pa-suser .out,
-.pa-side.c .pa-sgroup > p {
-  display: none;
-}
+  .pa-side.c .pa-brand span,
+  .pa-side.c .pa-snav a span.l,
+  .pa-side.c .pa-snav .n,
+  .pa-side.c .pa-live,
+  .pa-side.c .pa-suser .who,
+  .pa-side.c .pa-suser .out,
+  .pa-side.c .pa-sgroup > p {
+    display: none;
+  }
 
-.pa-side.c .pa-live + .pa-suser {
-  margin-top: auto;
-}
+  .pa-side.c .pa-live + .pa-suser {
+    margin-top: auto;
+  }
 
-.pa-side.c .pa-side-head {
-  flex-direction: column;
-  gap: 14px;
-  padding: 0;
-}
+  .pa-side.c .pa-side-head {
+    flex-direction: column;
+    gap: 14px;
+    padding: 0;
+  }
 
-.pa-side.c .pa-collapse {
-  transform: rotate(180deg);
-}
+  .pa-side.c .pa-collapse {
+    transform: rotate(180deg);
+  }
 
-.pa-side.c .pa-snav a {
-  padding: 7px;
-  justify-content: center;
-}
+  .pa-side.c .pa-snav a {
+    padding: 7px;
+    justify-content: center;
+  }
 
-.pa-side.c .pa-suser {
-  justify-content: center;
-  padding: 8px;
+  .pa-side.c .pa-suser {
+    justify-content: center;
+    padding: 8px;
+  }
 }
 
 .avatar-pa {
@@ -1218,30 +1223,6 @@
   .pa-shell {
     padding: 20px 16px 80px;
   }
-  .pa-side-in {
-    width: 84px;
-  }
-  .pa-side .pa-brand span,
-  .pa-side .pa-snav a span.l,
-  .pa-side .pa-snav .n,
-  .pa-side .pa-live,
-  .pa-side .pa-suser .who,
-  .pa-side .pa-suser .out,
-  .pa-side .pa-sgroup > p,
-  .pa-side .pa-collapse {
-    display: none;
-  }
-  .pa-side .pa-live + .pa-suser {
-    margin-top: auto;
-  }
-  .pa-side .pa-snav a {
-    padding: 7px;
-    justify-content: center;
-  }
-  .pa-side .pa-suser {
-    justify-content: center;
-    padding: 8px;
-  }
   .pa-hero-l {
     padding: 28px 22px;
   }
@@ -1808,7 +1789,7 @@
 
 .pa-rc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr));
   gap: 16px;
 }
 
@@ -2819,5 +2800,257 @@ svg.lucide {
   [role="alert"],
   .pa-page > div[class*="py-16"] > * {
     animation: none;
+  }
+}
+
+
+/* ==================================================================
+   CELULAR / TABLET (até 900px)
+   Menu lateral vira barra superior + gaveta. Elementos abaixo ficam
+   escondidos no desktop e só aparecem aqui.
+   ================================================================== */
+.pa-mbar,
+.pa-side-back,
+.pa-close {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .pa-app {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* o <aside> some do fluxo; barra e gaveta se posicionam sozinhas */
+  .pa-side {
+    display: contents;
+  }
+
+  .pa-mbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    box-sizing: content-box;
+    height: 56px;
+    padding: env(safe-area-inset-top, 0px) max(14px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+    background: rgba(255, 255, 255, 0.92);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .pa-burger,
+  .pa-close {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    flex: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pa-burger svg,
+  .pa-close svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .pa-burger:active,
+  .pa-close:active {
+    background: #eef1ee;
+  }
+
+  .pa-side-in {
+    position: fixed;
+    z-index: 60;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100dvh;
+    width: min(320px, 86vw);
+    border-radius: 0 28px 28px 0;
+    border-left: 0;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 14px calc(14px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 0.28s var(--pa-ease, cubic-bezier(0.2, 0, 0, 1)), visibility 0s linear 0.28s;
+  }
+
+  .pa-side.open .pa-side-in {
+    transform: none;
+    visibility: visible;
+    transition-delay: 0s;
+  }
+
+  .pa-side-back {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    border: 0;
+    padding: 0;
+    background: rgba(10, 20, 16, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .pa-side.open .pa-side-back {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .pa-side .pa-collapse {
+    display: none;
+  }
+
+  .pa-side .pa-close {
+    display: grid;
+  }
+
+  .pa-snav a {
+    padding-block: 6px;
+  }
+
+  body.pa-menu-open {
+    overflow: hidden;
+  }
+
+  .pa-shell {
+    padding: 18px 16px 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-side-in,
+  .pa-side-back {
+    transition: none;
+  }
+}
+
+/* ==================================================================
+   CELULAR (até 640px): espaçamentos e tipografia menores
+   ================================================================== */
+@media (max-width: 640px) {
+  .pa-shell {
+    padding: 14px 12px 40px;
+  }
+
+  .pa-top {
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .pa-top h1 {
+    font-size: 26px;
+  }
+
+  .pa-top > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .pa-hero {
+    border-radius: 24px;
+    min-height: 0;
+  }
+
+  .pa-hero-l {
+    padding: 24px 18px 20px;
+    gap: 18px;
+  }
+
+  .pa-hero .big {
+    font-size: clamp(64px, 24vw, 104px);
+    margin: 12px 0 10px;
+  }
+
+  .pa-hero .cap {
+    font-size: 15px;
+  }
+
+  .pa-hero-r {
+    min-height: 180px;
+  }
+
+  .pa-minis {
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  }
+
+  .pa-minis div {
+    padding: 12px;
+  }
+
+  .pa-minis dd {
+    font-size: 24px;
+  }
+
+  .pa-bento {
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .pa-card {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .pa-stat {
+    font-size: 36px;
+  }
+
+  .pa-rs-hero {
+    padding: 20px 16px;
+    border-radius: 24px;
+    gap: 18px;
+  }
+
+  .pa-rc-grid {
+    gap: 12px;
+  }
+
+  /* login */
+  .pa-login,
+  .pa-login-copy {
+    min-height: 0;
+  }
+
+  .pa-login-copy {
+    padding: 24px 20px 8px;
+    gap: 24px;
+  }
+
+  .pa-login-copy h1 {
+    font-size: clamp(40px, 13vw, 56px);
+    max-width: 11ch;
+  }
+
+  .pa-login-copy p.lead {
+    font-size: 15px;
+    margin-top: 16px;
+  }
+
+  .pa-login-copy > span {
+    display: none;
+  }
+
+  .pa-login-card {
+    margin: 20px 12px 24px;
+    padding: 24px 20px;
+    border-radius: 24px;
+  }
+
+  .pa-login-card h2 {
+    font-size: 26px;
   }
 }
