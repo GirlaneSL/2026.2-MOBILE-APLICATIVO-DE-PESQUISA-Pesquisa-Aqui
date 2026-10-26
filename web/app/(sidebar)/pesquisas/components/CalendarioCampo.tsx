@@ -89,6 +89,47 @@ export default function CalendarioCampo({
                     )}
                 </div>
 
+                {/* Celular: no lugar da linha do tempo (larga demais), uma agenda em lista, uma pesquisa por item */}
+                <div className="pa-cal-m">
+                    {loading ? (
+                        <LoadingState label="Carregando calendário..." shape="inline" tone="dark" />
+                    ) : rows.length === 0 ? (
+                        <div className="tl-empty">Nenhuma pesquisa nesta situação.</div>
+                    ) : (
+                        <>
+                            <ul>
+                                {shown.map((research) => {
+                                    const count = collectionsReady ? collectionsByResearch.get(research.id) ?? 0 : null;
+                                    const view = viewOf(research, now, count);
+
+                                    return (
+                                        <li key={research.id}>
+                                            <Link href={`/pesquisas/${research.id}`} className={`am ${view.kind}${view.soon ? " soon" : ""}`}>
+                                                <span className="am-top">
+                                                    <b>{research.title}</b>
+                                                    {count !== null && <em>{count}<small>{count === 1 ? "coleta" : "coletas"}</small></em>}
+                                                </span>
+                                                <span className="am-trail" role="img" aria-label={`${view.done}% do período decorrido`}>
+                                                    <i className="rest" />
+                                                    <i className="done" style={{ width: `${view.done}%` }} />
+                                                    <i className="pin" style={{ left: `${view.done}%` }} />
+                                                </span>
+                                                <span className="am-dates"><span>{view.startLabel}</span><span>{view.endLabel}</span></span>
+                                                <span className="am-note">{view.note}</span>
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            {rows.length > MAX_ROWS && (
+                                <button type="button" className="tl-more" onClick={() => setExpanded((value) => !value)}>
+                                    {expanded ? "Mostrar menos" : `Mostrar todas (${rows.length})`}
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
+
                 <div className="tl">
                     <div className="tl-scroll">
                         <div className="tl-in">
