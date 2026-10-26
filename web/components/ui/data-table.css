@@ -613,9 +613,3 @@
   align-self: center;
 }
 
-/* celular: a lista vira cartões (ver data-table.tsx), então o seletor Lista/Cards some */
-@media (max-width: 640px) {
-  .pa-dt-seg[aria-label="Modo de exibição"] {
-    display: none;
-  }
-}

@@ -22,6 +22,7 @@ import {
     type DataColumn,
     type TableSort,
     type TableView,
+    useTableView,
 } from '@/components/ui/data-table';
 import { Building2, UsersRound } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -90,7 +91,7 @@ export default function ExibirEditar({
     const [tab, setTab] = useState<Tab>('companies');
     const [status, setStatus] = useState<StatusFilter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
-    const [view, setView] = useState<TableView>('table');
+    const [view, setView] = useTableView('table');
 
     // Cada aba pede ao servidor só a página que aparece (busca, situação e ordem são feitas lá).
     // Só a aba aberta faz requisição.

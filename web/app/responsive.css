@@ -1,0 +1,265 @@
+/* ==================================================================
+   RESPONSIVIDADE: celular, tablet e notebook
+   Carregado depois do globals.css (ver app/layout.tsx). Tudo aqui dentro
+   do painel usa o prefixo .pa-app para vencer o CSS das páginas
+   (pesquisas.css, data-table.css) sem precisar de !important.
+
+   Faixas:
+     até 640px      celular            (regras já existem no globals.css)
+     641 – 1024px   tablet             menu em gaveta + barra superior
+     1025 – 1279px  notebook pequeno   menu lateral mais estreito
+     1280px +       desktop            sem alterações
+   ================================================================== */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ---------- toque (celular e tablet) ---------- */
+@media (pointer: coarse) {
+  /* 16px nos campos: o iOS não dá zoom ao focar */
+  .pa-dt-search input,
+  .pa-gs-bar input,
+  .pa-app input,
+  .pa-app textarea,
+  .pa-login input {
+    font-size: 16px;
+  }
+
+  /* alvos de toque de pelo menos 40px */
+  .pa-app .pq-ico[data-slot="button"],
+  .pa-app .pq-ico [data-slot="button"] {
+    width: 40px;
+    height: 40px;
+  }
+
+  .pa-app .pa-dt-search input {
+    height: 44px;
+  }
+}
+
+/* login em tela baixa (celular deitado): a barra do navegador não corta o conteúdo */
+.pa-login,
+.pa-login-copy {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+@media (max-width: 640px) {
+  .pa-login,
+  .pa-login-copy {
+    min-height: 0;
+  }
+}
+
+/* textos longos nunca estouram o cartão */
+.pa-app .pa-card h3,
+.pa-app .pa-card .desc {
+  overflow-wrap: anywhere;
+}
+
+/* celular deitado: gaveta e conteúdo respeitam o recorte lateral (notch) */
+@media (max-width: 1024px) and (orientation: landscape) and (max-height: 520px) {
+  .pa-app .pa-shell {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  .pa-app .pa-mbar {
+    height: 48px;
+  }
+
+  .pa-app .pa-hero {
+    min-height: 0;
+  }
+
+  .pa-app .pa-hero-r {
+    min-height: 160px;
+  }
+}
+
+/* ==================================================================
+   TABLET (641 – 1024px)
+   ================================================================== */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .pa-app .pa-shell {
+    padding: 24px 28px 64px;
+  }
+
+  .pa-app .pa-top h1 {
+    font-size: 30px;
+  }
+
+  .pa-app .pa-hero-l {
+    padding: 32px 32px 28px;
+  }
+
+  /* cartões de pesquisa: duas colunas (o pesquisas.css força uma no tablet) */
+  .pa-app .pq-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  }
+
+  /* linha do tempo do calendário: coluna de nomes mais estreita,
+     sobra mais espaço para as barras */
+  .pa-app .pa-cal .tl-in {
+    min-width: 560px;
+  }
+
+  .pa-app .pa-cal .tl-axis,
+  .pa-app .pa-cal .tl-plot {
+    margin-left: 156px;
+    margin-right: 96px;
+  }
+
+  .pa-app .pa-cal .tl-name {
+    left: -156px;
+    width: 142px;
+  }
+
+  /* legenda do calendário em 2 colunas, em vez de uma pilha alta */
+  .pa-app .pa-cal .rail {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .pa-app .pa-cal .rail h2,
+  .pa-app .pa-cal .rail .sub,
+  .pa-app .pa-cal .rail .total {
+    grid-column: 1 / -1;
+  }
+
+  /* busca e controles da barra de ferramentas */
+  .pa-app .pa-dt-search {
+    flex: 1 1 220px;
+    max-width: none;
+  }
+
+  /* lista de pesquisas: colunas mais compactas */
+  .pa-app .pq-list-tab {
+    min-width: 820px;
+  }
+
+  .pa-app .pq-lh,
+  .pa-app .pq-lr {
+    grid-template-columns: minmax(180px, 1.4fr) minmax(140px, 1fr) 96px 72px 100px 150px;
+    gap: 14px;
+    padding: 0 18px;
+  }
+}
+
+/* tablet em pé: modais quase em tela cheia, botões empilhados quando faltar espaço */
+@media (min-width: 641px) and (max-width: 820px) {
+  .pa-app .pa-card {
+    padding: 22px;
+  }
+
+  .pa-app .pa-rs-hero {
+    padding: 24px;
+  }
+}
+
+/* ==================================================================
+   NOTEBOOK PEQUENO (1025 – 1279px)
+   O menu lateral ocupava 286px de ~1100: sobrava pouco para o conteúdo.
+   ================================================================== */
+@media (min-width: 1025px) and (max-width: 1279px) {
+  .pa-app .pa-side {
+    padding: 10px 0 10px 10px;
+  }
+
+  .pa-app .pa-side-in {
+    width: 236px;
+    padding: 18px 12px 12px;
+    border-radius: 26px;
+    gap: 18px;
+  }
+
+  .pa-app .pa-side.c .pa-side-in {
+    width: 84px;
+  }
+
+  .pa-app .pa-shell {
+    padding: 26px 24px 64px;
+  }
+
+  .pa-app .pa-top h1 {
+    font-size: 28px;
+  }
+
+  .pa-app .pa-hero-l {
+    padding: 34px 32px 28px;
+  }
+
+  .pa-app .pa-card {
+    padding: 22px;
+  }
+
+  .pa-app .pa-bento {
+    gap: 14px;
+  }
+
+  /* com o menu aberto o conteúdo tem ~800px: painéis lado a lado ficam apertados */
+  .pa-app .pa-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .pa-app .pa-hero-r {
+    min-height: 280px;
+  }
+
+  .pa-app .pa-c8,
+  .pa-app .pa-c6,
+  .pa-app .pa-c4 {
+    grid-column: span 12;
+  }
+
+  .pa-app .pq-list-tab {
+    min-width: 900px;
+  }
+
+  .pa-app .pq-lh,
+  .pa-app .pq-lr {
+    grid-template-columns: minmax(190px, 1.5fr) minmax(150px, 1fr) 100px 76px 104px 160px;
+    gap: 16px;
+    padding: 0 20px;
+  }
+
+  .pa-app .pa-cal {
+    padding: 26px 26px 24px;
+  }
+
+  .pa-app .pa-cal-in {
+    gap: 28px;
+  }
+
+  .pa-app .pa-cal .rail {
+    width: 190px;
+  }
+}
+
+/* menu recolhido libera espaço: volta ao layout de duas colunas */
+@media (min-width: 1100px) and (max-width: 1279px) {
+  .pa-app:has(.pa-side.c) .pa-hero {
+    grid-template-columns: 1.05fr 1fr;
+  }
+
+  .pa-app:has(.pa-side.c) .pa-c8 {
+    grid-column: span 8;
+  }
+
+  .pa-app:has(.pa-side.c) .pa-c6 {
+    grid-column: span 6;
+  }
+
+  .pa-app:has(.pa-side.c) .pa-c4 {
+    grid-column: span 4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-app .pa-side-in {
+    transition: none;
+  }
+}

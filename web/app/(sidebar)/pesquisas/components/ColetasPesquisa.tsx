@@ -17,6 +17,7 @@ import {
     type DataColumn,
     type TableSort,
     type TableView,
+    useTableView,
 } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/loadingState";
@@ -78,7 +79,7 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
     const [viewing, setViewing] = useState<CollectionSummary | null>(null);
     const [filter, setFilter] = useState<Filter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
-    const [view, setView] = useState<TableView>('table');
+    const [view, setView] = useTableView('table');
     const [now] = useState(() => Date.now());
     const [stats, setStats] = useState<CollectionStats | null>(null);
     const [player, setPlayer] = useState<{

@@ -15,6 +15,7 @@ import {
     type DataColumn,
     type TableSort,
     type TableView,
+    useTableView,
 } from "@/components/ui/data-table";
 import {
     avatarTone,
@@ -53,7 +54,7 @@ export function situationOf(research: Research, now: number): Situation {
 /** Tabela de pesquisas do painel: período, equipe, situação e andamento. A API entrega uma página por vez. */
 export default function PesquisasEquipeTabela({ now }: PesquisasEquipeTabelaProps) {
     const [sort, setSort] = useState<TableSort>("recent");
-    const [view, setView] = useState<TableView>("table");
+    const [view, setView] = useTableView("table");
 
     const list = usePagedResource<ResearchListItem>(
         (params) => getResearchesPage({ ...params, sort }),

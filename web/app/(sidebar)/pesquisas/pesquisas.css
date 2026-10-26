@@ -945,14 +945,14 @@
 }
 
 /* ------------------------------------------------------------------
-   CELULAR / TABLET (até 900px)
+   CELULAR / TABLET (até 1024px)
    Causa do estouro lateral: no celular o .pa-app vira coluna e o .pa-shell
    (margin: 0 auto) deixa de esticar; ele passa a ter a largura do conteúdo,
    e a linha do tempo (640px) e a lista (1040px) o alargam além da tela.
    Aqui o shell volta a ter a largura da tela e as áreas roláveis deixam de
    contar para o cálculo da largura. Nada disso vale no desktop (> 900px).
    ------------------------------------------------------------------ */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .pa-shell:has(.pa-pesq) {
     width: 100%;
   }

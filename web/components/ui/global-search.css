@@ -45,7 +45,7 @@
   white-space: nowrap;
 }
 
-@media (min-width: 901px) {
+@media (min-width: 1025px) {
   .pa-side.c .pa-gs-trigger {
     justify-content: center;
     padding: 10px;
@@ -58,7 +58,7 @@
 }
 
 /* celular: sem atalho de teclado, botão mais alto para o toque */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .pa-gs-trigger {
     min-height: 44px;
   }

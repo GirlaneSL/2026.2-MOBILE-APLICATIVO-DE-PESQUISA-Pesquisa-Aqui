@@ -17,6 +17,7 @@ import {
     type DataColumn,
     type TableSort,
     type TableView,
+    useTableView,
 } from '@/components/ui/data-table';
 import { UsersRound } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -54,7 +55,7 @@ export default function ListaAdministradores({
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
 
     const [sort, setSort] = useState<TableSort>('recent');
-    const [view, setView] = useState<TableView>('table');
+    const [view, setView] = useTableView('table');
 
     // O servidor devolve só a página que aparece (busca e ordem são feitas lá).
     const adminsList = usePagedResource<Admin>((params) => getAdminsPage({ ...params, sort }), {

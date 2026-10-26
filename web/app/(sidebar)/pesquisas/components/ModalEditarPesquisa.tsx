@@ -20,17 +20,17 @@ export default function ModalEditarPesquisa({ research, onSuccess, isMontagem = 
         <Tabs defaultValue="info" className="w-full ">
             <TabsList
                 className={cn(
-                    "relative grid w-fit gap-2 grid-cols-2",
+                    "relative grid w-full gap-2 grid-cols-2 sm:w-fit",
                     (isPesquisa !== isMontagem) && "grid-cols-1"
                 )}
             >
                 {isPesquisa && (
-                    <TabsTrigger value="info">
+                    <TabsTrigger value="info" className="min-w-0 px-2 text-[13px] sm:px-3 sm:text-sm">
                         Dados da Pesquisa
                     </TabsTrigger>
                 )}
                 {isMontagem && (
-                    <TabsTrigger value="questions">
+                    <TabsTrigger value="questions" className="min-w-0 px-2 text-[13px] sm:px-3 sm:text-sm">
                         Montagem da Pesquisa
                     </TabsTrigger>
                 )}

@@ -493,7 +493,7 @@
 }
 
 /* Menu recolhido: só no desktop (no celular o menu é uma gaveta) */
-@media (min-width: 901px) {
+@media (min-width: 1025px) {
   .pa-side.c .pa-side-in {
     width: 84px;
   }
@@ -2805,7 +2805,7 @@ svg.lucide {
 
 
 /* ==================================================================
-   CELULAR / TABLET (até 900px)
+   CELULAR / TABLET (até 1024px)
    Menu lateral vira barra superior + gaveta. Elementos abaixo ficam
    escondidos no desktop e só aparecem aqui.
    ================================================================== */
@@ -2815,7 +2815,7 @@ svg.lucide {
   display: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .pa-app {
     flex-direction: column;
     align-items: stretch;

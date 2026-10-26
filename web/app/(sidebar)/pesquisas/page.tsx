@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { Contour } from "@/components/ui/contour";
 import DialogLayout from "@/components/ui/dialogLayout";
-import { TableSearch, TableViewControls, type TableView } from "@/components/ui/data-table";
+import { TableSearch, TableViewControls, useTableView, type TableView } from "@/components/ui/data-table";
 import { LoadingState } from "@/components/ui/loadingState";
 import { ServerPagination } from "@/components/ui/pagination";
 import { usePagedResource } from "@/hooks/usePagedResource";
@@ -39,7 +39,7 @@ export default function Pesquisas() {
     const [summary, setSummary] = useState<ResearchSummary | null>(null);
     const [filter, setFilter] = useState<Filter>("ALL");
     const [sort, setSort] = useState<Sort>("recent");
-    const [view, setView] = useState<TableView>("cards");
+    const [view, setView] = useTableView("cards");
     const [now] = useState(() => Date.now());
 
     // A API devolve uma página por vez (situação, busca e ordem são feitas lá): nunca chegam todas as pesquisas.

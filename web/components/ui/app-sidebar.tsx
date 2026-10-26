@@ -60,7 +60,7 @@ export function AppSidebar() {
             if (event.key === "Escape") setMenuOpen(false)
         }
         // Se a tela crescer (ex.: girar o aparelho) a gaveta deixa de existir: libera a rolagem.
-        const media = window.matchMedia("(min-width: 901px)")
+        const media = window.matchMedia("(min-width: 1025px)")
         const onResize = () => { if (media.matches) setMenuOpen(false) }
 
         window.addEventListener("keydown", onKeyDown)

@@ -17,6 +17,7 @@ import {
     type DataColumn,
     type TableSort,
     type TableView,
+    useTableView,
 } from "@/components/ui/data-table";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/loadingState";
@@ -68,7 +69,7 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
         });
     const [filter, setFilter] = useState<Filter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
-    const [view, setView] = useState<TableView>('table');
+    const [view, setView] = useTableView('table');
 
     // A API devolve uma página da equipe por vez (vinculados primeiro; busca e filtro são feitos lá).
     const list = usePagedResource<ResearchTeamMember, ResearchTeamPage>(

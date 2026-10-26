@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
+import "./responsive.css";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 
 const hankenGrotesk = Hanken_Grotesk({
