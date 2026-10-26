@@ -6,7 +6,7 @@ Plataforma para criar, aplicar e acompanhar pesquisas de campo. O projeto reúne
 - **Web** (`web/`): painel administrativo em Next.js, usado por administradores para montar pesquisas e acompanhar resultados.
 - **Mobile** (`mobile/`): aplicativo Expo / React Native, usado pelos pesquisadores em campo para coletar respostas, inclusive sem internet.
 
-> Esta é a documentação da branch **`dev-kaiky`**. Ela contém a evolução mais recente do painel web (dashboard com dados reais, paginação e busca no servidor), da API e do app mobile.
+> Esta é a documentação da branch **`main`**. Ela contém a evolução mais recente do painel web (dashboard com dados reais, paginação e busca no servidor), da API e do app mobile.
 
 ---
 
