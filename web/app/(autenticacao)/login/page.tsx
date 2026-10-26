@@ -5,14 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { login } from "@/lib/auth";
 import Link from "next/link";
-import { useRouter } from 'next/navigation';
 import { SubmitEventHandler, useState } from "react";
 
 export default function Login() {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState<string | null>(null)
-    const router = useRouter();
 
     const [isLoadingLogin, setIsLoadingLogin] = useState(false)
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
@@ -23,12 +21,18 @@ export default function Login() {
 
         try {
             await login(username, password);
-            router.push('/');
         } catch {
             setError('Nome de usuário ou senha incorretos, ou empresa inativa.')
-        } finally {
             setIsLoadingLogin(false)
+            return;
         }
+
+        // Navegação completa (e não router.push): na Vercel o Next guarda em cache o
+        // redirecionamento "/" -> "/login" feito antes do login, e o push reaproveitava
+        // esse cache, deixando o usuário na tela de login até recarregar a página.
+        // Com location.replace o navegador pede "/" ao servidor já com o cookie novo.
+        // O botão continua em "Entrando..." até a página trocar.
+        window.location.replace('/');
     }
 
     return (
@@ -38,7 +42,7 @@ export default function Login() {
             <Pin label="Caruaru" left="44%" top="78%" tone="clay" delay="1.1s" />
 
             <section className="pa-login-copy">
-                <Link href="/" className="pa-brand">
+                <Link href="/" prefetch={false} className="pa-brand">
                     <BrandMark color="#bfe3d0" />
                     Pesquisa Aqui
                 </Link>
