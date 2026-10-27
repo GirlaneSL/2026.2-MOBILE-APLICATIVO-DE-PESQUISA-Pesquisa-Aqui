@@ -736,18 +736,33 @@
 }
 
 .pq-acts {
-  display: flex;
-  flex-wrap: wrap;
+  /* duas colunas iguais: todos os botões do cartão têm a mesma largura e altura */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin: 16px 20px 0;
   padding: 16px 0 20px;
   border-top: 1px dashed #e0e5e1;
 }
 
+.pq-acts > *,
+.pq-acts > span {
+  display: flex;
+  min-width: 0;
+}
+
+.pq-acts .pq-btn,
 .pq-acts [data-slot="button"] {
+  width: 100%;
   height: 34px;
   padding: 0 14px;
   font-size: 13.5px;
+  white-space: nowrap;
+}
+
+/* quantidade ímpar de botões: o último ocupa a linha toda */
+.pq-acts > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 
 /* equipe: o "+N" é escuro, como no design */
@@ -1288,18 +1303,10 @@
     padding: 14px 0 16px;
   }
 
-  .pq-acts .pq-btn.dark {
-    flex: 1 1 100%;
-    height: 42px;
-    font-size: 14px;
-  }
-
+  .pq-acts .pq-btn,
   .pq-acts [data-slot="button"] {
-    height: 38px;
-  }
-
-  .pq-acts [data-slot="button"][aria-label^="Excluir"] {
-    margin-left: auto;
+    height: 40px;
+    font-size: 14px;
   }
 
   /* ----- estado vazio ----- */

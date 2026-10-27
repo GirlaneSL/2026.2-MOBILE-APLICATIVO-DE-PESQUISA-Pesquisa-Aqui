@@ -71,7 +71,7 @@ export default function PesquisaCard({ research, team, collections, teamLoading 
                     <Button size="sm" variant="outline" onClick={() => onUnpublish(research.id)}><Undo2 />Voltar para rascunho</Button>
                 )}
                 {research.canDelete && (
-                    <Button size="sm" variant="destructive" onClick={() => onDelete(research.id)} aria-label={`Excluir ${research.title}`}><Trash2 /></Button>
+                    <Button size="sm" variant="destructive" onClick={() => onDelete(research.id)} aria-label={`Excluir ${research.title}`}><Trash2 />Excluir</Button>
                 )}
             </div>
         </article>
