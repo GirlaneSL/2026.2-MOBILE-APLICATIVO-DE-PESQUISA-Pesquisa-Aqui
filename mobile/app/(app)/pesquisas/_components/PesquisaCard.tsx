@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Download, PlayCircle, RefreshCw, Trash2, WifiOff } from 'lucide-react-native';
 import Chip from '@/components/Chip';
 import { Brand } from '@/constants/brand';
+import { formatApiDate } from '@/lib/formatDate';
 
 interface PesquisaCardProps {
     titulo: string;
@@ -21,11 +22,6 @@ interface PesquisaCardProps {
     onResume?: () => void;
 }
 
-const formatDate = (iso: string) => {
-    const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('pt-BR');
-};
-
 export default function PesquisaCard({
     titulo,
     targetAudience,
@@ -42,7 +38,7 @@ export default function PesquisaCard({
     onStart,
     onResume,
 }: PesquisaCardProps) {
-    const period = `${formatDate(startDate)} a ${formatDate(endDate)}`;
+    const period = `${formatApiDate(startDate)} a ${formatApiDate(endDate)}`;
     const canDownload = isOnline && !isDownloading && !revoked;
 
     return (

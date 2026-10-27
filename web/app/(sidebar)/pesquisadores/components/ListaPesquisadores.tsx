@@ -72,7 +72,13 @@ const timeValue = (iso?: string) => {
 const relativeDays = (iso: string | undefined, now: number) => {
     const t = timeValue(iso);
     if (!t || !now) return '';
-    const days = Math.max(0, Math.floor((now - t) / DAY));
+    // Dias de calendário (virada da meia-noite no fuso local), não blocos de 24h:
+    // cadastrado dia 23 às 18h e visto dia 27 às 17h são 4 dias, não 3.
+    const startOfDay = (ms: number) => {
+        const d = new Date(ms);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    };
+    const days = Math.max(0, Math.round((startOfDay(now) - startOfDay(t)) / DAY));
     if (days === 0) return 'hoje';
     if (days === 1) return 'ontem';
     if (days < 30) return `há ${days} dias`;
