@@ -790,6 +790,20 @@
   background: rgba(255, 255, 255, 0.6);
 }
 
+.pa-card.clay {
+  background: linear-gradient(160deg, #f9e3dc 0%, #f1c8bb 100%);
+  border-color: #e3b3a5;
+}
+
+.pa-card.clay .desc {
+  color: #8a432f;
+}
+
+.pa-card.clay .pa-ic {
+  background: rgba(255, 255, 255, 0.6);
+  color: #8a432f;
+}
+
 .pa-card.dark {
   background: var(--forest);
   border-color: var(--forest);

@@ -55,6 +55,7 @@ const USER_ERRORS: Record<string, string> = {
     'You cannot deactivate your own account': 'Você não pode desativar a sua própria conta.',
     'User has collected data and cannot be deleted': 'Este usuário já possui coletas registradas e não pode ser excluído.',
     'Username already exists': 'Este nome de usuário já está em uso.',
+    'Only company administrators can change access for all researchers': 'Somente o administrador da empresa pode alterar o acesso de todos os pesquisadores.',
     'User not found': 'Usuário não encontrado. Atualize a lista e tente novamente.',
 };
 
@@ -86,6 +87,28 @@ export const setUserSituation = async (username: string, situation: UserSituatio
     });
 
     if (!response.ok) throw await userError(response, 'Falha ao alterar a situação do usuário');
+
+    return response.json();
+}
+
+export interface ResearchersAccessResult {
+    total: number;
+    active: number;
+    inactive: number;
+}
+
+/** Libera (ACTIVE) ou bloqueia (INACTIVE) o aplicativo para todos os pesquisadores da empresa. */
+export const setAllResearchersSituation = async (situation: UserSituation): Promise<ResearchersAccessResult> => {
+    const response = await apiFetch('/user/researchers/situation', {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ situation }),
+    });
+
+    if (!response.ok) throw await userError(response, 'Falha ao alterar o acesso dos pesquisadores');
 
     return response.json();
 }

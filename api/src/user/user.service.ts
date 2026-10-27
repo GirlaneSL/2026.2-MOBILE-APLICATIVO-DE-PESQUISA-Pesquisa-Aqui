@@ -253,6 +253,26 @@ export class UserService {
         return userWithoutPassword;
     }
 
+    // Libera ou bloqueia o aplicativo para TODOS os pesquisadores da empresa do administrador de uma vez.
+    // Usa a mesma situação de cada pesquisador: quem fica INACTIVE não entra no app e perde a sessão na hora
+    // (ver AuthService/AuthGuard). O administrador e os dados das coletas não são tocados.
+    async setResearchersSituation(situation: 'ACTIVE' | 'INACTIVE', currentUser: UserPayLoad) {
+        if (currentUser.profile !== 'ADMINISTRATOR' || !currentUser.companyId) {
+            throw new ForbiddenException('Only company administrators can change access for all researchers');
+        }
+
+        const users = this.prisma.client.orm.public.User;
+        const researchers = await users.where({ companyId: currentUser.companyId, profile: 'RESEARCHER' }).all();
+
+        for (const researcher of researchers) {
+            if (researcher.situation !== situation) {
+                await users.where({ username: researcher.username }).update({ situation });
+            }
+        }
+
+        return { total: researchers.length, active: situation === 'ACTIVE' ? researchers.length : 0, inactive: situation === 'INACTIVE' ? researchers.length : 0 };
+    }
+
     async delete(username: string, currentUser: UserPayLoad) {
         // No token, "sub" guarda o username de quem está logado.
         if (username === String(currentUser.sub)) {

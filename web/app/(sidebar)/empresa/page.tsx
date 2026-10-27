@@ -5,6 +5,10 @@ import Link from "next/link";
 import BannerComponent from "@/components/ui/bannerComponent";
 import { Contour, Pin } from "@/components/ui/contour";
 import { getCompanies } from "@/lib/company";
+import { getResearchers, setAllResearchersSituation } from "@/lib/user";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+import toast from "react-hot-toast";
 import { LoadingState } from "@/components/ui/loadingState";
 import {
     ArrowUpRight,
@@ -130,6 +134,42 @@ export default function EmpresaPage() {
     const [company, setCompany] = useState<Company | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { user } = useCurrentUser();
+    // Pesquisadores da empresa: total e quantos podem entrar no app (só o administrador mexe nisso).
+    const [team, setTeam] = useState<{ total: number; active: number } | null>(null);
+    const [savingAccess, setSavingAccess] = useState(false);
+    const isCompanyAdmin = user?.profile === 'ADMINISTRATOR';
+
+    useEffect(() => {
+        if (!isCompanyAdmin) return;
+        getResearchers()
+            .then((list) => setTeam({ total: list.length, active: list.filter((r) => r.situation !== 'INACTIVE').length }))
+            .catch(() => setTeam(null));
+    }, [isCompanyAdmin]);
+
+    const handleToggleAccess = async (block: boolean) => {
+        if (!team) return;
+        const ok = await confirmDialog({
+            title: block ? 'Bloquear o aplicativo para todos?' : 'Liberar o aplicativo para todos?',
+            description: block
+                ? `Os ${team.total} pesquisadores da empresa perdem o acesso ao aplicativo agora, inclusive quem está logado. As coletas já feitas ficam salvas.`
+                : `Os ${team.total} pesquisadores da empresa voltam a poder entrar no aplicativo, inclusive quem foi desativado individualmente.`,
+            confirmLabel: block ? 'Bloquear todos' : 'Liberar todos',
+            variant: block ? 'destructive' : 'default',
+        });
+        if (!ok) return;
+
+        try {
+            setSavingAccess(true);
+            const result = await setAllResearchersSituation(block ? 'INACTIVE' : 'ACTIVE');
+            setTeam({ total: result.total, active: result.active });
+            toast.success(block ? 'Aplicativo bloqueado para todos os pesquisadores.' : 'Aplicativo liberado para todos os pesquisadores.');
+        } catch (err: any) {
+            toast.error(err.message || 'Falha ao alterar o acesso dos pesquisadores');
+        } finally {
+            setSavingAccess(false);
+        }
+    };
 
     useEffect(() => {
         async function loadData() {
@@ -164,7 +204,11 @@ export default function EmpresaPage() {
         );
     }
 
-    const isActive = company.situation === 'ACTIVE';
+    const companyActive = company.situation === 'ACTIVE';
+    // Coleta liberada = empresa ativa e ao menos um pesquisador com acesso (ou equipe ainda desconhecida).
+    const everyoneBlocked = !!team && team.total > 0 && team.active === 0;
+    const isActive = companyActive && !everyoneBlocked;
+    const partial = companyActive && !!team && team.active > 0 && team.active < team.total;
     const contacts = (company.contactInformation || '')
         .split(/\r?\n|;/)
         .map((l) => l.trim())
@@ -199,22 +243,22 @@ export default function EmpresaPage() {
                         <div className="mt-4 flex flex-wrap items-center gap-2.5">
                             <span
                                 className={`inline-flex h-7 items-center gap-2 rounded-full px-3 text-[13px] font-medium ${
-                                    isActive
+                                    companyActive
                                         ? 'bg-[rgba(191,227,208,0.16)] text-[var(--mint)]'
                                         : 'bg-[rgba(224,145,122,0.18)] text-[#f0b09c]'
                                 }`}
                             >
                                 <span className="relative flex size-2">
-                                    {isActive && (
+                                    {companyActive && (
                                         <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--mint)] opacity-60" />
                                     )}
                                     <span
                                         className={`relative inline-flex size-2 rounded-full ${
-                                            isActive ? 'bg-[var(--mint)]' : 'bg-[#e0917a]'
+                                            companyActive ? 'bg-[var(--mint)]' : 'bg-[#e0917a]'
                                         }`}
                                     />
                                 </span>
-                                {isActive ? 'Cadastro ativo' : 'Cadastro inativo'}
+                                {companyActive ? 'Cadastro ativo' : 'Cadastro inativo'}
                             </span>
                             <span className="inline-flex items-center gap-1.5 text-[13px] text-[var(--muted-dark)]">
                                 <CalendarDays className="size-3.5" />
@@ -229,7 +273,7 @@ export default function EmpresaPage() {
                 {/* Coleta no aplicativo */}
                 <Panel
                     delay={1}
-                    className={`lg:col-span-3 ${isActive ? 'mint' : ''}`}
+                    className={`lg:col-span-3 ${isActive ? 'mint' : 'clay'}`}
                     icon={isActive ? <ShieldCheck /> : <ShieldOff />}
                     title="Coleta no aplicativo"
                     description="Define se a equipe pode coletar em campo."
@@ -240,7 +284,7 @@ export default function EmpresaPage() {
                             <div className="mx-auto mb-1.5 h-1 w-6 rounded-full bg-[var(--forest)]/80" />
                             <div
                                 className={`grid h-[96px] place-items-center rounded-xl ${
-                                    isActive ? 'bg-[var(--mint)]' : 'bg-[#f3e0d9]'
+                                    isActive ? 'bg-[var(--mint)]' : 'bg-[#e9b9a9]'
                                 }`}
                             >
                                 {isActive ? (
@@ -260,10 +304,41 @@ export default function EmpresaPage() {
                                     ? 'Os pesquisadores podem baixar pesquisas e enviar coletas.'
                                     : 'Os pesquisadores não conseguem entrar no aplicativo.'}
                             </p>
-                            {!isActive && (
+                            {!companyActive && (
                                 <p className="mt-2 text-xs text-muted-foreground">
                                     Fale com o suporte informando o código da empresa para reativar.
                                 </p>
+                            )}
+                            {companyActive && partial && team && (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    {team.active} de {team.total} pesquisadores com acesso ao aplicativo.
+                                </p>
+                            )}
+                            {companyActive && isCompanyAdmin && team && team.total > 0 && (
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    {team.active > 0 && (
+                                        <button
+                                            type="button"
+                                            disabled={savingAccess}
+                                            onClick={() => handleToggleAccess(true)}
+                                            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#f3e0d9] px-4 text-[13px] font-medium text-[#8a432f] transition-all hover:bg-[#ecd0c5] disabled:opacity-50"
+                                        >
+                                            <ShieldOff className="size-3.5" />
+                                            {savingAccess ? 'Salvando...' : 'Bloquear todos os pesquisadores'}
+                                        </button>
+                                    )}
+                                    {team.active < team.total && (
+                                        <button
+                                            type="button"
+                                            disabled={savingAccess}
+                                            onClick={() => handleToggleAccess(false)}
+                                            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-[13px] font-medium text-white transition-all hover:bg-[#26332c] disabled:opacity-50"
+                                        >
+                                            <ShieldCheck className="size-3.5" />
+                                            {savingAccess ? 'Salvando...' : 'Liberar todos os pesquisadores'}
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>

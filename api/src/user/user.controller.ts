@@ -37,6 +37,12 @@ export class UserController {
         return this.userService.findAllAdmin(currentUser);
     }
 
+    // Bloqueia/libera o app para todos os pesquisadores da empresa (precisa vir antes de ":username/...").
+    @Patch('researchers/situation')
+    setResearchersSituation(@Body() dto: UpdateUserSituationDto, @CurrentUser() currentUser: UserPayLoad) {
+        return this.userService.setResearchersSituation(dto.situation, currentUser);
+    }
+
     @Patch(':username')
     update(
         @Param('username') username: string,
