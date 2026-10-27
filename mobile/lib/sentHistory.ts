@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // aqui fica só o registro de que ela chegou: o pesquisador vê o que já enviou, mesmo sem internet.
 // Guarda apenas os dados mínimos (nunca as respostas) e os mais recentes, para não crescer sem limite.
 export const SENT_HISTORY_KEY = 'sent_history';
-const MAX_RECORDS = 200;
+const MAX_RECORDS = 1000;
 
 export interface SentRecord {
     clientId: string;

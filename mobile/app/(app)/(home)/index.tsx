@@ -9,17 +9,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { listCollections } from '@/lib/collectionStore';
 import { getCachedResearches, syncResearches } from '@/lib/researchCache';
+import { listSent } from '@/lib/sentHistory';
 import InfoCard from './_components/infoCards';
 
-const isToday = (iso?: string) => {
+const isThisMonth = (iso?: string) => {
     if (!iso) return false;
     const date = new Date(iso);
     const now = new Date();
-    return (
-        date.getFullYear() === now.getFullYear() &&
-        date.getMonth() === now.getMonth() &&
-        date.getDate() === now.getDate()
-    );
+    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 };
 
 const firstName = (name?: string) => name?.trim().split(' ')[0] || 'Pesquisador';
@@ -29,7 +26,7 @@ export default function Home() {
     const { user } = useAuth();
     const isOnline = useNetworkStatus();
     const [researchCount, setResearchCount] = useState(0);
-    const [doneToday, setDoneToday] = useState(0);
+    const [doneMonth, setDoneMonth] = useState(0);
     const [pendingSend, setPendingSend] = useState(0);
     const [drafts, setDrafts] = useState(0);
     const [refreshing, setRefreshing] = useState(false);
@@ -42,10 +39,23 @@ export default function Home() {
                 console.log('Falha ao sincronizar pesquisas na Home:', error);
             }
         }
-        const [researches, collections] = await Promise.all([getCachedResearches(), listCollections()]);
+        const [researches, collections, sent] = await Promise.all([
+            getCachedResearches(),
+            listCollections(),
+            listSent().catch(() => []),
+        ]);
         const finished = collections.filter((c) => c.status === 'FINISHED');
+        // Coletas do mês: as finalizadas ainda no aparelho (aguardando envio) + as já enviadas (histórico).
+        // Pelo clientId, uma coleta nunca conta duas vezes.
+        const monthIds = new Set<string>();
+        finished.forEach((c) => {
+            if (isThisMonth(c.finishedAt ?? c.startedAt)) monthIds.add(c.clientId);
+        });
+        sent.forEach((r) => {
+            if (isThisMonth(r.finishedAt ?? r.startedAt)) monthIds.add(r.clientId);
+        });
         setResearchCount(researches.filter((item) => item.status !== 'DRAFT').length);
-        setDoneToday(finished.filter((c) => isToday(c.finishedAt ?? c.startedAt)).length);
+        setDoneMonth(monthIds.size);
         setPendingSend(finished.length);
         setDrafts(collections.length - finished.length);
     }, [isOnline]);
@@ -77,10 +87,10 @@ export default function Home() {
                         <Text style={styles.avatarText}>{firstName(user?.name).charAt(0).toUpperCase()}</Text>
                     </View>
                 </View>
-                <Text style={styles.hi}>Olá, {firstName(user?.name)}. Coletas feitas hoje:</Text>
-                <Text style={styles.big} accessibilityLabel={`${doneToday} coletas feitas hoje`}>{doneToday}</Text>
+                <Text style={styles.hi}>Olá, {firstName(user?.name)}. Coletas feitas neste mês:</Text>
+                <Text style={styles.big} accessibilityLabel={`${doneMonth} coletas feitas neste mês`}>{doneMonth}</Text>
                 <Text style={styles.cap}>
-                    {doneToday === 1 ? 'coleta finalizada neste aparelho' : 'coletas finalizadas neste aparelho'}
+                    {doneMonth === 1 ? 'coleta finalizada' : 'coletas finalizadas'}
                 </Text>
             </View>
 
