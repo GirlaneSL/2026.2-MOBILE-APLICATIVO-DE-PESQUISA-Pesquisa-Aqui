@@ -66,7 +66,7 @@ export default function ListaEmpresas({
 
     const [status, setStatus] = useState<StatusFilter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
-    const [view, setView] = useTableView('table');
+    const [view, setView] = useTableView('cards');
 
     // O servidor devolve só a página que aparece (busca, situação e ordem são feitas lá).
     const companiesList = usePagedResource<RawCompany>(

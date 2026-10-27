@@ -69,7 +69,7 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
         });
     const [filter, setFilter] = useState<Filter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
-    const [view, setView] = useTableView('table');
+    const [view, setView] = useTableView('cards');
 
     // A API devolve uma página da equipe por vez (vinculados primeiro; busca e filtro são feitos lá).
     const list = usePagedResource<ResearchTeamMember, ResearchTeamPage>(

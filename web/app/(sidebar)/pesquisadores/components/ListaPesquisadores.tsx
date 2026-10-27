@@ -130,7 +130,7 @@ export default function ListaPesquisadores({
     const [editing, setEditing] = useState<UserItem | null>(null);
     const togglingSituation = useBusySet<string>();
     const [status, setStatus] = useState<StatusFilter>('ALL');
-    const [view, setView] = useState<ViewMode>('table');
+    const [view, setView] = useState<ViewMode>('cards');
     const [sort, setSort] = useState<SortMode>('recent');
 
     // A API devolve uma página por vez (busca, situação e ordem são feitas lá): a tela nunca recebe todos os pesquisadores.

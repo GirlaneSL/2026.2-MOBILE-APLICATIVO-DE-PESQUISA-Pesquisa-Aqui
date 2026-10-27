@@ -56,7 +56,7 @@ const readCompact = () => window.matchMedia(COMPACT_QUERY).matches
  * Estado do modo de exibição (Lista/Cards). Começa em `desktopDefault`; em telas
  * pequenas começa em cartões, mas a pessoa pode trocar para lista quando quiser.
  */
-export function useTableView(desktopDefault: TableView = "table") {
+export function useTableView(desktopDefault: TableView = "cards") {
     const [view, setView] = useState<TableView>(desktopDefault)
     useEffect(() => {
         if (readCompact()) setView("cards")
@@ -86,7 +86,7 @@ type DataTableProps<T> = {
     /** Realça a linha (ex.: pesquisador já vinculado). */
     rowTone?: (row: T) => "on" | "off" | undefined
     /**
-     * "table" (padrão) ou "cards". Nos cartões a primeira coluna vira o título, as colunas com
+     * "table" ou "cards" (padrão do painel: cards). Nos cartões a primeira coluna vira o título, as colunas com
      * `hideHeader` (ações) vão para o rodapé e as demais viram pares "nome: valor".
      */
     view?: TableView

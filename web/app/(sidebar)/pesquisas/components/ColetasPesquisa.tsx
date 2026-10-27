@@ -79,7 +79,7 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
     const [viewing, setViewing] = useState<CollectionSummary | null>(null);
     const [filter, setFilter] = useState<Filter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
-    const [view, setView] = useTableView('table');
+    const [view, setView] = useTableView('cards');
     const [now] = useState(() => Date.now());
     const [stats, setStats] = useState<CollectionStats | null>(null);
     const [player, setPlayer] = useState<{

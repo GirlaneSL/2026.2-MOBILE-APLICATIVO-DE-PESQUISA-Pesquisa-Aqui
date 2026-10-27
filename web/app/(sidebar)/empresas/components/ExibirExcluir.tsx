@@ -91,7 +91,7 @@ export default function ExibirEditar({
     const [tab, setTab] = useState<Tab>('companies');
     const [status, setStatus] = useState<StatusFilter>('ALL');
     const [sort, setSort] = useState<TableSort>('recent');
-    const [view, setView] = useTableView('table');
+    const [view, setView] = useTableView('cards');
 
     // Cada aba pede ao servidor só a página que aparece (busca, situação e ordem são feitas lá).
     // Só a aba aberta faz requisição.

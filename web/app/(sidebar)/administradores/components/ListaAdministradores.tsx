@@ -55,7 +55,7 @@ export default function ListaAdministradores({
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
 
     const [sort, setSort] = useState<TableSort>('recent');
-    const [view, setView] = useTableView('table');
+    const [view, setView] = useTableView('cards');
 
     // O servidor devolve só a página que aparece (busca e ordem são feitas lá).
     const adminsList = usePagedResource<Admin>((params) => getAdminsPage({ ...params, sort }), {
