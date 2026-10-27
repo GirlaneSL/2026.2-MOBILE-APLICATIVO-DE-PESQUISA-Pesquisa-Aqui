@@ -108,7 +108,7 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
         }
     };
 
-    if (loading) return <LoadingState label="Carregando quem está com a pesquisa..." shape="sections" />;
+    if (loading) return <LoadingState label="Carregando quem está com a pesquisa..." shape="copies" />;
 
     if (error || !data) {
         return (

@@ -382,6 +382,52 @@
   flex-wrap: wrap;
 }
 
+/* Cards nunca geram rolagem horizontal nem deixam texto passar da borda. */
+.pa-dt-wrap:has(> .pa-dt-cards) {
+  overflow-x: hidden;
+}
+
+.pa-dt-card .head,
+.pa-dt-card dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pa-dt-card dd {
+  max-width: 100%;
+}
+
+/* "Período decorrido": a barra encolhe para caber ao lado do rótulo (antes tinha 170px fixos). */
+.pa-dt-card dd .pa-seg-wrap {
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.pa-dt-card dd .pa-seg {
+  flex: 0 1 150px;
+  width: 150px;
+  min-width: 70px;
+}
+
+.pa-dt-card dd .pa-seg-wrap .pct {
+  flex: none;
+  width: auto;
+  min-width: 34px;
+  text-align: right;
+}
+
+/* Rótulo e valor passam para linhas separadas quando não cabem lado a lado (telas estreitas). */
+@media (max-width: 420px) {
+  .pa-dt-card .f {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .pa-dt-card dd {
+    flex: 1 1 auto;
+  }
+}
+
 /* ---------- estado vazio ---------- */
 .pa-dt-empty {
   position: relative;

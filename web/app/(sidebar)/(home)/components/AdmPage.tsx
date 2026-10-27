@@ -202,7 +202,7 @@ export default function AdmPage({ userName }: { userName?: string }) {
                     icon={<Clock />}
                     cardTitle="Pesquisas e equipe"
                     cardDescription="Situação, período e quem coleta em cada pesquisa"
-                    CardContentClassName="max-h-[26rem] overflow-auto"
+                    CardContentClassName="max-h-[26rem] overflow-y-auto overflow-x-hidden px-1"
                     cardContent={
                         <div className="w-full">
                             <TableTabs<TeamTab>

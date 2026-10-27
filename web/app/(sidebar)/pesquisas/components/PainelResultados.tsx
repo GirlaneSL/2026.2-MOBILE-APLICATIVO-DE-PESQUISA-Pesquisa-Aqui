@@ -140,7 +140,7 @@ export default function PainelResultados({ researchId, status, onClosed }: Paine
         }
     };
 
-    if (loading && !panel) return <LoadingState label="Carregando o painel..." shape="collections" />;
+    if (loading && !panel) return <LoadingState label="Carregando o painel..." shape="results-panel" />;
 
     if (error && !panel) {
         return (

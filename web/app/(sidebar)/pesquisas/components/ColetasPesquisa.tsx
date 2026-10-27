@@ -134,7 +134,7 @@ export default function ColetasPesquisa({ researchId, recordInterview, openColle
     };
 
     if (list.loading) {
-        return <LoadingState label="Carregando coletas..." shape="collections" />;
+        return <LoadingState label="Carregando coletas..." shape={view === "table" ? "table" : "collections"} columns={5} />;
     }
 
     if (list.error && list.items.length === 0) {

@@ -156,7 +156,7 @@ export default function SuperAdmPage({ userName }: { userName?: string }) {
                     icon={<Building2 />}
                     cardTitle="Empresas e administradores"
                     cardDescription="Quem tem acesso e em que situação"
-                    CardContentClassName="max-h-[26rem] overflow-auto"
+                    CardContentClassName="max-h-[26rem] overflow-y-auto overflow-x-hidden px-1"
                     cardContent={<ExibirEditar allowActions={false} counts={stats ? { companies: stats.companies, activeCompanies: stats.activeCompanies, admins: stats.admins } : undefined} />}
                 />
             </section>

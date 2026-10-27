@@ -152,7 +152,7 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
     const pct = total ? Math.round((linkedCount / total) * 100) : 0;
 
     if (loading) {
-        return <LoadingState label="Carregando pesquisadores..." shape="people" />;
+        return <LoadingState label="Carregando pesquisadores..." shape={view === "table" ? "table" : "team-cards"} columns={5} />;
     }
 
     if (total === 0 && !isFiltered) {
