@@ -3071,3 +3071,10 @@ svg.lucide {
     font-size: 26px;
   }
 }
+
+/* Dica "passe o mouse": só faz sentido onde há mouse; no celular e tablet (toque) some inteira. */
+@media (hover: none), (max-width: 640px) {
+  .pa-card .desc:has(> .pa-hover-hint:only-child) {
+    display: none;
+  }
+}

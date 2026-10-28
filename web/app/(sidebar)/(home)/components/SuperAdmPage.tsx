@@ -112,7 +112,7 @@ export default function SuperAdmPage({ userName }: { userName?: string }) {
                     cardClassName="pa-c8"
                     icon={<Building2 />}
                     title="Empresas cadastradas por mês"
-                    description="Passe o mouse sobre o gráfico para ver cada mês"
+                    description={<span className="pa-hover-hint">Passe o mouse sobre o gráfico para ver cada mês</span>}
                     data={companiesChart}
                     unit="novas empresas"
                     currentMonth={month}

@@ -139,7 +139,7 @@ export default function AdmPage({ userName }: { userName?: string }) {
                     cardClassName="pa-c8"
                     icon={<ClipboardList />}
                     title="Pesquisas ativas por mês"
-                    description="Passe o mouse sobre o gráfico para ver cada mês"
+                    description={<span className="pa-hover-hint">Passe o mouse sobre o gráfico para ver cada mês</span>}
                     data={researchesChart}
                     unit="pesquisas ativas"
                     currentMonth={month - 1}
