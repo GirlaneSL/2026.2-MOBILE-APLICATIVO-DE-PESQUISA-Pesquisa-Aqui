@@ -8,7 +8,7 @@ export type AreaPoint = { label: string; value: number };
 
 type AreaPanelProps = {
     title: string;
-    description?: string;
+    description?: ReactNode;
     icon?: ReactNode;
     /** Um ponto por mês do ano. */
     data: AreaPoint[];
