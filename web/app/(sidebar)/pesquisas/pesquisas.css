@@ -752,7 +752,8 @@
 }
 
 .pq-acts .pq-btn,
-.pq-acts [data-slot="button"] {
+.pq-acts [data-slot="button"],
+.pq-acts [data-slot="dialog-trigger"] {
   width: 100%;
   height: 34px;
   padding: 0 14px;
@@ -881,7 +882,8 @@
 
 /* botões só com ícone (editar, publicar, excluir) */
 .pq-ico[data-slot="button"],
-.pq-ico [data-slot="button"] {
+.pq-ico [data-slot="button"],
+.pq-ico [data-slot="dialog-trigger"] {
   width: 34px;
   height: 34px;
   padding: 0;
@@ -889,6 +891,44 @@
 
 .pq-ico {
   display: inline-flex;
+}
+
+/* Ações da linha (editar, publicar, voltar, excluir, abrir): todas com a mesma altura; os de ícone são círculos
+   iguais e nunca encolhem, mesmo quando o editar vem dentro do seletor do modal. */
+.pa-app .pq-lr .ra {
+  --ra-size: 34px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+@media (pointer: coarse) {
+  .pa-app .pq-lr .ra {
+    --ra-size: 40px;
+  }
+}
+
+.pa-app .pq-lr .ra .pq-ico {
+  flex: none;
+  width: var(--ra-size);
+  height: var(--ra-size);
+}
+
+.pa-app .pq-lr .ra .pq-ico[data-slot="button"],
+.pa-app .pq-lr .ra .pq-ico [data-slot="button"],
+.pa-app .pq-lr .ra .pq-ico [data-slot="dialog-trigger"] {
+  box-sizing: border-box;
+  width: var(--ra-size);
+  height: var(--ra-size);
+  min-width: var(--ra-size);
+  min-height: var(--ra-size);
+  padding: 0;
+  flex: none;
+}
+
+.pa-app .pq-lr .ra .pq-btn {
+  flex: none;
+  height: var(--ra-size);
+  box-sizing: border-box;
 }
 
 /* ---------- estado vazio ---------- */
@@ -1304,7 +1344,8 @@
   }
 
   .pq-acts .pq-btn,
-  .pq-acts [data-slot="button"] {
+  .pq-acts [data-slot="button"],
+  .pq-acts [data-slot="dialog-trigger"] {
     height: 40px;
     font-size: 14px;
   }

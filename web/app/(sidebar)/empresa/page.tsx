@@ -321,7 +321,7 @@ export default function EmpresaPage() {
                                             type="button"
                                             disabled={savingAccess}
                                             onClick={() => handleToggleAccess(true)}
-                                            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#f3e0d9] px-4 text-[13px] font-medium text-[#8a432f] transition-all hover:bg-[#ecd0c5] disabled:opacity-50"
+                                            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#bcd8c9] bg-white/70 px-4 text-[13px] font-medium text-[var(--forest)] shadow-[0_8px_18px_-14px_rgba(10,20,16,0.5)] backdrop-blur-sm transition-all hover:bg-white hover:shadow-[0_10px_20px_-14px_rgba(10,20,16,0.6)] disabled:opacity-50 [&>svg]:text-[#b4533a]"
                                         >
                                             <ShieldOff className="size-3.5" />
                                             {savingAccess ? 'Salvando...' : 'Bloquear todos os pesquisadores'}
