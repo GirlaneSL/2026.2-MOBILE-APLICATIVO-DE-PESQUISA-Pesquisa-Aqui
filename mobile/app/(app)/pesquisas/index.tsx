@@ -1,9 +1,19 @@
-import { useCallback, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, RefreshControl, Alert } from 'react-native';
-import { FileText } from 'lucide-react-native';
-import ScreenHeader from '@/components/ScreenHeader';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, RefreshControl, Alert } from 'react-native';
+import { FileText, WifiOff } from 'lucide-react-native';
+import Animated, {
+    Easing,
+    FadeInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
+} from 'react-native-reanimated';
 import Chip from '@/components/Chip';
-import { Brand, TAB_BAR_CLEARANCE } from '@/constants/brand';
+import Contour from '@/components/Contour';
+import ActionCard from '@/components/home/ActionCard';
+import CountUp from '@/components/home/CountUp';
+import { Brand, Radius, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { router, useFocusEffect } from 'expo-router';
 import PesquisaCard from './_components/PesquisaCard';
 import DraftPickerModal from './_components/DraftPickerModal';
@@ -11,6 +21,32 @@ import { getCachedResearches, syncResearches, downloadResearchPackage, type Rese
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { listCollections, type LocalCollection } from '@/lib/collectionStore';
 import { useRemoveResearch } from '@/hooks/useRemoveResearch';
+import { listSent, type SentRecord } from '@/lib/sentHistory';
+import { computeProgress } from '@/lib/researchProgress';
+
+/** Entrada escalonada, igual à da Home: cada bloco sobe e aparece um pouco depois do anterior. */
+const enter = (index: number) =>
+    FadeInDown.delay(120 + Math.min(index, 8) * 70)
+        .duration(480)
+        .easing(Easing.out(Easing.cubic));
+
+function SectionHeader({ title, right }: { title: string; right?: string }) {
+    return (
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            {right ? <Text style={styles.sectionRight}>{right}</Text> : null}
+        </View>
+    );
+}
+
+function HeroStat({ value, label }: { value: number; label: string }) {
+    return (
+        <View style={styles.stat}>
+            <CountUp value={value} style={styles.statValue} />
+            <Text style={styles.statLabel}>{label}</Text>
+        </View>
+    );
+}
 
 export default function Pesquisas() {
     const [pesquisas, setPesquisas] = useState<Research[]>([]);
@@ -19,7 +55,17 @@ export default function Pesquisas() {
     const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
     // Pesquisa cujos rascunhos o pesquisador está escolhendo (null = lista fechada)
     const [pickingResearch, setPickingResearch] = useState<Research | null>(null);
+    const [sent, setSent] = useState<SentRecord[]>([]);
     const isOnline = useNetworkStatus();
+
+    // As curvas de nível "respiram" devagar, como na Home.
+    const breathe = useSharedValue(0);
+    useEffect(() => {
+        breathe.value = withRepeat(withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }), -1, true);
+    }, [breathe]);
+    const contourStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: 1 + breathe.value * 0.07 }, { translateX: breathe.value * -6 }],
+    }));
 
     // Atualiza a lista e avisa se o administrador revogou o acesso deste aparelho a alguma pesquisa
     // (a cópia local já foi apagada pela sincronização).
@@ -39,6 +85,7 @@ export default function Pesquisas() {
         setPesquisas(cached);
         // Coletas e rascunhos ficam no aparelho: a contagem funciona sem internet
         setCollections(await listCollections());
+        setSent(await listSent().catch(() => [] as SentRecord[]));
     }, []);
 
     useFocusEffect(
@@ -113,56 +160,143 @@ export default function Pesquisas() {
         setPickingResearch(research);
     };
 
+    const finishedOf = (researchId: number) =>
+        collections.filter((c) => c.researchId === researchId && c.status === 'FINISHED');
+
+    // Três grupos: as que já estão no aparelho, as que podem ser baixadas e as sem acesso.
+    const { onDevice, toDownload, revokedList } = useMemo(() => {
+        const visible = pesquisas.filter((p) => p.status !== 'DRAFT');
+        return {
+            onDevice: visible.filter((p) => p.isDownloaded && !p.revoked),
+            toDownload: visible.filter((p) => !p.isDownloaded && !p.revoked),
+            revokedList: visible.filter((p) => p.revoked),
+        };
+    }, [pesquisas]);
+
+    const totalFinished = collections.filter((c) => c.status === 'FINISHED').length;
+    const totalDrafts = collections.filter((c) => c.status === 'IN_PROGRESS').length;
+
+    let cardIndex = 0;
+    const renderCard = (item: Research) => {
+        const index = cardIndex++;
+        const progress = computeProgress(
+            item,
+            sent,
+            finishedOf(item.id).map((c) => c.clientId),
+        );
+        return (
+            <Animated.View key={item.id} entering={enter(index + 1)}>
+                <PesquisaCard
+                    titulo={item.title}
+                    targetAudience={item.targetAudience}
+                    startDate={item.startDate}
+                    endDate={item.endDate}
+                    isDownloaded={!!item.isDownloaded}
+                    isOnline={isOnline}
+                    isDownloading={downloadingIds.has(item.id)}
+                    coletasCount={finishedOf(item.id).length}
+                    draftCount={draftsOf(item.id).length}
+                    revoked={!!item.revoked}
+                    progress={progress}
+                    delay={300 + index * 90}
+                    onDownload={() => handleDownload(item.id, item.title)}
+                    onReturn={() => void removeResearch(item.id, item.title)}
+                    onStart={() => startCollection(item.id)}
+                    onResume={() => resumeDraft(item)}
+                />
+            </Animated.View>
+        );
+    };
+
     return (
         <View style={styles.container}>
-            <ScreenHeader
-                title="Minhas pesquisas"
-                subtitle={isOnline ? 'Baixe uma pesquisa para coletar respostas no campo.' : 'Sem internet. Mostrando o que já está salvo no aparelho.'}
-                right={<Chip label={isOnline ? 'Online' : 'Offline'} tone={isOnline ? 'dark' : 'clay'} />}
-                seed={2.2}
-            />
+            <ScrollView
+                contentContainerStyle={styles.content}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Brand.green} />}
+            >
+                <View style={styles.hero}>
+                    <Animated.View style={[StyleSheet.absoluteFill, contourStyle]} pointerEvents="none">
+                        <Contour seed={2.2} rings={10} cx={0.85} cy={0.35} size={1} opacity={0.8} color={Brand.green} />
+                    </Animated.View>
 
-            {pesquisas.length === 0 ? (
-                <View style={styles.emptyState}>
-                    <View style={styles.emptyIcon}>
-                        <FileText size={26} color={Brand.greenDeep} strokeWidth={1.7} />
+                    <View style={styles.heroRow}>
+                        <Text style={styles.title} accessibilityRole="header">
+                            Minhas pesquisas
+                        </Text>
+                        <Chip label={isOnline ? 'Online' : 'Offline'} tone={isOnline ? 'dark' : 'clay'} />
                     </View>
-                    <Text style={styles.emptyTitle}>
-                        {isOnline ? 'Nenhuma pesquisa atribuída' : 'Nenhuma pesquisa no aparelho'}
-                    </Text>
-                    <Text style={styles.emptyText}>
+                    <Text style={styles.subtitle}>
                         {isOnline
-                            ? 'Quando o administrador vincular uma pesquisa a você, ela aparece aqui.'
-                            : 'Conecte-se à internet para baixar suas pesquisas.'}
+                            ? 'Baixe uma pesquisa para coletar respostas no campo.'
+                            : 'Sem internet. Mostrando o que já está salvo no aparelho.'}
                     </Text>
+
+                    <Animated.View entering={enter(0)} style={styles.strip}>
+                        <HeroStat value={onDevice.length} label="no aparelho" />
+                        <View style={styles.stripDivider} />
+                        <HeroStat value={totalFinished} label={totalFinished === 1 ? 'coleta feita' : 'coletas feitas'} />
+                        <View style={styles.stripDivider} />
+                        <HeroStat value={totalDrafts} label={totalDrafts === 1 ? 'rascunho' : 'rascunhos'} />
+                    </Animated.View>
                 </View>
-            ) : (
-                <FlatList
-                    data={pesquisas}
-                    keyExtractor={(item) => String(item.id)}
-                    renderItem={({ item }) => (
-                        <PesquisaCard
-                            titulo={item.title}
-                            targetAudience={item.targetAudience}
-                            startDate={item.startDate}
-                            endDate={item.endDate}
-                            isDownloaded={!!item.isDownloaded}
-                            isOnline={isOnline}
-                            isDownloading={downloadingIds.has(item.id)}
-                            coletasCount={collections.filter((c) => c.researchId === item.id && c.status === 'FINISHED').length}
-                            draftCount={collections.filter((c) => c.researchId === item.id && c.status === 'IN_PROGRESS').length}
-                            revoked={!!item.revoked}
-                            onDownload={() => handleDownload(item.id, item.title)}
-                            onReturn={() => void removeResearch(item.id, item.title)}
-                            onStart={() => startCollection(item.id)}
-                            onResume={() => resumeDraft(item)}
-                        />
-                    )}
-                    contentContainerStyle={styles.listContainer}
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Brand.green} />}
-                />
-            )}
+
+                {pesquisas.length === 0 ? (
+                    <Animated.View entering={enter(1)} style={styles.emptyState}>
+                        <View style={styles.emptyIcon}>
+                            <FileText size={26} color={Brand.greenDeep} strokeWidth={1.7} />
+                        </View>
+                        <Text style={styles.emptyTitle}>
+                            {isOnline ? 'Nenhuma pesquisa atribuída' : 'Nenhuma pesquisa no aparelho'}
+                        </Text>
+                        <Text style={styles.emptyText}>
+                            {isOnline
+                                ? 'Quando o administrador vincular uma pesquisa a você, ela aparece aqui.'
+                                : 'Conecte-se à internet para baixar suas pesquisas.'}
+                        </Text>
+                    </Animated.View>
+                ) : (
+                    <View style={styles.body}>
+                        {!isOnline && toDownload.length > 0 ? (
+                            <Animated.View entering={enter(1)}>
+                                <ActionCard
+                                    tone="clay"
+                                    icon={<WifiOff size={22} color={Brand.clayInk} strokeWidth={1.8} />}
+                                    title="Sem conexão"
+                                    text={`Conecte-se à internet para baixar ${toDownload.length === 1 ? 'a pesquisa disponível' : `as ${toDownload.length} pesquisas disponíveis`}.`}
+                                />
+                            </Animated.View>
+                        ) : null}
+
+                        {onDevice.length > 0 ? (
+                            <View style={styles.section}>
+                                <SectionHeader
+                                    title="No aparelho"
+                                    right={`${onDevice.length} ${onDevice.length === 1 ? 'pesquisa' : 'pesquisas'}`}
+                                />
+                                <View style={styles.stack}>{onDevice.map(renderCard)}</View>
+                            </View>
+                        ) : null}
+
+                        {toDownload.length > 0 ? (
+                            <View style={styles.section}>
+                                <SectionHeader
+                                    title="Disponíveis para baixar"
+                                    right={`${toDownload.length} ${toDownload.length === 1 ? 'pesquisa' : 'pesquisas'}`}
+                                />
+                                <View style={styles.stack}>{toDownload.map(renderCard)}</View>
+                            </View>
+                        ) : null}
+
+                        {revokedList.length > 0 ? (
+                            <View style={styles.section}>
+                                <SectionHeader title="Sem acesso" />
+                                <View style={styles.stack}>{revokedList.map(renderCard)}</View>
+                            </View>
+                        ) : null}
+                    </View>
+                )}
+            </ScrollView>
 
             <DraftPickerModal
                 visible={pickingResearch !== null}
@@ -180,8 +314,40 @@ export default function Pesquisas() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Brand.paper },
-    listContainer: { padding: 18, paddingBottom: TAB_BAR_CLEARANCE, gap: 14 },
-    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, gap: 8 },
+    content: { flexGrow: 1, paddingBottom: TAB_BAR_CLEARANCE },
+    hero: {
+        backgroundColor: Brand.forest,
+        paddingHorizontal: 22,
+        paddingTop: 18,
+        paddingBottom: 22,
+        borderBottomLeftRadius: Radius.hero,
+        borderBottomRightRadius: Radius.hero,
+        overflow: 'hidden',
+    },
+    heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+    title: { flex: 1, fontSize: 28, fontWeight: '600', letterSpacing: -0.8, color: '#fff' },
+    subtitle: { fontSize: 14, color: Brand.mutedDark, marginTop: 6, lineHeight: 20, maxWidth: 300 },
+    strip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 22,
+        paddingVertical: 14,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: Brand.lineDark,
+        backgroundColor: 'rgba(191, 227, 208, 0.07)',
+    },
+    stat: { flex: 1, alignItems: 'center', gap: 2 },
+    statValue: { color: Brand.fgDark, fontSize: 26, fontWeight: '300', letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
+    statLabel: { color: Brand.mutedDark, fontSize: 11.5 },
+    stripDivider: { width: 1, height: 30, backgroundColor: Brand.lineDark },
+    body: { padding: 18, gap: 22 },
+    section: { gap: 12 },
+    stack: { gap: 14 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+    sectionTitle: { fontSize: 16, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink },
+    sectionRight: { fontSize: 12.5, color: Brand.muted },
+    emptyState: { alignItems: 'center', padding: 40, paddingTop: 64, gap: 8 },
     emptyIcon: {
         width: 56,
         height: 56,

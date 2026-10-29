@@ -1,8 +1,16 @@
 // mobile/app/(app)/sincronizacao/index.tsx
 import { useFocusEffect } from 'expo-router';
-import { CloudUpload, HardDrive, Trash2, WifiOff } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Check, CloudUpload, HardDrive, Trash2, WifiOff } from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+    Easing,
+    FadeInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
+} from 'react-native-reanimated';
 import ResearchProgressCard from './_components/ResearchProgressCard';
 import SyncCard, { type SyncCardStatus } from './_components/SyncCard';
 import { canDiscard, discardCollection } from '@/lib/collectionDiscard';
@@ -14,9 +22,13 @@ import { getCachedResearches, type Research } from '@/lib/researchCache';
 import { computeProgress } from '@/lib/researchProgress';
 import { listSent, type SentRecord } from '@/lib/sentHistory';
 import { syncQueue } from '@/lib/syncQueue';
-import ScreenHeader from '@/components/ScreenHeader';
 import Chip from '@/components/Chip';
-import { Brand, TAB_BAR_CLEARANCE } from '@/constants/brand';
+import Contour from '@/components/Contour';
+import ActionCard from '@/components/home/ActionCard';
+import CountUp from '@/components/home/CountUp';
+import PressableScale from '@/components/home/PressableScale';
+import ProgressBar from '@/components/home/ProgressBar';
+import { Brand, Radius, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useRemoveResearch } from '@/hooks/useRemoveResearch';
 import { useSyncState } from '@/hooks/useSyncQueue';
@@ -35,6 +47,30 @@ const EMPTY_TEXT: Record<HistoryTab, string> = {
     falhas: 'Nenhuma coleta com falha. Tudo certo por aqui.',
 };
 
+/** Entrada escalonada, igual à da Home. */
+const enter = (index: number) =>
+    FadeInDown.delay(120 + Math.min(index, 8) * 70)
+        .duration(480)
+        .easing(Easing.out(Easing.cubic));
+
+function SectionHeader({ title, right }: { title: string; right?: string }) {
+    return (
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            {right ? <Text style={styles.sectionRight}>{right}</Text> : null}
+        </View>
+    );
+}
+
+function HeroStat({ value, label, alert }: { value: number; label: string; alert?: boolean }) {
+    return (
+        <View style={styles.stat}>
+            <CountUp value={value} style={[styles.statValue, alert && styles.statValueAlert]} />
+            <Text style={styles.statLabel}>{label}</Text>
+        </View>
+    );
+}
+
 export default function Sincronizacao() {
     const [collections, setCollections] = useState<LocalCollection[]>([]);
     const [researches, setResearches] = useState<Research[]>([]);
@@ -45,6 +81,15 @@ export default function Sincronizacao() {
     const [released, setReleased] = useState<string | null>(null);
     const isOnline = useNetworkStatus();
     const sync = useSyncState();
+
+    // As curvas de nível "respiram" devagar, como na Home.
+    const breathe = useSharedValue(0);
+    useEffect(() => {
+        breathe.value = withRepeat(withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }), -1, true);
+    }, [breathe]);
+    const contourStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: 1 + breathe.value * 0.07 }, { translateX: breathe.value * -6 }],
+    }));
 
     // Tudo vem do aparelho: a tela funciona sem internet
     const load = useCallback(async () => {
@@ -197,129 +242,174 @@ export default function Sincronizacao() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Brand.green} />}
             ListHeaderComponent={
                 <View>
-                    <ScreenHeader
-                        title="Envio de coletas"
-                        subtitle={subtitle}
-                        right={<Chip label={isOnline ? 'Online' : 'Offline'} tone={isOnline ? 'dark' : 'clay'} />}
-                        seed={5.3}
-                    />
+                    <View style={styles.hero}>
+                        <Animated.View style={[StyleSheet.absoluteFill, contourStyle]} pointerEvents="none">
+                            <Contour seed={5.3} rings={10} cx={0.85} cy={0.35} size={1} opacity={0.8} color={Brand.green} />
+                        </Animated.View>
+                        <View style={styles.heroRow}>
+                            <Text style={styles.title} accessibilityRole="header">
+                                Envio de coletas
+                            </Text>
+                            <Chip label={isOnline ? 'Online' : 'Offline'} tone={isOnline ? 'dark' : 'clay'} />
+                        </View>
+                        <Text style={styles.subtitle}>{subtitle}</Text>
+
+                        <Animated.View entering={enter(0)} style={styles.strip}>
+                            <HeroStat value={pending.length} label={pending.length === 1 ? 'pendente' : 'pendentes'} />
+                            <View style={styles.stripDivider} />
+                            <HeroStat value={sent.length} label={sent.length === 1 ? 'enviada' : 'enviadas'} />
+                            <View style={styles.stripDivider} />
+                            <HeroStat value={failed.length} label={failed.length === 1 ? 'falha' : 'falhas'} alert={failed.length > 0} />
+                        </Animated.View>
+                    </View>
+
                     <View style={styles.headerBody}>
-                    <TouchableOpacity
-                        style={[styles.sendButton, !canSend && !sync.running && styles.sendButtonDisabled]}
-                        onPress={sendNow}
-                        disabled={!canSend}
-                        accessibilityRole="button"
-                        accessibilityLabel="Enviar agora as coletas finalizadas"
-                        accessibilityState={{ disabled: !canSend, busy: sync.running }}
-                    >
-                        {sync.running ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                            <CloudUpload size={20} color="#fff" />
-                        )}
-                        <Text style={styles.sendButtonText}>{buttonLabel}</Text>
-                    </TouchableOpacity>
+                        <Animated.View entering={enter(1)}>
+                            <PressableScale
+                                onPress={sendNow}
+                                disabled={!canSend}
+                                accessibilityRole="button"
+                                accessibilityLabel="Enviar agora as coletas finalizadas"
+                                accessibilityState={{ disabled: !canSend, busy: sync.running }}
+                                style={[styles.sendButton, !canSend && !sync.running && styles.sendButtonDisabled]}
+                            >
+                                {sync.running ? <ActivityIndicator size="small" color="#fff" /> : <CloudUpload size={20} color="#fff" strokeWidth={1.8} />}
+                                <Text style={styles.sendButtonText}>{buttonLabel}</Text>
+                            </PressableScale>
+                        </Animated.View>
 
-                    {sync.running && sync.total > 0 ? (
-                        <View
-                            style={styles.progressTrack}
-                            accessibilityRole="progressbar"
-                            accessibilityValue={{ min: 0, max: sync.total, now: sync.done }}
-                        >
-                            <View style={[styles.progressBar, { width: `${(sync.done / sync.total) * 100}%` }]} />
-                        </View>
-                    ) : null}
-
-                    {!isOnline && finished.length > 0 ? (
-                        <View style={styles.note}>
-                            <WifiOff size={16} color={Brand.warn} />
-                            <Text style={styles.noteTextWarning}>
-                                Sem conexão. O envio começa sozinho quando o sinal voltar.
-                            </Text>
-                        </View>
-                    ) : resultNote ? (
-                        <Text style={[styles.resultNote, resultNote.warning && styles.resultNoteWarning]}>
-                            {resultNote.text}
-                        </Text>
-                    ) : null}
-
-                    <View style={styles.storageCard} accessibilityRole="summary">
-                        <View style={styles.storageTop}>
-                            <HardDrive size={18} color={Brand.greenDeep} strokeWidth={1.8} />
-                            <Text style={styles.storageLabel}>Espaço ocupado pelas coletas pendentes</Text>
-                        </View>
-                        <Text style={styles.storageTotal}>{formatBytes(usage.totalBytes)}</Text>
-                        <Text style={styles.storageDetail}>
-                            Fotos {formatBytes(usage.photosBytes)}, áudio {formatBytes(usage.audioBytes)}
-                            {usage.freeBytes !== null ? `. Livre no aparelho: ${formatBytes(usage.freeBytes)}` : ''}
-                        </Text>
-                        {drafts > 0 ? <Text style={styles.storageNote}>Inclui os rascunhos em andamento.</Text> : null}
-
-                        {spaceWarning ? (
-                            <Text style={[styles.spaceWarning, spaceWarning.level === 'critical' && styles.spaceWarningCritical]}>
-                                {spaceWarning.title}. {spaceWarning.text}
-                            </Text>
-                        ) : null}
-
-                        {usage.releasableBytes > 0 ? (
-                            <View style={styles.releaseBox}>
-                                <Text style={styles.storageDetail}>
-                                    {formatBytes(usage.releasableBytes)} já estão no servidor e ainda ocupam o aparelho.
-                                </Text>
-                                <TouchableOpacity
-                                    style={styles.releaseButton}
-                                    onPress={freeSpace}
-                                    accessibilityRole="button"
-                                    accessibilityLabel={`Apagar do aparelho os arquivos já enviados, ${formatBytes(usage.releasableBytes)}`}
-                                >
-                                    <Trash2 size={14} color={Brand.greenDeep} strokeWidth={1.8} />
-                                    <Text style={styles.releaseText}>Apagar arquivos já enviados</Text>
-                                </TouchableOpacity>
+                        {sync.running && sync.total > 0 ? (
+                            <View
+                                style={styles.runProgress}
+                                accessibilityRole="progressbar"
+                                accessibilityValue={{ min: 0, max: sync.total, now: sync.done }}
+                            >
+                                <ProgressBar percent={(sync.done / sync.total) * 100} height={6} />
                             </View>
-                        ) : released ? (
-                            <Text style={styles.storageNote}>{released}</Text>
                         ) : null}
-                    </View>
 
-                    {shownResearches.length > 0 ? (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Progresso e pesquisas no aparelho</Text>
-                            {shownResearches.map((research) => {
-                                const inDevice = collections.filter((c) => c.researchId === research.id).length > 0;
-                                return (
-                                    <ResearchProgressCard
-                                        key={research.id}
-                                        titulo={research.title}
-                                        isDownloaded={!!research.isDownloaded}
-                                        progress={progressOf(research)}
-                                        drafts={draftsOf(research.id)}
-                                        onRemove={research.isDownloaded ? () => void removeResearch(research.id, research.title) : undefined}
-                                        removeBlocked={inDevice}
-                                    />
-                                );
-                            })}
-                        </View>
-                    ) : null}
+                        {!isOnline && finished.length > 0 ? (
+                            <View style={styles.noteWrap}>
+                                <ActionCard
+                                    tone="clay"
+                                    icon={<WifiOff size={22} color={Brand.clayInk} strokeWidth={1.8} />}
+                                    title="Sem conexão"
+                                    text="O envio começa sozinho quando o sinal voltar."
+                                />
+                            </View>
+                        ) : resultNote ? (
+                            <View style={[styles.resultPill, resultNote.warning && styles.resultPillWarning]}>
+                                {resultNote.warning ? null : <Check size={14} color={Brand.greenDeep} strokeWidth={2.2} />}
+                                <Text style={[styles.resultNote, resultNote.warning && styles.resultNoteWarning]}>
+                                    {resultNote.text}
+                                </Text>
+                            </View>
+                        ) : null}
 
-                    <Text style={styles.sectionTitle}>Histórico de envio</Text>
-                    <View style={styles.tabs} accessibilityRole="tablist">
-                        {tabs.map(({ key, label, count }) => {
-                            const active = tab === key;
-                            return (
-                                <TouchableOpacity
-                                    key={key}
-                                    style={[styles.tab, active && styles.tabActive, key === 'falhas' && count > 0 && !active && styles.tabAlert]}
-                                    onPress={() => setTab(key)}
-                                    accessibilityRole="tab"
-                                    accessibilityState={{ selected: active }}
-                                    accessibilityLabel={`${label}: ${count}`}
-                                >
-                                    <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
-                                    <Text style={[styles.tabCount, active && styles.tabTextActive]}>{count}</Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
+                        <Animated.View entering={enter(2)} style={styles.storageCard} accessibilityRole="summary">
+                            <View style={styles.storageTop}>
+                                <View style={styles.storageIcon}>
+                                    <HardDrive size={18} color={Brand.greenDeep} strokeWidth={1.8} />
+                                </View>
+                                <Text style={styles.storageLabel}>Espaço ocupado pelas coletas pendentes</Text>
+                            </View>
+                            <Text style={styles.storageTotal}>{formatBytes(usage.totalBytes)}</Text>
+
+                            <View style={styles.splitBar}>
+                                {usage.totalBytes > 0 ? (
+                                    <>
+                                        <View style={[styles.splitPhotos, { flex: Math.max(usage.photosBytes, 1) }]} />
+                                        <View style={[styles.splitAudio, { flex: Math.max(usage.audioBytes, 1) }]} />
+                                    </>
+                                ) : null}
+                            </View>
+                            <View style={styles.legend}>
+                                <View style={styles.legendItem}>
+                                    <View style={[styles.legendDot, { backgroundColor: Brand.green }]} />
+                                    <Text style={styles.storageDetail}>Fotos {formatBytes(usage.photosBytes)}</Text>
+                                </View>
+                                <View style={styles.legendItem}>
+                                    <View style={[styles.legendDot, { backgroundColor: Brand.mint }]} />
+                                    <Text style={styles.storageDetail}>Áudio {formatBytes(usage.audioBytes)}</Text>
+                                </View>
+                                {usage.freeBytes !== null ? (
+                                    <Text style={[styles.storageDetail, styles.legendFree]}>Livre: {formatBytes(usage.freeBytes)}</Text>
+                                ) : null}
+                            </View>
+                            {drafts > 0 ? <Text style={styles.storageNote}>Inclui os rascunhos em andamento.</Text> : null}
+
+                            {spaceWarning ? (
+                                <Text style={[styles.spaceWarning, spaceWarning.level === 'critical' && styles.spaceWarningCritical]}>
+                                    {spaceWarning.title}. {spaceWarning.text}
+                                </Text>
+                            ) : null}
+
+                            {usage.releasableBytes > 0 ? (
+                                <View style={styles.releaseBox}>
+                                    <Text style={styles.storageDetail}>
+                                        {formatBytes(usage.releasableBytes)} já estão no servidor e ainda ocupam o aparelho.
+                                    </Text>
+                                    <PressableScale
+                                        onPress={freeSpace}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Apagar do aparelho os arquivos já enviados, ${formatBytes(usage.releasableBytes)}`}
+                                        style={styles.releaseButton}
+                                    >
+                                        <Trash2 size={14} color={Brand.greenDeep} strokeWidth={1.8} />
+                                        <Text style={styles.releaseText}>Apagar arquivos já enviados</Text>
+                                    </PressableScale>
+                                </View>
+                            ) : released ? (
+                                <Text style={styles.storageNote}>{released}</Text>
+                            ) : null}
+                        </Animated.View>
+
+                        {shownResearches.length > 0 ? (
+                            <Animated.View entering={enter(3)} style={styles.section}>
+                                <SectionHeader
+                                    title="Progresso e pesquisas no aparelho"
+                                />
+                                {shownResearches.map((research, index) => {
+                                    const inDevice = collections.filter((c) => c.researchId === research.id).length > 0;
+                                    return (
+                                        <ResearchProgressCard
+                                            key={research.id}
+                                            titulo={research.title}
+                                            isDownloaded={!!research.isDownloaded}
+                                            progress={progressOf(research)}
+                                            drafts={draftsOf(research.id)}
+                                            delay={300 + index * 90}
+                                            onRemove={research.isDownloaded ? () => void removeResearch(research.id, research.title) : undefined}
+                                            removeBlocked={inDevice}
+                                        />
+                                    );
+                                })}
+                            </Animated.View>
+                        ) : null}
+
+                        <Animated.View entering={enter(4)} style={styles.sectionTight}>
+                            <SectionHeader title="Histórico de envio" right={plural(sent.length + finished.length, 'coleta', 'coletas')} />
+                            <View style={styles.tabs} accessibilityRole="tablist">
+                                {tabs.map(({ key, label, count }) => {
+                                    const active = tab === key;
+                                    const alert = key === 'falhas' && count > 0 && !active;
+                                    return (
+                                        <PressableScale
+                                            key={key}
+                                            containerStyle={styles.tabContainer}
+                                            style={[styles.tab, active && styles.tabActive, alert && styles.tabAlert]}
+                                            onPress={() => setTab(key)}
+                                            accessibilityRole="tab"
+                                            accessibilityState={{ selected: active }}
+                                            accessibilityLabel={`${label}: ${count}`}
+                                        >
+                                            <Text style={[styles.tabText, active && styles.tabTextActive, alert && styles.tabTextAlert]}>{label}</Text>
+                                            <Text style={[styles.tabCount, active && styles.tabTextActive, alert && styles.tabTextAlert]}>{count}</Text>
+                                        </PressableScale>
+                                    );
+                                })}
+                            </View>
+                        </Animated.View>
                     </View>
                 </View>
             }
@@ -369,87 +459,121 @@ export default function Sincronizacao() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Brand.paper },
     content: { paddingBottom: TAB_BAR_CLEARANCE },
-    headerBody: { padding: 18, paddingBottom: 6 },
+    hero: {
+        backgroundColor: Brand.forest,
+        paddingHorizontal: 22,
+        paddingTop: 18,
+        paddingBottom: 22,
+        borderBottomLeftRadius: Radius.hero,
+        borderBottomRightRadius: Radius.hero,
+        overflow: 'hidden',
+    },
+    heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+    title: { flex: 1, fontSize: 28, fontWeight: '600', letterSpacing: -0.8, color: '#fff' },
+    subtitle: { fontSize: 14, color: Brand.mutedDark, marginTop: 6, lineHeight: 20, maxWidth: 300 },
+    strip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 22,
+        paddingVertical: 14,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: Brand.lineDark,
+        backgroundColor: 'rgba(191, 227, 208, 0.07)',
+    },
+    stat: { flex: 1, alignItems: 'center', gap: 2 },
+    statValue: { color: Brand.fgDark, fontSize: 26, fontWeight: '300', letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
+    statValueAlert: { color: '#f0b9a8' },
+    statLabel: { color: Brand.mutedDark, fontSize: 11.5 },
+    stripDivider: { width: 1, height: 30, backgroundColor: Brand.lineDark },
+    headerBody: { padding: 18, paddingBottom: 6, gap: 22 },
     sendButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 10,
-        height: 50,
+        height: 54,
         borderRadius: 999,
         backgroundColor: Brand.ink,
         paddingHorizontal: 20,
     },
     sendButtonDisabled: { backgroundColor: '#9aa8a0' },
     sendButtonText: { fontSize: 15, fontWeight: '500', color: '#fff' },
-    progressTrack: {
-        height: 6,
-        borderRadius: 99,
-        backgroundColor: Brand.trackLight,
-        overflow: 'hidden',
-        marginTop: 12,
-    },
-    progressBar: { height: 6, borderRadius: 99, backgroundColor: Brand.green },
-    note: {
+    runProgress: { marginTop: -8 },
+    noteWrap: { marginTop: -8 },
+    resultPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginTop: 12,
-        padding: 14,
-        borderRadius: 18,
-        backgroundColor: Brand.warnLight,
+        gap: 6,
+        alignSelf: 'flex-start',
+        marginTop: -8,
+        paddingHorizontal: 12,
+        height: 30,
+        borderRadius: 999,
+        backgroundColor: Brand.chipLight,
     },
-    noteTextWarning: { flex: 1, fontSize: 13, lineHeight: 18, color: Brand.warn },
-    resultNote: { fontSize: 13, color: Brand.muted, marginTop: 12 },
+    resultPillWarning: { backgroundColor: Brand.clayLight },
+    resultNote: { fontSize: 13, fontWeight: '500', color: Brand.greenDeep },
     resultNoteWarning: { color: Brand.clayInk },
     storageCard: {
         backgroundColor: Brand.card,
         borderWidth: 1,
         borderColor: Brand.line,
         borderRadius: 24,
-        padding: 18,
-        gap: 4,
-        marginTop: 16,
-        marginBottom: 12,
+        padding: 16,
+        gap: 8,
     },
-    storageTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    storageLabel: { flex: 1, fontSize: 13.5, color: Brand.muted },
-    storageTotal: { fontSize: 34, fontWeight: '300', letterSpacing: -1.5, color: Brand.ink, marginTop: 6 },
+    storageTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    storageIcon: { width: 40, height: 40, borderRadius: 14, backgroundColor: Brand.chipLight, alignItems: 'center', justifyContent: 'center' },
+    storageLabel: { flex: 1, fontSize: 13.5, lineHeight: 18, color: Brand.muted },
+    storageTotal: { fontSize: 44, fontWeight: '300', letterSpacing: -2, color: Brand.ink, fontVariant: ['tabular-nums'] },
+    splitBar: { flexDirection: 'row', height: 8, borderRadius: 4, backgroundColor: Brand.trackLight, overflow: 'hidden', gap: 2 },
+    splitPhotos: { backgroundColor: Brand.green, borderRadius: 4 },
+    splitAudio: { backgroundColor: Brand.mint, borderRadius: 4 },
+    legend: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 14, rowGap: 4 },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    legendDot: { width: 8, height: 8, borderRadius: 4 },
+    legendFree: { marginLeft: 'auto' },
     storageDetail: { fontSize: 13, color: Brand.muted },
-    storageNote: { fontSize: 12, color: Brand.muted, marginTop: 2 },
-    spaceWarning: { fontSize: 13, lineHeight: 18, color: Brand.warn, backgroundColor: Brand.warnLight, borderRadius: 14, padding: 12, marginTop: 8 },
+    storageNote: { fontSize: 12, color: Brand.muted },
+    spaceWarning: { fontSize: 13, lineHeight: 18, color: Brand.warn, backgroundColor: Brand.warnLight, borderRadius: 14, padding: 12, marginTop: 4 },
     spaceWarningCritical: { color: Brand.clayInk, backgroundColor: Brand.clayLight },
-    releaseBox: { marginTop: 10, gap: 8 },
+    releaseBox: { marginTop: 6, gap: 8 },
     releaseButton: {
         flexDirection: 'row',
         alignItems: 'center',
         alignSelf: 'flex-start',
         gap: 6,
         paddingHorizontal: 16,
-        height: 38,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: '#cdd5d0',
-    },
-    releaseText: { fontSize: 13, fontWeight: '500', color: Brand.ink },
-    section: { gap: 12, marginBottom: 8 },
-    sectionTitle: { fontSize: 15, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink, marginTop: 6, marginBottom: 10 },
-    tabs: { flexDirection: 'row', gap: 8, marginBottom: 6 },
-    tab: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
         height: 40,
         borderRadius: 999,
         borderWidth: 1,
         borderColor: '#cdd5d0',
     },
+    releaseText: { fontSize: 13, fontWeight: '500', color: Brand.ink },
+    section: { gap: 12 },
+    sectionTight: { gap: 12, marginBottom: 4 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+    sectionTitle: { fontSize: 16, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink },
+    sectionRight: { fontSize: 12.5, color: Brand.muted },
+    tabs: { flexDirection: 'row', gap: 8 },
+    tabContainer: { flex: 1 },
+    tab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        height: 42,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#cdd5d0',
+        backgroundColor: Brand.card,
+    },
     tabActive: { backgroundColor: Brand.ink, borderColor: Brand.ink },
     tabAlert: { borderColor: '#e9c5b9', backgroundColor: Brand.clayLight },
     tabText: { fontSize: 13, fontWeight: '500', color: Brand.ink },
     tabTextActive: { color: '#fff' },
+    tabTextAlert: { color: Brand.clayInk },
     tabCount: { fontSize: 13, fontWeight: '600', color: Brand.muted, fontVariant: ['tabular-nums'] },
     row: { paddingHorizontal: 18 },
     separator: { height: 12 },

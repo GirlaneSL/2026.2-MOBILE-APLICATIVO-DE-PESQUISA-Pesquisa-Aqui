@@ -1,9 +1,23 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Download, PlayCircle, RefreshCw, Trash2, WifiOff } from 'lucide-react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import {
+    CalendarDays,
+    CheckCircle2,
+    Clock,
+    Download,
+    PenLine,
+    PlayCircle,
+    RefreshCw,
+    ShieldOff,
+    Trash2,
+    Users,
+    WifiOff,
+} from 'lucide-react-native';
 import Chip from '@/components/Chip';
+import PressableScale from '@/components/home/PressableScale';
+import ProgressBar from '@/components/home/ProgressBar';
 import { Brand } from '@/constants/brand';
-import { formatApiDate } from '@/lib/formatDate';
+import { formatApiDate, parseApiDate } from '@/lib/formatDate';
 
 interface PesquisaCardProps {
     titulo: string;
@@ -16,10 +30,29 @@ interface PesquisaCardProps {
     coletasCount?: number;
     draftCount?: number;
     revoked?: boolean;
+    /** Progresso frente à meta; `target` nulo = sem meta definida. */
+    progress?: { done: number; target: number | null; percent: number | null; pending: number };
+    /** Atraso da barra de progresso, para encher em sequência com os outros cartões. */
+    delay?: number;
     onDownload: () => void;
     onReturn?: () => void;
     onStart?: () => void;
     onResume?: () => void;
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** Quanto falta para a pesquisa encerrar, em texto curto. `urgent` quando restam poucos dias. */
+function deadline(endDate: string): { text: string; urgent: boolean } | null {
+    const end = parseApiDate(endDate);
+    if (!end) return null;
+    const endOfDay = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59).getTime();
+    const days = Math.ceil((endOfDay - Date.now()) / DAY) - 1;
+    if (days < 0) return { text: 'Vigência encerrada', urgent: true };
+    if (days === 0) return { text: 'Encerra hoje', urgent: true };
+    if (days === 1) return { text: 'Encerra amanhã', urgent: true };
+    if (days <= 7) return { text: `Encerra em ${days} dias`, urgent: true };
+    return { text: `Encerra em ${days} dias`, urgent: false };
 }
 
 export default function PesquisaCard({
@@ -33,6 +66,8 @@ export default function PesquisaCard({
     coletasCount = 0,
     draftCount = 0,
     revoked = false,
+    progress,
+    delay = 0,
     onDownload,
     onReturn,
     onStart,
@@ -40,96 +75,155 @@ export default function PesquisaCard({
 }: PesquisaCardProps) {
     const period = `${formatApiDate(startDate)} a ${formatApiDate(endDate)}`;
     const canDownload = isOnline && !isDownloading && !revoked;
+    const left = revoked ? null : deadline(endDate);
+    const hasGoal = !!progress && progress.percent !== null;
+    const complete = hasGoal && (progress?.percent ?? 0) >= 100;
+
+    const iconTone = revoked ? 'clay' : isDownloaded ? 'green' : 'gray';
+    const StatusIcon = revoked ? ShieldOff : isDownloaded ? CheckCircle2 : Download;
+    const iconColor = revoked ? Brand.clayInk : isDownloaded ? Brand.greenDeep : Brand.muted;
 
     return (
-        <View style={styles.card}>
+        <View style={[styles.card, revoked && styles.cardRevoked]}>
             <View style={styles.top}>
-                <View style={styles.titles}>
-                    <Text style={styles.title}>{titulo}</Text>
-                    <Text style={styles.info}>Vigente de {period}</Text>
-                    {targetAudience ? <Text style={styles.info}>Público: {targetAudience}</Text> : null}
+                <View style={[styles.iconPill, iconPillTone[iconTone]]}>
+                    <StatusIcon size={22} color={iconColor} strokeWidth={1.8} />
                 </View>
-                <Chip
-                    label={revoked ? 'Acesso revogado' : isDownloaded ? 'No aparelho' : 'Não baixada'}
-                    tone={revoked ? 'clay' : isDownloaded ? 'light' : 'gray'}
-                />
+                <View style={styles.titles}>
+                    <Text style={styles.title} numberOfLines={2}>
+                        {titulo}
+                    </Text>
+                    <Chip
+                        label={revoked ? 'Acesso revogado' : isDownloaded ? 'No aparelho' : 'Não baixada'}
+                        tone={revoked ? 'clay' : isDownloaded ? 'light' : 'gray'}
+                    />
+                </View>
+            </View>
+
+            <View style={styles.meta}>
+                <View style={styles.metaRow}>
+                    <CalendarDays size={15} color={Brand.muted} strokeWidth={1.8} />
+                    <Text style={styles.metaText}>{period}</Text>
+                </View>
+                {targetAudience ? (
+                    <View style={styles.metaRow}>
+                        <Users size={15} color={Brand.muted} strokeWidth={1.8} />
+                        <Text style={styles.metaText} numberOfLines={2}>
+                            {targetAudience}
+                        </Text>
+                    </View>
+                ) : null}
+                {left ? (
+                    <View style={[styles.deadline, left.urgent && styles.deadlineUrgent]}>
+                        <Clock size={12} color={left.urgent ? Brand.clayInk : Brand.greenDeep} strokeWidth={2} />
+                        <Text style={[styles.deadlineText, left.urgent && styles.deadlineTextUrgent]}>{left.text}</Text>
+                    </View>
+                ) : null}
             </View>
 
             {isDownloaded ? (
                 <>
-                    <View style={styles.counts}>
-                        <View style={styles.count}>
-                            <Text style={styles.countValue}>{coletasCount}</Text>
-                            <Text style={styles.countLabel}>{coletasCount === 1 ? 'coleta feita' : 'coletas feitas'}</Text>
+                    {hasGoal && progress ? (
+                        <View style={styles.goal}>
+                            <View style={styles.goalTop}>
+                                <Text style={styles.goalLabel}>Meta</Text>
+                                <Text style={[styles.goalPercent, complete && styles.goalPercentDone]}>
+                                    {progress.percent}%
+                                </Text>
+                            </View>
+                            <ProgressBar
+                                percent={progress.percent ?? 0}
+                                delay={delay}
+                                color={complete ? Brand.greenDeep : Brand.green}
+                            />
+                            <Text style={styles.goalCaption}>
+                                {complete
+                                    ? `Meta atingida · ${progress.done} ${progress.done === 1 ? 'coleta' : 'coletas'}`
+                                    : `${progress.done} de ${progress.target} · faltam ${Math.max(0, (progress.target ?? 0) - progress.done)}`}
+                                {progress.pending > 0 ? ` · ${progress.pending} aguardando envio` : ''}
+                            </Text>
                         </View>
-                        <View style={[styles.count, styles.countDivider]}>
-                            <Text style={styles.countValue}>{draftCount}</Text>
-                            <Text style={styles.countLabel}>{draftCount === 1 ? 'rascunho' : 'rascunhos'}</Text>
+                    ) : null}
+
+                    <View style={styles.tiles}>
+                        <View style={styles.tile}>
+                            <View style={styles.tileTop}>
+                                <CheckCircle2 size={14} color={Brand.greenDeep} strokeWidth={2} />
+                                <Text style={styles.tileLabel}>{coletasCount === 1 ? 'coleta feita' : 'coletas feitas'}</Text>
+                            </View>
+                            <Text style={styles.tileValue}>{coletasCount}</Text>
+                        </View>
+                        <View style={[styles.tile, draftCount > 0 && styles.tileClay]}>
+                            <View style={styles.tileTop}>
+                                <PenLine size={14} color={draftCount > 0 ? Brand.clayInk : Brand.greenDeep} strokeWidth={2} />
+                                <Text style={[styles.tileLabel, draftCount > 0 && styles.tileLabelClay]}>
+                                    {draftCount === 1 ? 'rascunho' : 'rascunhos'}
+                                </Text>
+                            </View>
+                            <Text style={[styles.tileValue, draftCount > 0 && styles.tileValueClay]}>{draftCount}</Text>
                         </View>
                     </View>
 
                     <View style={styles.actions}>
                         {draftCount > 0 ? (
-                            <Pressable
-                                style={({ pressed }) => [styles.button, styles.buttonGhost, pressed && styles.pressed]}
+                            <PressableScale
                                 onPress={onResume}
                                 accessibilityRole="button"
                                 accessibilityLabel={`Retomar rascunho de ${titulo}`}
+                                containerStyle={styles.flex}
+                                style={[styles.button, styles.buttonGhost]}
                             >
                                 <Text style={styles.buttonGhostText}>Retomar</Text>
-                            </Pressable>
+                            </PressableScale>
                         ) : null}
-                        <Pressable
-                            style={({ pressed }) => [styles.button, styles.buttonPrimary, pressed && styles.pressedDark]}
+                        <PressableScale
                             onPress={onStart}
                             accessibilityRole="button"
                             accessibilityLabel={`Iniciar coleta de ${titulo}`}
+                            containerStyle={styles.flex}
+                            style={[styles.button, styles.buttonPrimary]}
                         >
                             <PlayCircle size={18} color="#fff" strokeWidth={1.8} />
                             <Text style={styles.buttonPrimaryText}>Iniciar coleta</Text>
-                        </Pressable>
+                        </PressableScale>
                         {isOnline ? (
-                            <Pressable
-                                style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+                            <PressableScale
                                 onPress={onDownload}
                                 disabled={isDownloading}
                                 accessibilityRole="button"
                                 accessibilityLabel={`Atualizar a pesquisa ${titulo}`}
+                                style={styles.iconButton}
                             >
                                 {isDownloading ? (
                                     <ActivityIndicator size="small" color={Brand.green} />
                                 ) : (
                                     <RefreshCw size={18} color={Brand.greenDeep} strokeWidth={1.8} />
                                 )}
-                            </Pressable>
+                            </PressableScale>
                         ) : null}
                     </View>
 
                     {onReturn ? (
-                        <Pressable
+                        <PressableScale
                             onPress={onReturn}
-                            style={({ pressed }) => [styles.returnLink, pressed && styles.pressed]}
                             accessibilityRole="button"
                             accessibilityLabel={`Remover a pesquisa ${titulo} do aparelho`}
+                            scaleTo={0.96}
+                            style={styles.returnLink}
                         >
                             <Trash2 size={15} color={Brand.muted} strokeWidth={1.8} />
                             <Text style={styles.returnLinkText}>Remover do aparelho</Text>
-                        </Pressable>
+                        </PressableScale>
                     ) : null}
                 </>
             ) : (
-                <Pressable
-                    style={({ pressed }) => [
-                        styles.button,
-                        styles.buttonMint,
-                        !canDownload && styles.buttonDisabled,
-                        pressed && canDownload && styles.pressed,
-                    ]}
+                <PressableScale
                     onPress={onDownload}
                     disabled={!canDownload}
                     accessibilityRole="button"
                     accessibilityState={{ disabled: !canDownload, busy: isDownloading }}
                     accessibilityLabel={`Baixar a pesquisa ${titulo}`}
+                    style={[styles.button, styles.buttonMint, !canDownload && styles.buttonDisabled]}
                 >
                     {isDownloading ? (
                         <ActivityIndicator size="small" color={Brand.forest} />
@@ -137,42 +231,86 @@ export default function PesquisaCard({
                         <>
                             {!isOnline ? (
                                 <WifiOff size={18} color={Brand.muted} strokeWidth={1.8} />
+                            ) : revoked ? (
+                                <ShieldOff size={18} color={Brand.muted} strokeWidth={1.8} />
                             ) : (
                                 <Download size={18} color={Brand.forest} strokeWidth={1.8} />
                             )}
-                            <Text style={[styles.buttonMintText, !isOnline && styles.buttonDisabledText]}>
-                                {revoked ? 'Acesso revogado neste aparelho' : !isOnline ? 'Precisa de internet para baixar' : 'Baixar pesquisa'}
+                            <Text style={[styles.buttonMintText, !canDownload && styles.buttonDisabledText]}>
+                                {revoked
+                                    ? 'Acesso revogado neste aparelho'
+                                    : !isOnline
+                                      ? 'Precisa de internet para baixar'
+                                      : 'Baixar pesquisa'}
                             </Text>
                         </>
                     )}
-                </Pressable>
+                </PressableScale>
             )}
         </View>
     );
 }
 
+const iconPillTone = StyleSheet.create({
+    green: { backgroundColor: Brand.chipLight },
+    gray: { backgroundColor: Brand.chipGray },
+    clay: { backgroundColor: Brand.clayLight },
+});
+
 const styles = StyleSheet.create({
+    flex: { flex: 1 },
     card: {
         backgroundColor: Brand.card,
         borderRadius: 24,
         borderWidth: 1,
         borderColor: Brand.line,
-        padding: 18,
-        gap: 16,
+        padding: 16,
+        gap: 14,
     },
-    top: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-    titles: { flex: 1, gap: 3 },
-    title: { fontSize: 18, fontWeight: '600', letterSpacing: -0.4, color: Brand.ink, marginBottom: 2 },
-    info: { fontSize: 13, color: Brand.muted },
-    counts: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: Brand.line, paddingTop: 14 },
-    count: { flex: 1 },
-    countDivider: { borderLeftWidth: 1, borderLeftColor: Brand.line, paddingLeft: 16 },
-    countValue: { fontSize: 26, fontWeight: '300', letterSpacing: -1, color: Brand.ink, fontVariant: ['tabular-nums'] },
-    countLabel: { fontSize: 12.5, color: Brand.muted },
-    actions: { flexDirection: 'row', gap: 8 },
-    button: {
+    cardRevoked: { backgroundColor: '#fbf3ef', borderColor: 'rgba(171, 96, 73, 0.3)' },
+    top: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    iconPill: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    titles: { flex: 1, minWidth: 0, gap: 8 },
+    title: { fontSize: 18, fontWeight: '600', letterSpacing: -0.4, color: Brand.ink },
+    meta: { gap: 8 },
+    metaRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+    metaText: { flex: 1, fontSize: 13.5, lineHeight: 18, color: Brand.muted },
+    deadline: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        alignSelf: 'flex-start',
+        height: 24,
+        paddingHorizontal: 10,
+        borderRadius: 999,
+        backgroundColor: Brand.chipLight,
+    },
+    deadlineUrgent: { backgroundColor: Brand.clayLight },
+    deadlineText: { fontSize: 12, fontWeight: '600', color: Brand.greenDeep },
+    deadlineTextUrgent: { color: Brand.clayInk },
+    goal: { gap: 8, paddingTop: 14, borderTopWidth: 1, borderTopColor: Brand.line },
+    goalTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+    goalLabel: { fontSize: 13, fontWeight: '600', color: Brand.ink },
+    goalPercent: { fontSize: 22, fontWeight: '300', letterSpacing: -0.8, color: Brand.ink, fontVariant: ['tabular-nums'] },
+    goalPercentDone: { color: Brand.greenDeep, fontWeight: '600' },
+    goalCaption: { fontSize: 12, color: Brand.muted },
+    tiles: { flexDirection: 'row', gap: 10 },
+    tile: {
         flex: 1,
-        height: 46,
+        gap: 4,
+        padding: 12,
+        borderRadius: 18,
+        backgroundColor: Brand.chipLight,
+    },
+    tileClay: { backgroundColor: Brand.clayLight },
+    tileTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    tileLabel: { fontSize: 12, color: Brand.greenDeep },
+    tileLabelClay: { color: Brand.clayInk },
+    tileValue: { fontSize: 30, fontWeight: '300', letterSpacing: -1.2, color: Brand.ink, fontVariant: ['tabular-nums'] },
+    tileValueClay: { color: Brand.clayInk },
+    actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    button: {
+        height: 48,
         borderRadius: 999,
         flexDirection: 'row',
         alignItems: 'center',
@@ -189,16 +327,20 @@ const styles = StyleSheet.create({
     buttonDisabled: { backgroundColor: Brand.chipGray },
     buttonDisabledText: { color: Brand.muted },
     iconButton: {
-        width: 46,
-        height: 46,
-        borderRadius: 23,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         borderWidth: 1,
         borderColor: '#cdd5d0',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    returnLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6, borderRadius: 999 },
+    returnLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 4,
+    },
     returnLinkText: { fontSize: 13.5, color: Brand.muted },
-    pressed: { backgroundColor: '#e9ede9' },
-    pressedDark: { backgroundColor: '#26332c' },
 });
