@@ -1,35 +1,84 @@
-import { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { CloudUpload, FileText, PenLine } from 'lucide-react-native';
+import { Check, CloudUpload, Download, FileText, PenLine } from 'lucide-react-native';
+import Animated, {
+    Easing,
+    FadeInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
+} from 'react-native-reanimated';
 import Chip from '@/components/Chip';
 import Contour from '@/components/Contour';
+import ActionCard from '@/components/home/ActionCard';
+import CountUp from '@/components/home/CountUp';
+import ResearchRow from '@/components/home/ResearchRow';
+import WeekActivity from '@/components/home/WeekActivity';
+import { MESES, computeStats, formatLongDate, greeting } from '@/components/home/homeStats';
 import { Brand, Radius, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { useAuth } from '@/context/AuthContext';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { listCollections } from '@/lib/collectionStore';
-import { getCachedResearches, syncResearches } from '@/lib/researchCache';
-import { listSent } from '@/lib/sentHistory';
+import { listCollections, type LocalCollection } from '@/lib/collectionStore';
+import { formatApiDate } from '@/lib/formatDate';
+import { getCachedResearches, syncResearches, type Research } from '@/lib/researchCache';
+import { computeProgress } from '@/lib/researchProgress';
+import { listSent, type SentRecord } from '@/lib/sentHistory';
 import InfoCard from './_components/infoCards';
 
-const isThisMonth = (iso?: string) => {
-    if (!iso) return false;
-    const date = new Date(iso);
-    const now = new Date();
-    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+const MAX_ROWS = 4;
+
+const firstName = (name?: string) => {
+    const first = name?.trim().split(' ')[0] || 'Pesquisador';
+    return first.charAt(0).toUpperCase() + first.slice(1);
 };
 
-const firstName = (name?: string) => name?.trim().split(' ')[0] || 'Pesquisador';
+/** Entrada escalonada: cada bloco sobe e aparece um pouco depois do anterior. */
+const enter = (index: number) =>
+    FadeInDown.delay(120 + index * 80)
+        .duration(480)
+        .easing(Easing.out(Easing.cubic));
+
+function SectionHeader({ title, right, onRight }: { title: string; right?: string; onRight?: () => void }) {
+    return (
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            {right ? (
+                <Pressable onPress={onRight} disabled={!onRight} hitSlop={10} accessibilityRole={onRight ? 'button' : 'text'}>
+                    <Text style={[styles.sectionRight, onRight && styles.sectionLink]}>{right}</Text>
+                </Pressable>
+            ) : null}
+        </View>
+    );
+}
+
+function HeroStat({ value, label }: { value: number; label: string }) {
+    return (
+        <View style={styles.stat}>
+            <Text style={styles.statValue}>{value}</Text>
+            <Text style={styles.statLabel}>{label}</Text>
+        </View>
+    );
+}
 
 export default function Home() {
     const router = useRouter();
     const { user } = useAuth();
     const isOnline = useNetworkStatus();
-    const [researchCount, setResearchCount] = useState(0);
-    const [doneMonth, setDoneMonth] = useState(0);
-    const [pendingSend, setPendingSend] = useState(0);
-    const [drafts, setDrafts] = useState(0);
+    const [researches, setResearches] = useState<Research[]>([]);
+    const [collections, setCollections] = useState<LocalCollection[]>([]);
+    const [sent, setSent] = useState<SentRecord[]>([]);
     const [refreshing, setRefreshing] = useState(false);
+
+    // As curvas de nível "respiram" devagar: movimento ambiente, sem chamar atenção.
+    const breathe = useSharedValue(0);
+    useEffect(() => {
+        breathe.value = withRepeat(withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }), -1, true);
+    }, [breathe]);
+    const contourStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: 1 + breathe.value * 0.07 }, { translateX: breathe.value * -6 }],
+    }));
 
     const loadData = useCallback(async () => {
         if (isOnline) {
@@ -39,25 +88,14 @@ export default function Home() {
                 console.log('Falha ao sincronizar pesquisas na Home:', error);
             }
         }
-        const [researches, collections, sent] = await Promise.all([
+        const [cachedResearches, allCollections, sentRecords] = await Promise.all([
             getCachedResearches(),
             listCollections(),
-            listSent().catch(() => []),
+            listSent().catch(() => [] as SentRecord[]),
         ]);
-        const finished = collections.filter((c) => c.status === 'FINISHED');
-        // Coletas do mês: as finalizadas ainda no aparelho (aguardando envio) + as já enviadas (histórico).
-        // Pelo clientId, uma coleta nunca conta duas vezes.
-        const monthIds = new Set<string>();
-        finished.forEach((c) => {
-            if (isThisMonth(c.finishedAt ?? c.startedAt)) monthIds.add(c.clientId);
-        });
-        sent.forEach((r) => {
-            if (isThisMonth(r.finishedAt ?? r.startedAt)) monthIds.add(r.clientId);
-        });
-        setResearchCount(researches.filter((item) => item.status !== 'DRAFT').length);
-        setDoneMonth(monthIds.size);
-        setPendingSend(finished.length);
-        setDrafts(collections.length - finished.length);
+        setResearches(cachedResearches);
+        setCollections(allCollections);
+        setSent(sentRecords);
     }, [isOnline]);
 
     useFocusEffect(
@@ -72,6 +110,50 @@ export default function Home() {
         setRefreshing(false);
     };
 
+    const available = useMemo(() => researches.filter((item) => item.status !== 'DRAFT'), [researches]);
+    const finished = useMemo(() => collections.filter((c) => c.status === 'FINISHED'), [collections]);
+    const drafts = useMemo(() => collections.filter((c) => c.status !== 'FINISHED'), [collections]);
+    const stats = useMemo(() => computeStats(finished, sent), [finished, sent]);
+
+    // Pesquisas com o progresso frente à meta: as baixadas primeiro, e as mais atrasadas antes das concluídas.
+    const rows = useMemo(() => {
+        const list = available
+            .filter((item) => !item.revoked)
+            .map((research) => {
+                const pendingIds = finished.filter((c) => c.researchId === research.id).map((c) => c.clientId);
+                return { research, progress: computeProgress(research, sent, pendingIds) };
+            });
+        list.sort(
+            (a, b) =>
+                Number(!!b.research.isDownloaded) - Number(!!a.research.isDownloaded) ||
+                (a.progress.percent ?? 101) - (b.progress.percent ?? 101)
+        );
+        return list;
+    }, [available, finished, sent]);
+
+    const goResearches = () => router.push('/(app)/pesquisas');
+    const goSync = () => router.push('/(app)/sincronizacao');
+
+    const resumeDraft = () => {
+        if (drafts.length === 1) {
+            router.push({
+                pathname: '/coleta/[researchId]',
+                params: { researchId: String(drafts[0].researchId), clientId: drafts[0].clientId },
+            });
+            return;
+        }
+        goResearches();
+    };
+
+    const draftTitle =
+        drafts.length === 1 ? available.find((item) => item.id === drafts[0].researchId)?.title : undefined;
+    const hasDownloaded = available.some((item) => item.isDownloaded);
+    const name = firstName(user?.name);
+    const monthName = MESES[new Date().getMonth()];
+    const nothingToDo = finished.length === 0 && drafts.length === 0;
+
+    let sectionIndex = 0;
+
     return (
         <ScrollView
             style={styles.container}
@@ -80,46 +162,175 @@ export default function Home() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Brand.green} />}
         >
             <View style={styles.hero}>
-                <Contour seed={4.1} rings={10} cx={0.8} cy={0.7} size={1} opacity={0.8} color={Brand.green} />
+                <Animated.View style={[StyleSheet.absoluteFill, contourStyle]} pointerEvents="none">
+                    <Contour seed={4.1} rings={10} cx={0.8} cy={0.7} size={1} opacity={0.8} color={Brand.green} />
+                </Animated.View>
+
                 <View style={styles.heroRow}>
                     <Chip label={isOnline ? 'Online' : 'Offline'} tone={isOnline ? 'dark' : 'clay'} />
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{firstName(user?.name).charAt(0).toUpperCase()}</Text>
-                    </View>
+                    <Pressable
+                        onPress={() => router.push('/(app)/usuario')}
+                        accessibilityRole="button"
+                        accessibilityLabel="Abrir perfil"
+                        style={styles.avatarRing}
+                    >
+                        <View style={styles.avatar}>
+                            <Text style={styles.avatarText}>{name.charAt(0)}</Text>
+                        </View>
+                    </Pressable>
                 </View>
-                <Text style={styles.hi}>Olá, {firstName(user?.name)}. Coletas feitas neste mês:</Text>
-                <Text style={styles.big} accessibilityLabel={`${doneMonth} coletas feitas neste mês`}>{doneMonth}</Text>
-                <Text style={styles.cap}>
-                    {doneMonth === 1 ? 'coleta finalizada' : 'coletas finalizadas'}
+
+                <Text style={styles.hi}>
+                    {greeting()}, {name}
                 </Text>
+                <Text style={styles.date}>{formatLongDate()}</Text>
+
+                <Text style={styles.monthLabel}>Neste mês de {monthName}</Text>
+                <CountUp
+                    value={stats.month}
+                    style={styles.big}
+                    accessibilityLabel={`${stats.month} coletas feitas neste mês`}
+                />
+                <Text style={styles.cap}>{stats.month === 1 ? 'coleta finalizada' : 'coletas finalizadas'}</Text>
+
+                <Animated.View entering={enter(0)} style={styles.strip}>
+                    <HeroStat value={stats.today} label="hoje" />
+                    <View style={styles.stripDivider} />
+                    <HeroStat value={stats.last7} label="últimos 7 dias" />
+                    <View style={styles.stripDivider} />
+                    <HeroStat value={stats.lastMonth} label="mês passado" />
+                </Animated.View>
             </View>
 
             <View style={styles.body}>
-                <Text style={styles.sectionTitle}>Resumo do aparelho</Text>
-                <View style={styles.cards}>
-                    <InfoCard
-                        value={String(researchCount)}
-                        label={researchCount === 1 ? 'pesquisa disponível' : 'pesquisas disponíveis'}
-                        icon={<FileText size={18} color={Brand.greenDeep} strokeWidth={1.8} />}
-                        onPress={() => router.push('/(app)/pesquisas')}
-                    />
-                    <InfoCard
-                        value={String(pendingSend)}
-                        label={pendingSend === 1 ? 'coleta para enviar' : 'coletas para enviar'}
-                        icon={<CloudUpload size={18} color={Brand.greenDeep} strokeWidth={1.8} />}
-                        tone={pendingSend > 0 ? 'clay' : 'light'}
-                        onPress={() => router.push('/(app)/sincronizacao')}
-                    />
-                </View>
-                {drafts > 0 ? (
-                    <View style={styles.draftNote}>
-                        <PenLine size={16} color={Brand.clayInk} strokeWidth={1.8} />
-                        <Text style={styles.draftNoteText}>
-                            {drafts === 1
-                                ? 'Você tem 1 rascunho em andamento. Retome em Pesquisas.'
-                                : `Você tem ${drafts} rascunhos em andamento. Retome em Pesquisas.`}
-                        </Text>
+                <Animated.View entering={enter(++sectionIndex)} style={styles.stack}>
+                    {finished.length > 0 ? (
+                        <ActionCard
+                            tone="clay"
+                            icon={<CloudUpload size={22} color={Brand.clayInk} strokeWidth={1.8} />}
+                            title={
+                                finished.length === 1
+                                    ? '1 coleta aguarda envio'
+                                    : `${finished.length} coletas aguardam envio`
+                            }
+                            text={
+                                isOnline
+                                    ? 'Abra Sinc para acompanhar ou enviar agora.'
+                                    : 'Sem internet: o envio acontece sozinho quando a rede voltar.'
+                            }
+                            cta="Abrir Sinc"
+                            onPress={goSync}
+                        />
+                    ) : null}
+
+                    {drafts.length > 0 ? (
+                        <ActionCard
+                            tone="green"
+                            icon={<PenLine size={22} color={Brand.greenDeep} strokeWidth={1.8} />}
+                            title={drafts.length === 1 ? 'Retome sua coleta' : `${drafts.length} rascunhos em andamento`}
+                            text={
+                                drafts.length === 1
+                                    ? draftTitle
+                                        ? `Rascunho em "${draftTitle}".`
+                                        : 'Você tem 1 rascunho em andamento.'
+                                    : 'Escolha qual coleta continuar em Pesquisas.'
+                            }
+                            cta={drafts.length === 1 ? 'Continuar' : 'Ver rascunhos'}
+                            onPress={resumeDraft}
+                        />
+                    ) : null}
+
+                    {nothingToDo ? (
+                        hasDownloaded ? (
+                            <ActionCard
+                                tone="calm"
+                                icon={<Check size={22} color={Brand.greenDeep} strokeWidth={2.2} />}
+                                title="Tudo em dia"
+                                text="Nenhuma coleta pendente. Pronto para o campo."
+                                cta="Iniciar coleta"
+                                onPress={goResearches}
+                            />
+                        ) : available.length > 0 ? (
+                            <ActionCard
+                                tone="calm"
+                                icon={<Download size={22} color={Brand.greenDeep} strokeWidth={1.8} />}
+                                title="Baixe uma pesquisa"
+                                text={
+                                    isOnline
+                                        ? 'Deixe-a no aparelho para coletar mesmo sem internet.'
+                                        : 'Conecte-se à internet para baixar suas pesquisas.'
+                                }
+                                cta="Ir para Pesquisas"
+                                onPress={goResearches}
+                            />
+                        ) : (
+                            <ActionCard
+                                tone="calm"
+                                icon={<FileText size={22} color={Brand.greenDeep} strokeWidth={1.8} />}
+                                title="Aguardando pesquisas"
+                                text="Quando o administrador vincular uma pesquisa a você, ela aparece aqui."
+                            />
+                        )
+                    ) : null}
+                </Animated.View>
+
+                <Animated.View entering={enter(++sectionIndex)} style={styles.section}>
+                    <SectionHeader title="Resumo do aparelho" />
+                    <View style={styles.cards}>
+                        <InfoCard
+                            value={available.length}
+                            label={available.length === 1 ? 'pesquisa disponível' : 'pesquisas disponíveis'}
+                            icon={<FileText size={18} color={Brand.greenDeep} strokeWidth={1.8} />}
+                            onPress={goResearches}
+                        />
+                        <InfoCard
+                            value={finished.length}
+                            label={finished.length === 1 ? 'coleta para enviar' : 'coletas para enviar'}
+                            icon={
+                                <CloudUpload
+                                    size={18}
+                                    color={finished.length > 0 ? Brand.clayInk : Brand.greenDeep}
+                                    strokeWidth={1.8}
+                                />
+                            }
+                            tone={finished.length > 0 ? 'clay' : 'light'}
+                            onPress={goSync}
+                        />
                     </View>
+                </Animated.View>
+
+                <Animated.View entering={enter(++sectionIndex)} style={styles.section}>
+                    <SectionHeader
+                        title="Últimos 7 dias"
+                        right={`${stats.last7} ${stats.last7 === 1 ? 'coleta' : 'coletas'}`}
+                    />
+                    <WeekActivity days={stats.days} />
+                </Animated.View>
+
+                {rows.length > 0 ? (
+                    <Animated.View entering={enter(++sectionIndex)} style={styles.section}>
+                        <SectionHeader
+                            title="Minhas pesquisas"
+                            right={rows.length > MAX_ROWS ? `Ver todas (${rows.length})` : 'Ver todas'}
+                            onRight={goResearches}
+                        />
+                        <View style={styles.stack}>
+                            {rows.slice(0, MAX_ROWS).map(({ research, progress }, index) => (
+                                <ResearchRow
+                                    key={research.id}
+                                    title={research.title}
+                                    subtitle={`Vigente até ${formatApiDate(research.endDate)}`}
+                                    downloaded={!!research.isDownloaded}
+                                    done={progress.done}
+                                    target={progress.target}
+                                    percent={progress.percent}
+                                    pending={progress.pending}
+                                    delay={300 + index * 90}
+                                    onPress={goResearches}
+                                />
+                            ))}
+                        </View>
+                    </Animated.View>
                 ) : null}
             </View>
         </ScrollView>
@@ -133,12 +344,21 @@ const styles = StyleSheet.create({
         backgroundColor: Brand.forest,
         paddingHorizontal: 22,
         paddingTop: 18,
-        paddingBottom: 28,
+        paddingBottom: 22,
         borderBottomLeftRadius: Radius.hero,
         borderBottomRightRadius: Radius.hero,
         overflow: 'hidden',
     },
     heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    avatarRing: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: Brand.lineDark,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     avatar: {
         width: 36,
         height: 36,
@@ -148,27 +368,39 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     avatarText: { color: Brand.forest, fontWeight: '700', fontSize: 15 },
-    hi: { color: Brand.mutedDark, marginTop: 22, fontSize: 14 },
+    hi: { color: Brand.fgDark, marginTop: 22, fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
+    date: { color: Brand.mutedDark, marginTop: 2, fontSize: 13.5 },
+    monthLabel: { color: Brand.mutedDark, marginTop: 22, fontSize: 14 },
     big: {
         color: '#fff',
         fontSize: 88,
         fontWeight: '300',
         letterSpacing: -6,
         lineHeight: 92,
-        marginTop: 6,
+        marginTop: 4,
         fontVariant: ['tabular-nums'],
     },
-    cap: { color: Brand.fgDark, fontSize: 15, marginTop: 4 },
-    body: { padding: 18, gap: 12 },
-    sectionTitle: { fontSize: 16, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink },
-    cards: { flexDirection: 'row', gap: 12 },
-    draftNote: {
+    cap: { color: Brand.fgDark, fontSize: 15, marginTop: 2 },
+    strip: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        padding: 14,
-        borderRadius: 18,
-        backgroundColor: Brand.clayLight,
+        marginTop: 22,
+        paddingVertical: 14,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: Brand.lineDark,
+        backgroundColor: 'rgba(191, 227, 208, 0.07)',
     },
-    draftNoteText: { flex: 1, fontSize: 13, lineHeight: 18, color: Brand.clayInk, fontWeight: '500' },
+    stat: { flex: 1, alignItems: 'center', gap: 2 },
+    statValue: { color: Brand.fgDark, fontSize: 22, fontWeight: '300', letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
+    statLabel: { color: Brand.mutedDark, fontSize: 11.5 },
+    stripDivider: { width: 1, height: 28, backgroundColor: Brand.lineDark },
+    body: { padding: 18, gap: 22 },
+    stack: { gap: 10 },
+    section: { gap: 12 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+    sectionTitle: { fontSize: 16, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink },
+    sectionRight: { fontSize: 12.5, color: Brand.muted },
+    sectionLink: { color: Brand.greenDeep, fontWeight: '600' },
+    cards: { flexDirection: 'row', gap: 12 },
 });
