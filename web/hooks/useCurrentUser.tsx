@@ -1,6 +1,6 @@
 'use client'
 
-import { AuthUser, getCurrentUser } from "@/lib/auth";
+import { AuthUser, getCurrentUser, USER_UPDATED_EVENT } from "@/lib/auth";
 import { useEffect, useState } from "react";
 
 export function useCurrentUser() {
@@ -8,9 +8,21 @@ export function useCurrentUser() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        getCurrentUser()
-            .then(setUser)
-            .finally(() => setLoading(false));
+        let cancelled = false;
+        const load = () => {
+            getCurrentUser()
+                .then((current) => { if (!cancelled) setUser(current); })
+                .finally(() => { if (!cancelled) setLoading(false); });
+        };
+
+        load();
+        // Perfil editado (nome/usuário): atualiza quem mostra o nome do usuário, como o menu lateral.
+        window.addEventListener(USER_UPDATED_EVENT, load);
+
+        return () => {
+            cancelled = true;
+            window.removeEventListener(USER_UPDATED_EVENT, load);
+        };
     }, []);
 
     return { user, loading };

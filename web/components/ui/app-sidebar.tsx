@@ -97,6 +97,17 @@ export function AppSidebar() {
         }
     }
 
+    const identityClass = "flex min-w-0 flex-1 items-center gap-[10px]"
+    const identity = user && (
+        <>
+            <div className="avatar-pa avatar">{initialsOf(user.name)}</div>
+            <div className="who">
+                <b>{user.name}</b>
+                <span>{PROFILE_LABELS[user.profile] ?? user.profile}</span>
+            </div>
+        </>
+    )
+
     return (
         <aside className={`pa-side ${collapsed ? "c" : ""} ${menuOpen ? "open" : ""}`}>
             {/* Barra superior: só aparece no celular */}
@@ -188,11 +199,16 @@ export function AppSidebar() {
 
                 {user ? (
                     <div className="pa-suser">
-                        <div className="avatar-pa avatar">{initialsOf(user.name)}</div>
-                        <div className="who">
-                            <b>{user.name}</b>
-                            <span>{PROFILE_LABELS[user.profile] ?? user.profile}</span>
-                        </div>
+                        {/* Todo perfil abre o próprio perfil clicando no nome. */}
+                        <Link
+                            href="/perfil"
+                            className={`${identityClass} rounded-xl transition-opacity hover:opacity-80`}
+                            title="Meu perfil"
+                            aria-label="Abrir meu perfil"
+                            onClick={closeMenu}
+                        >
+                            {identity}
+                        </Link>
                         <button type="button" className="out" onClick={logoutUser} aria-label="Sair da conta">
                             <LogOut strokeWidth={1.7} />
                         </button>

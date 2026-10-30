@@ -7,6 +7,13 @@ export interface AuthUser {
     companyId: number;
 }
 
+/** Disparado quando o usuário altera o próprio perfil: quem mostra o nome dele (menu lateral) busca de novo. */
+export const USER_UPDATED_EVENT = 'pa:user-updated';
+
+export const notifyUserUpdated = () => {
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_UPDATED_EVENT));
+};
+
 export const login = async (username: string, password: string) => {
     const response = await apiFetch(`/auth/login`, {
         method: 'POST',

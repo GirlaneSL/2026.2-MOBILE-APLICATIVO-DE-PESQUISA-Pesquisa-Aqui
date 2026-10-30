@@ -155,6 +155,9 @@ async function fetchEntries(profile: SearchProfile, query: string): Promise<Sear
         }
     };
 
+    // Pesquisador não abre a página de uma pesquisa (é do administrador): o resultado leva para a lista dele.
+    const mine = (entry: SearchEntry): SearchEntry => (profile === "RESEARCHER" ? { ...entry, href: "/pesquisas" } : entry);
+
     // O servidor procura o texto inteiro; com várias palavras mandamos a mais longa e o navegador confere as demais.
     const q = longestToken(query);
     const list = <T,>(load: (params: { page: number; pageSize: number; q: string; sort: "recent" }) => Promise<Page<T>>) =>
@@ -164,7 +167,7 @@ async function fetchEntries(profile: SearchProfile, query: string): Promise<Sear
     if (!q) {
         if (profile === "SUPERADMINISTRATOR") return [];
         const recent = await settled(getResearchesPage({ page: 1, pageSize: 4, sort: "recent" }), null);
-        return (recent?.items ?? []).map(researchEntry);
+        return (recent?.items ?? []).map(researchEntry).map(mine);
     }
 
     if (profile === "SUPERADMINISTRATOR") {
@@ -203,7 +206,7 @@ async function fetchEntries(profile: SearchProfile, query: string): Promise<Sear
         return [...researches.map(researchEntry), ...researchers.map(researcherEntry), ...collections];
     }
 
-    return (await list(getResearchesPage)).map(researchEntry);
+    return (await list(getResearchesPage)).map(researchEntry).map(mine);
 }
 
 /** A palavra mais longa do texto (sem "#"): é a que mais restringe a consulta ao servidor. */

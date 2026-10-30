@@ -8,6 +8,7 @@ import DialogLayout from "@/components/ui/dialogLayout";
 import { TableSearch, TableViewControls, useTableView, type TableView } from "@/components/ui/data-table";
 import { LoadingState } from "@/components/ui/loadingState";
 import { ServerPagination } from "@/components/ui/pagination";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { usePagedResource } from "@/hooks/usePagedResource";
 import { isSessionExpiredError } from "@/lib/apiFetcher";
 import type { Research } from "@/lib/research";
@@ -18,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CadastrarPesquisaForm from "./components/CadastrarPesquisaForm";
 import CalendarioCampo, { type LegendItem } from "./components/CalendarioCampo";
+import MinhasPesquisas from "./components/MinhasPesquisas";
 import PesquisaCard from "./components/PesquisaCard";
 import PesquisaLinha, { ListaPesquisas } from "./components/PesquisaLinha";
 import type { Filter } from "./components/pesquisaView";
@@ -35,7 +37,7 @@ const FILTERS: { value: Filter; label: string; kind: LegendItem["kind"] }[] = [
 
 const PAGE_SIZES = [12, 24, 48, 96];
 
-export default function Pesquisas() {
+function PesquisasAdmin() {
     const [summary, setSummary] = useState<ResearchSummary | null>(null);
     const [filter, setFilter] = useState<Filter>("ALL");
     const [sort, setSort] = useState<Sort>("recent");
@@ -273,4 +275,14 @@ export default function Pesquisas() {
             )}
         </section>
     );
+}
+
+/** O administrador gerencia as pesquisas; o pesquisador só consulta as dele (a coleta é no aplicativo). */
+export default function Pesquisas() {
+    const { user, loading } = useCurrentUser();
+
+    if (loading) return <LoadingState label="Carregando pesquisas..." shape="research-cards" />;
+    if (user?.profile === "RESEARCHER") return <MinhasPesquisas />;
+
+    return <PesquisasAdmin />;
 }

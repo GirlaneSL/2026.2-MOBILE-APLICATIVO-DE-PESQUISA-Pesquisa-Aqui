@@ -2,6 +2,9 @@ import { jwtVerify } from "jose";
 import { NextRequest, NextResponse } from "next/server"
 
 const PUBLIC_PATHS = ['/login']
+// O pesquisador só usa o início, a lista das próprias pesquisas e o perfil (a coleta é no aplicativo).
+// Qualquer outra tela do painel volta para o início, mesmo que ele digite o endereço.
+const RESEARCHER_PATHS = ['/', '/pesquisas', '/perfil']
 const secret = new TextEncoder().encode(process.env.JWT_SECRET)
 
 export const proxy = async (request: NextRequest) => {
@@ -10,10 +13,12 @@ export const proxy = async (request: NextRequest) => {
     const token = request.cookies.get('access_token')?.value;
 
     let isValid = false;
+    let profile: unknown;
 
     if (token) {
         try {
-            await jwtVerify(token, secret);
+            const { payload } = await jwtVerify(token, secret);
+            profile = payload.profile;
             isValid = true;
         } catch (error) {
             isValid = false;
@@ -27,6 +32,12 @@ export const proxy = async (request: NextRequest) => {
     }
 
     if (isValid && pathname.startsWith('/login')) return NextResponse.redirect(new URL('/', request.url));
+
+    if (isValid && profile === 'RESEARCHER') {
+        const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+
+        if (!RESEARCHER_PATHS.includes(path)) return NextResponse.redirect(new URL('/', request.url));
+    }
 
     const response = NextResponse.next();
 
