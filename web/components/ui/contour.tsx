@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useId, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 type ContourProps = {
@@ -97,15 +97,37 @@ export function Pin({ label, value, left, top, tone = "mint", delay = "0s" }: Pi
     );
 }
 
-/** Marca do app: pino de mapa vazado. */
-export function BrandMark({ color = "#447762", className }: { color?: string; className?: string }) {
+const BRAND_COLOR = "#2D474C";
+const BRAND_ACCENT = "#6B7785";
+
+/**
+ * Marca do app: pino de mapa com o gráfico de barras dentro (mesma arte de public/logo.svg e app/icon.svg).
+ * Sem props usa as cores oficiais. Em fundo escuro passe só `color` (ex.: menta): as barras claras
+ * viram uma versão mais suave da mesma cor. `accent` força a cor das duas barras da direita.
+ */
+export function BrandMark({ color = BRAND_COLOR, accent, className }: { color?: string; accent?: string; className?: string }) {
+    const clipId = `pa-brand-clip-${useId().replace(/:/g, "")}`;
+    const custom = color !== BRAND_COLOR;
+    const barColor = accent ?? (custom ? color : BRAND_ACCENT);
+    const barOpacity = accent === undefined && custom ? 0.55 : 1;
+
     return (
         <svg viewBox="0 0 200 200" aria-hidden="true" className={className}>
+            <defs>
+                <clipPath id={clipId}>
+                    <circle cx="100" cy="85" r="50" />
+                </clipPath>
+            </defs>
             <path
                 d="M100 10C58.5 10 25 43.5 25 85c0 45 50 90 75 110 25-20 75-65 75-110C175 43.5 141.5 10 100 10Zm0 20a55 55 0 1 0 0 110 55 55 0 1 0 0-110Z"
                 fill={color}
                 fillRule="evenodd"
             />
+            <g clipPath={`url(#${clipId})`}>
+                <rect x="64" y="90" width="18" height="60" rx="7" fill={color} />
+                <rect x="91" y="70" width="18" height="85" rx="7" fill={barColor} fillOpacity={barOpacity} />
+                <rect x="118" y="50" width="18" height="100" rx="7" fill={barColor} fillOpacity={barOpacity} />
+            </g>
         </svg>
     );
 }
