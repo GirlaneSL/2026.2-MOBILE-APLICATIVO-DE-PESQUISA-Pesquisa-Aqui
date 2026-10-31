@@ -7,9 +7,11 @@ interface MenuCardProps {
     label: string;
     icon: ReactNode;
     onPress?: () => void;
+    /** Texto curto à direita (ex.: a versão do aplicativo). */
+    value?: string;
 }
 
-export default function MenuCard({ label, icon, onPress }: MenuCardProps) {
+export default function MenuCard({ label, icon, onPress, value }: MenuCardProps) {
     return (
         <Pressable
             onPress={onPress}
@@ -19,6 +21,7 @@ export default function MenuCard({ label, icon, onPress }: MenuCardProps) {
         >
             <View style={styles.iconBox}>{icon}</View>
             <Text style={styles.label}>{label}</Text>
+            {value ? <Text style={styles.value}>{value}</Text> : null}
             {onPress ? <ChevronRight size={18} color={Brand.muted} strokeWidth={1.8} /> : null}
         </Pressable>
     );
@@ -45,4 +48,5 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     label: { flex: 1, fontSize: 15, color: Brand.ink, fontWeight: '500' },
+    value: { fontSize: 13, color: Brand.muted, fontWeight: '500', marginRight: 4 },
 });
