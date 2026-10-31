@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Put, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CompanyService } from './company.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
@@ -6,6 +7,12 @@ import { AuthGuard } from '../auth/auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { isPaged, SituationPageQueryDto } from '../common/pagination.js';
+import { AVATAR_MAX_BYTES, type CompanyImageKind, type UploadedImage } from '../auth/avatar-storage.js';
+
+const imageKindOf = (kind: string): CompanyImageKind => {
+    if (kind !== 'logo' && kind !== 'cover') throw new BadRequestException('Invalid image kind');
+    return kind;
+};
 
 @UseGuards(AuthGuard)
 @Controller('company')
@@ -38,6 +45,28 @@ export class CompanyController {
         @CurrentUser() currentUser: UserPayLoad,
     ) {
         return this.companyService.update(id, updateCompanyDto, currentUser);
+    }
+
+    // Logo (`kind` = logo) e capa (`kind` = cover) da empresa. multipart/form-data, campo `file`: JPG, PNG ou WebP até 5 MB.
+    @Post(':id/images/:kind')
+    @HttpCode(200)
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: AVATAR_MAX_BYTES, files: 1 } }))
+    setImage(
+        @Param('id', ParseIntPipe) id: number,
+        @Param('kind') kind: string,
+        @UploadedFile() file: UploadedImage | undefined,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.companyService.setImage(id, imageKindOf(kind), file, currentUser);
+    }
+
+    @Delete(':id/images/:kind')
+    removeImage(
+        @Param('id', ParseIntPipe) id: number,
+        @Param('kind') kind: string,
+        @CurrentUser() currentUser: UserPayLoad,
+    ) {
+        return this.companyService.removeImage(id, imageKindOf(kind), currentUser);
     }
 
     @Patch(':id')

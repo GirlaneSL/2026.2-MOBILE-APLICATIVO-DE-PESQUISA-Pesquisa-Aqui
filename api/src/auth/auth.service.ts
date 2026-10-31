@@ -67,6 +67,7 @@ export class AuthService {
             ...payload,
             avatarUrl,
             companyName: company?.legalName ?? null,
+            companyLogoUrl: company?.logoUrl ?? null,
         };
     }
 
@@ -163,13 +164,15 @@ export class AuthService {
         const { passwordHash: _, ...userWithoutPassword } = user;
 
         let companyName: string | null = null;
+        let companyLogoUrl: string | null = null;
 
         if (user.companyId) {
             const company = await this.prisma.client.orm.public.Company.where({ id: user.companyId }).first();
 
             companyName = company?.legalName ?? null;
+            companyLogoUrl = company?.logoUrl ?? null;
         }
 
-        return { ...userWithoutPassword, companyName };
+        return { ...userWithoutPassword, companyName, companyLogoUrl };
     }
 }

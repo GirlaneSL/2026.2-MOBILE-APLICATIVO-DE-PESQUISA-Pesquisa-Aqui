@@ -7,7 +7,7 @@ import Chip from '@/components/Chip';
 import Contour from '@/components/Contour';
 import { Brand, Radius, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { useAuth } from '@/context/AuthContext';
-import { avatarSrc } from '@/lib/avatar';
+import { avatarSrc, logoSrc } from '@/lib/avatar';
 import MenuCard from './_components/MenuCard';
 
 const PROFILE_LABELS: Record<string, string> = {
@@ -29,6 +29,7 @@ export default function Usuario() {
     const { user, logout } = useAuth();
     // Se a foto não carregar (sem rede, por exemplo), voltam as iniciais.
     const [photoFailed, setPhotoFailed] = useState(false);
+    const [logoFailed, setLogoFailed] = useState(false);
 
     const handleLogout = () => {
         Alert.alert(
@@ -81,7 +82,19 @@ export default function Usuario() {
                 {user?.companyName ? (
                     <MenuCard
                         label={user.companyName}
-                        icon={<Building2 size={18} color={Brand.greenDeep} strokeWidth={1.8} />}
+                        icon={
+                            user.companyLogoUrl && !logoFailed ? (
+                                <Image
+                                    source={{ uri: logoSrc(user.companyLogoUrl, 26) }}
+                                    style={{ width: 26, height: 26 }}
+                                    contentFit="contain"
+                                    accessibilityLabel="Logo da empresa"
+                                    onError={() => setLogoFailed(true)}
+                                />
+                            ) : (
+                                <Building2 size={18} color={Brand.greenDeep} strokeWidth={1.8} />
+                            )
+                        }
                     />
                 ) : null}
                 <MenuCard

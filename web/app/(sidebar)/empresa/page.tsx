@@ -4,6 +4,8 @@ import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import BannerComponent from "@/components/ui/bannerComponent";
 import { Contour, Pin } from "@/components/ui/contour";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import EditarImagensEmpresa, { CoverBanner } from "./components/ImagensEmpresa";
 import { getCompanies } from "@/lib/company";
 import { getResearchers, setAllResearchersSituation } from "@/lib/user";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -33,6 +35,8 @@ export interface Company {
     legalName: string;
     contactInformation: string;
     situation?: 'ACTIVE' | 'INACTIVE';
+    logoUrl?: string | null;
+    coverUrl?: string | null;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -44,14 +48,6 @@ const formatLong = (iso?: string) => {
         ? '—'
         : d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 };
-
-const initialsOf = (name: string) =>
-    name
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0]?.toUpperCase())
-        .join('') || '?';
 
 type ContactKind = 'email' | 'phone' | 'text';
 
@@ -214,10 +210,27 @@ export default function EmpresaPage() {
         .map((l) => l.trim())
         .filter(Boolean);
 
+    // Logo e capa trocados na janela de edição: o cartão do topo já mostra as novas imagens.
+    const handleImagesChanged = (updated: { logoUrl?: string | null; coverUrl?: string | null; updatedAt?: string }) =>
+        setCompany((current) =>
+            current
+                ? {
+                      ...current,
+                      logoUrl: updated.logoUrl ?? null,
+                      coverUrl: updated.coverUrl ?? null,
+                      updatedAt: updated.updatedAt ?? current.updatedAt,
+                  }
+                : current,
+        );
+
     return (
         <section className="flex flex-col gap-5">
             {/* Credencial da empresa */}
-            <article className="pa-card dark introduction-card !p-0">
+            <article className="pa-card dark introduction-card overflow-hidden !p-0">
+                {/* Capa (se houver): faixa no topo; o cartão com logo e nome vem logo abaixo */}
+                <CoverBanner url={company.coverUrl} />
+
+                <div className="relative">
                 <Contour seed={7} rings={14} cx={0.88} cy={0.45} size={1.25} width={900} height={320} />
                 <div className="pointer-events-none !absolute inset-0 hidden md:block" aria-hidden="true">
                     <Pin
@@ -229,9 +242,15 @@ export default function EmpresaPage() {
                 </div>
 
                 <div className="relative flex flex-col gap-6 p-7 sm:flex-row sm:items-center sm:p-9">
-                    <div className="grid size-24 shrink-0 place-items-center rounded-[28px] bg-[var(--mint)] text-[34px] font-semibold tracking-tight text-[var(--forest)] shadow-[0_18px_40px_-18px_rgba(191,227,208,0.7)] ring-8 ring-[rgba(191,227,208,0.12)]">
-                        {initialsOf(company.legalName)}
-                    </div>
+                    <UserAvatar
+                        name={company.legalName}
+                        src={company.logoUrl}
+                        size={96}
+                        fit="contain"
+                        className={`grid size-24 shrink-0 place-items-center rounded-[28px] text-[34px] font-semibold tracking-tight shadow-[0_18px_40px_-18px_rgba(191,227,208,0.7)] ring-8 ring-[rgba(191,227,208,0.12)] ${
+                            company.logoUrl ? 'bg-white p-2.5' : 'bg-[var(--mint)] text-[var(--forest)]'
+                        }`}
+                    />
 
                     <div className="min-w-0">
                         <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted-dark)]">
@@ -264,8 +283,21 @@ export default function EmpresaPage() {
                                 <CalendarDays className="size-3.5" />
                                 No Pesquisa Aqui desde {formatLong(company.createdAt)}
                             </span>
+                            {isCompanyAdmin && (
+                                <EditarImagensEmpresa
+                                    company={{
+                                        id: Number(company.id),
+                                        legalName: company.legalName,
+                                        logoUrl: company.logoUrl,
+                                        coverUrl: company.coverUrl,
+                                    }}
+                                    onChanged={handleImagesChanged}
+                                    className="sm:absolute sm:bottom-7 sm:right-7"
+                                />
+                            )}
                         </div>
                     </div>
+                </div>
                 </div>
             </article>
 

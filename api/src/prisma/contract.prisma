@@ -43,6 +43,9 @@ model Company {
   legalName           String
   contactInformation  String
   situation           CompanySituation @default(ACTIVE)
+  // Identidade visual da empresa: endereços das imagens no Cloudinary (nulo = sem imagem).
+  logoUrl             String?
+  coverUrl            String?
   users               User[]
   createdAt           TimestamptzString @default(now())
   updatedAt           temporal.updatedAtString()

@@ -53,6 +53,7 @@ interface RawCompany {
     legalName: string;
     contactInformation: string;
     situation: 'ACTIVE' | 'INACTIVE';
+    logoUrl?: string | null;
     createdAt?: string;
 }
 
@@ -258,6 +259,7 @@ export default function ExibirEditar({
                     name={c.legalName}
                     sub={formatDate(c.createdAt) ? `Desde ${formatDate(c.createdAt)}` : undefined}
                     square
+                    avatarUrl={c.logoUrl}
                 />
             ),
         },

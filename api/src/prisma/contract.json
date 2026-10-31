@@ -499,6 +499,13 @@
                   "kind": "scalar"
                 }
               },
+              "coverUrl": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -515,6 +522,13 @@
               },
               "legalName": {
                 "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "logoUrl": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -563,6 +577,9 @@
                 "contactInformation": {
                   "column": "contactInformation"
                 },
+                "coverUrl": {
+                  "column": "coverUrl"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -571,6 +588,9 @@
                 },
                 "legalName": {
                   "column": "legalName"
+                },
+                "logoUrl": {
+                  "column": "logoUrl"
                 },
                 "situation": {
                   "column": "situation"
@@ -2230,6 +2250,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "coverUrl": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -2252,6 +2277,11 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "logoUrl": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "situation": {
                   "codecId": "pg/text@1",
@@ -3334,7 +3364,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "867fb1cdacc83b8956f8c0177dca87f063262661b09fd43b038fcc2b2afedbe6"
+    "storageHash": "a7ee7ae20babe8e8905946a3c484e17c5565ae8d15a8a580a696a5853ae0e5a5"
   },
   "execution": {
     "executionHash": "89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09",

@@ -6,6 +6,9 @@ export interface CompanyItem {
     legalName: string;
     contactInformation: string;
     situation: 'ACTIVE' | 'INACTIVE';
+    /** Logo e capa da empresa (endereços no Cloudinary); nulo ou ausente = sem imagem. */
+    logoUrl?: string | null;
+    coverUrl?: string | null;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -144,3 +147,47 @@ export const getCompanyOptions = async (params: { page: number; pageSize: number
     const page = await getCompaniesPage({ ...params, situation: 'ACTIVE', sort: 'name' });
     return { ...page, items: page.items.map((company) => ({ value: String(company.id), label: company.legalName })) };
 }
+
+export type CompanyImageKind = 'logo' | 'cover';
+
+/** Tipos e tamanho aceitos nas imagens da empresa (o servidor confere de novo). */
+export const COMPANY_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+export const COMPANY_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+const IMAGE_ERRORS: Record<string, string> = {
+    'Envie uma imagem.': 'Escolha uma imagem.',
+    'Use uma imagem JPG, PNG ou WebP.': 'Use uma imagem JPG, PNG ou WebP.',
+    'A foto deve ter no máximo 5 MB.': 'A imagem deve ter no máximo 5 MB.',
+    'Armazenamento de imagens não configurado.': 'O armazenamento de imagens não está configurado no servidor.',
+    'Only the company administrator can change its images.': 'Só o administrador da empresa pode alterar as imagens.',
+};
+
+const imageError = async (response: Response, fallback: string) => {
+    // O servidor recusa antes de ler o arquivo grande demais.
+    if (response.status === 413) return new Error('A imagem deve ter no máximo 5 MB.');
+
+    const errorBody = await response.json().catch(() => null);
+    const message = Array.isArray(errorBody?.message) ? errorBody.message[0] : errorBody?.message;
+
+    return new Error(IMAGE_ERRORS[typeof message === 'string' ? message : ''] ?? fallback);
+};
+
+/** Troca o logo ou a capa da empresa: a imagem vai para o Cloudinary pela API. Devolve a empresa atualizada. */
+export const uploadCompanyImage = async (companyId: number, kind: CompanyImageKind, file: File): Promise<CompanyItem> => {
+    const body = new FormData();
+    body.append('file', file);
+
+    const response = await apiFetch(`/company/${companyId}/images/${kind}`, { method: 'POST', credentials: 'include', body });
+
+    if (!response.ok) throw await imageError(response, 'Falha ao enviar a imagem');
+
+    return response.json();
+};
+
+export const removeCompanyImage = async (companyId: number, kind: CompanyImageKind): Promise<CompanyItem> => {
+    const response = await apiFetch(`/company/${companyId}/images/${kind}`, { method: 'DELETE', credentials: 'include' });
+
+    if (!response.ok) throw await imageError(response, 'Falha ao remover a imagem');
+
+    return response.json();
+};

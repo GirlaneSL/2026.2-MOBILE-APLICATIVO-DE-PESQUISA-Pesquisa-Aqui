@@ -11,20 +11,31 @@ const initialsOf = (name: string) =>
         .join("") || "?"
 
 /**
- * Endereço da foto no tamanho pedido: o Cloudinary entrega a imagem já recortada e leve
- * (`c_fill`, formato e qualidade automáticos). `size` em pixels de tela; pede o dobro para telas nítidas.
+ * Pede ao Cloudinary a imagem já no tamanho e no recorte desejados (formato e qualidade automáticos).
+ * Endereços que não são do Cloudinary voltam como estão. `fill` recorta para preencher; `fit` mostra a imagem inteira.
  */
-export function avatarSrc(url: string, size: number): string {
+export function cloudinaryResize(
+    url: string,
+    { width, height = width, crop = "fill", gravity }: { width: number; height?: number; crop?: "fill" | "fit"; gravity?: string },
+): string {
     const marker = "/image/upload/"
     const at = url.indexOf(marker)
     if (at === -1 || !url.includes("res.cloudinary.com")) return url
 
-    const px = Math.round(size * 2)
-    return `${url.slice(0, at + marker.length)}c_fill,g_face,w_${px},h_${px},f_auto,q_auto/${url.slice(at + marker.length)}`
+    const transformation = [`c_${crop}`, gravity ? `g_${gravity}` : "", `w_${Math.round(width)}`, `h_${Math.round(height)}`, "f_auto", "q_auto"]
+        .filter(Boolean)
+        .join(",")
+
+    return `${url.slice(0, at + marker.length)}${transformation}/${url.slice(at + marker.length)}`
+}
+
+/** Foto de perfil no tamanho pedido (`size` em pixels de tela; pede o dobro para telas nítidas), recortada no rosto. */
+export function avatarSrc(url: string, size: number): string {
+    return cloudinaryResize(url, { width: size * 2, gravity: "face" })
 }
 
 /**
- * Foto do usuário, ou as iniciais quando não há foto (ou ela não carrega).
+ * Foto do usuário (ou logo da empresa), ou as iniciais quando não há imagem (ou ela não carrega).
  * O formato e o tamanho vêm de `className`, então serve para o menu, o perfil e as listas.
  */
 export function UserAvatar({
@@ -34,33 +45,38 @@ export function UserAvatar({
     className = "",
     title,
     ariaHidden = false,
+    fit = "cover",
 }: {
     name: string
     src?: string | null
-    /** Lado da imagem, em px, usado para pedir ao Cloudinary a foto no tamanho certo. */
+    /** Lado da imagem, em px, usado para pedir ao Cloudinary a imagem no tamanho certo. */
     size?: number
     className?: string
     title?: string
     /** Avatar decorativo (o nome já aparece ao lado): some para leitores de tela. */
     ariaHidden?: boolean
+    /** `cover` preenche e recorta (fotos de pessoas); `contain` mostra a imagem inteira (logos). */
+    fit?: "cover" | "contain"
 }) {
-    // Guarda qual endereço falhou: ao trocar a foto o novo endereço volta a ser tentado.
+    // Guarda qual endereço falhou: ao trocar a imagem o novo endereço volta a ser tentado.
     const [failed, setFailed] = useState<string | null>(null)
-    const showPhoto = !!src && failed !== src
+    const showImage = !!src && failed !== src
+    const resized =
+        src && fit === "contain" ? cloudinaryResize(src, { width: size * 2, crop: "fit" }) : src ? avatarSrc(src, size) : ""
 
     return (
         <div className={`${className} overflow-hidden`} title={title} aria-hidden={ariaHidden || undefined}>
-            {showPhoto ? (
+            {showImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                    src={avatarSrc(src, size)}
+                    src={resized}
                     alt=""
                     width={size}
                     height={size}
                     loading="lazy"
                     decoding="async"
                     onError={() => setFailed(src)}
-                    className="size-full object-cover"
+                    className={`size-full ${fit === "contain" ? "object-contain" : "object-cover"}`}
                 />
             ) : (
                 initialsOf(name)

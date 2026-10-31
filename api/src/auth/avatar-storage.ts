@@ -5,6 +5,8 @@ import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
 export const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
+export type CompanyImageKind = 'logo' | 'cover';
+
 export interface UploadedImage {
     buffer: Buffer;
     mimetype: string;
@@ -25,7 +27,7 @@ const publicIdOf = (url: string): string | null => {
     return match ? decodeURIComponent(match[1]) : null;
 };
 
-// Guarda as fotos de perfil no Cloudinary (mesma configuração das mídias das coletas: CLOUDINARY_URL, ou
+// Guarda no Cloudinary as fotos de perfil e as imagens das empresas (logo e capa) (mesma configuração das mídias das coletas: CLOUDINARY_URL, ou
 // CLOUDINARY_CLOUD_NAME + CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET; CLOUDINARY_FOLDER é a pasta raiz, opcional).
 //
 // Ao contrário das mídias das coletas (privadas), a foto de perfil é uma imagem pública: o painel a mostra direto
@@ -56,14 +58,14 @@ export class AvatarStorage {
         return this.ready;
     }
 
-    // Pasta no Cloudinary: `<CLOUDINARY_FOLDER>/avatars` (ou só `avatars`), sem barras nas pontas.
-    private get folder(): string {
+    // Pasta no Cloudinary: `<CLOUDINARY_FOLDER>/<sub>` (ou só `<sub>`), sem barras nas pontas.
+    private folderFor(sub: 'avatars' | 'companies'): string {
         const root = (process.env.CLOUDINARY_FOLDER ?? '')
             .replace(/\\/g, '/')
             .split('/')
             .map((part) => part.trim())
             .filter((part) => part !== '' && part !== '.' && part !== '..');
-        return [...root, 'avatars'].join('/');
+        return [...root, sub].join('/');
     }
 
     assertValid(file: UploadedImage | undefined): void {
@@ -82,12 +84,34 @@ export class AvatarStorage {
     // Envia (ou substitui) a foto do usuário e devolve o endereço https dela. A imagem é recortada em quadrado 512x512
     // (centrada no rosto, quando há um) antes de ser guardada.
     async save(userId: number, buffer: Buffer): Promise<string> {
-        const folder = this.folder;
+        const folder = this.folderFor('avatars');
 
+        return this.upload(`${folder}/user-${userId}`, folder, buffer, [
+            { width: 512, height: 512, crop: 'fill', gravity: 'face' },
+            { quality: 'auto' },
+        ]);
+    }
+
+    // Imagens da empresa. O logo mantém as proporções (cabe em 512x512, sem cortar); a capa é um banner 1600x480
+    // recortado no assunto principal da imagem.
+    async saveCompanyImage(companyId: number, kind: CompanyImageKind, buffer: Buffer): Promise<string> {
+        const folder = this.folderFor('companies');
+
+        return this.upload(
+            `${folder}/company-${companyId}-${kind}`,
+            folder,
+            buffer,
+            kind === 'logo'
+                ? [{ width: 512, height: 512, crop: 'limit' }, { quality: 'auto' }]
+                : [{ width: 1600, height: 480, crop: 'fill', gravity: 'auto' }, { quality: 'auto' }],
+        );
+    }
+
+    private async upload(publicId: string, folder: string, buffer: Buffer, transformation: object[]): Promise<string> {
         const result = await new Promise<UploadApiResponse>((resolve, reject) => {
             const stream = cloudinary.uploader.upload_stream(
                 {
-                    public_id: `${folder}/user-${userId}`,
+                    public_id: publicId,
                     // Modo de pastas dinâmicas do Cloudinary: a pasta mostrada no painel vem daqui, não do public_id.
                     asset_folder: folder,
                     resource_type: 'image',
@@ -96,7 +120,7 @@ export class AvatarStorage {
                     invalidate: true,
                     unique_filename: false,
                     use_filename: false,
-                    transformation: [{ width: 512, height: 512, crop: 'fill', gravity: 'face' }, { quality: 'auto' }],
+                    transformation,
                 },
                 (error, uploaded) => {
                     if (error || !uploaded) reject(new Error(`Falha ao enviar a foto ao Cloudinary: ${error?.message ?? 'sem resposta'}`));

@@ -5,10 +5,14 @@ import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import type { UserPayLoad } from '../auth/current-user.type.js';
 import { runPaged, type SituationPageQueryDto } from '../common/pagination.js';
 import { recentActivities } from '../dashboard/dashboard.service.js';
+import { AvatarStorage, type CompanyImageKind, type UploadedImage } from '../auth/avatar-storage.js';
 
 @Injectable()
 export class CompanyService {
-    constructor(@Inject(PrismaService) private readonly prisma: PrismaService) { }
+    constructor(
+        @Inject(PrismaService) private readonly prisma: PrismaService,
+        private readonly imageStorage: AvatarStorage,
+    ) { }
 
     async findAll(currentUser: UserPayLoad) {
         // Regra 1: Superadmin vê mais de uma empresa (vê todas)
@@ -150,6 +154,46 @@ export class CompanyService {
 
         if (Object.keys(data).length > 0) {
             await this.prisma.client.orm.public.Company.where({ id }).update(data);
+        }
+
+        return this.findOne(id);
+    }
+
+    // Logo e capa: o administrador da própria empresa (e o superadministrador) personaliza. As imagens ficam no
+    // Cloudinary e só o endereço delas fica no banco.
+    private assertCanEditImages(id: number, currentUser: UserPayLoad) {
+        const isOwnAdmin = currentUser.profile === 'ADMINISTRATOR' && currentUser.companyId === id;
+
+        if (currentUser.profile !== 'SUPERADMINISTRATOR' && !isOwnAdmin) {
+            throw new ForbiddenException('Only the company administrator can change its images.');
+        }
+    }
+
+    async setImage(id: number, kind: CompanyImageKind, file: UploadedImage | undefined, currentUser: UserPayLoad) {
+        this.assertCanEditImages(id, currentUser);
+        this.imageStorage.assertValid(file);
+
+        const company = await this.findOne(id);
+        const url = await this.imageStorage.saveCompanyImage(id, kind, file!.buffer);
+
+        await this.prisma.client.orm.public.Company.where({ id }).update(kind === 'logo' ? { logoUrl: url } : { coverUrl: url });
+
+        // A imagem nova substitui a antiga no mesmo endereço; se o endereço mudou (pasta do Cloudinary trocada), apaga a antiga.
+        const previous = kind === 'logo' ? company.logoUrl : company.coverUrl;
+        if (previous && !this.imageStorage.samePicture(previous, url)) await this.imageStorage.remove(previous);
+
+        return this.findOne(id);
+    }
+
+    async removeImage(id: number, kind: CompanyImageKind, currentUser: UserPayLoad) {
+        this.assertCanEditImages(id, currentUser);
+
+        const company = await this.findOne(id);
+        const previous = kind === 'logo' ? company.logoUrl : company.coverUrl;
+
+        if (previous) {
+            await this.imageStorage.remove(previous);
+            await this.prisma.client.orm.public.Company.where({ id }).update(kind === 'logo' ? { logoUrl: null } : { coverUrl: null });
         }
 
         return this.findOne(id);

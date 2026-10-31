@@ -451,6 +451,7 @@ export function TableAvatar({
             src={avatarUrl}
             size={40}
             ariaHidden
+            fit={square ? "contain" : "cover"}
             className={`avatar-pa pa-dt-av ${avatarTone(id)} ${square ? "sq" : ""}`}
         />
     )

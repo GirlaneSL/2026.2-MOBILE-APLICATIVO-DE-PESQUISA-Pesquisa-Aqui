@@ -11,6 +11,8 @@ export interface CurrentUser {
     companyName: string | null;
     /** Foto de perfil (endereço no Cloudinary); nulo = sem foto. */
     avatarUrl?: string | null;
+    /** Logo da empresa (endereço no Cloudinary); nulo = sem logo. */
+    companyLogoUrl?: string | null;
 }
 
 export async function login(username: string, password: string): Promise<void> {

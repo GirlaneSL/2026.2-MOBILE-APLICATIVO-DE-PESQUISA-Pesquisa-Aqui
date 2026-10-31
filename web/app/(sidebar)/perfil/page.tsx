@@ -536,7 +536,17 @@ export default function PerfilPage() {
                         {!isSuper && (
                         <div className="flex items-center justify-between gap-4 py-2.5">
                             <dt className="text-muted-foreground">Empresa</dt>
-                            <dd className="min-w-0 font-medium">
+                            <dd className="flex min-w-0 items-center justify-end gap-2 font-medium">
+                                {profile.companyLogoUrl && (
+                                    <UserAvatar
+                                        name={profile.companyName ?? ''}
+                                        src={profile.companyLogoUrl}
+                                        size={24}
+                                        fit="contain"
+                                        ariaHidden
+                                        className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-white text-[10px]"
+                                    />
+                                )}
                                 {profile.companyName && isResearcher ? (
                                     <span className="truncate">{profile.companyName}</span>
                                 ) : profile.companyName ? (

@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'867fb1cdacc83b8956f8c0177dca87f063262661b09fd43b038fcc2b2afedbe6'>;
+  StorageHashBase<'a7ee7ae20babe8e8905946a3c484e17c5565ae8d15a8a580a696a5853ae0e5a5'>;
 export type ExecutionHash =
   ExecutionHashBase<'89005b7a2a0855ac410e36d032ac3f6fc09fa02bc982c27b23170ec528591c09'>;
 export type ProfileHash =
@@ -270,6 +270,8 @@ export type FieldOutputTypes = {
       readonly legalName: CodecTypes['pg/text@1']['output'];
       readonly contactInformation: CodecTypes['pg/text@1']['output'];
       readonly situation: 'ACTIVE' | 'INACTIVE';
+      readonly logoUrl: CodecTypes['pg/text@1']['output'] | null;
+      readonly coverUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -420,6 +422,8 @@ export type FieldInputTypes = {
       readonly legalName: CodecTypes['pg/text@1']['input'];
       readonly contactInformation: CodecTypes['pg/text@1']['input'];
       readonly situation: 'ACTIVE' | 'INACTIVE';
+      readonly logoUrl: CodecTypes['pg/text@1']['input'] | null;
+      readonly coverUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -567,9 +571,11 @@ export type StorageColumnTypes = {
     };
     readonly company: {
       readonly contactInformation: CodecTypes['pg/text@1']['output'];
+      readonly coverUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly legalName: CodecTypes['pg/text@1']['output'];
+      readonly logoUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly situation: 'ACTIVE' | 'INACTIVE';
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -717,9 +723,11 @@ export type StorageColumnInputTypes = {
     };
     readonly company: {
       readonly contactInformation: CodecTypes['pg/text@1']['input'];
+      readonly coverUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly legalName: CodecTypes['pg/text@1']['input'];
+      readonly logoUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly situation: 'ACTIVE' | 'INACTIVE';
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -1110,6 +1118,16 @@ type ContractBase = Omit<
                     readonly kind: 'literal';
                     readonly value: DefaultLiteralValue<'pg/text@1', 'ACTIVE'>;
                   };
+                };
+                readonly logoUrl: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly coverUrl: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
                 };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
@@ -2215,6 +2233,14 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly logoUrl: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly coverUrl: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -2248,6 +2274,8 @@ type ContractBase = Omit<
                 readonly legalName: { readonly column: 'legalName' };
                 readonly contactInformation: { readonly column: 'contactInformation' };
                 readonly situation: { readonly column: 'situation' };
+                readonly logoUrl: { readonly column: 'logoUrl' };
+                readonly coverUrl: { readonly column: 'coverUrl' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };

@@ -3,7 +3,7 @@ import { notifyUserUpdated } from "./auth";
 import type { UserItem } from "./user";
 
 /** Perfil do usuário logado (GET /auth/profile). */
-export type ProfileData = UserItem & { companyName: string | null; avatarUrl: string | null };
+export type ProfileData = UserItem & { companyName: string | null; companyLogoUrl?: string | null; avatarUrl: string | null };
 
 /** Foto de perfil: tipos e tamanho aceitos (o servidor confere de novo). */
 export const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
