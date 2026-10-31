@@ -83,6 +83,7 @@ export class ResearchReportService {
                 userId: user.id,
                 name: user.name,
                 username: user.username,
+                avatarUrl: user.avatarUrl ?? null,
                 targetCount: linkOf.get(user.id)?.targetCount ?? null,
                 linked: linkOf.has(user.id),
                 lastSyncAt: lastSyncOf.get(user.id) ?? null,

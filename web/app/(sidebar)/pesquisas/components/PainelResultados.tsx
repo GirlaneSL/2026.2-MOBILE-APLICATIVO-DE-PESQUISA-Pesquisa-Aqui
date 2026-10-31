@@ -1,5 +1,6 @@
 'use client'
 
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { CountUp } from "@/components/ui/count-up";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/loadingState";
@@ -302,6 +303,14 @@ function ResearcherTable({ researchers }: { researchers: ResearchPanel["research
                     {pager.items.map((r) => (
                         <tr key={r.userId} className="border-t border-border">
                             <td className="py-3 font-medium">
+                                <UserAvatar
+                                    inline
+                                    ariaHidden
+                                    name={r.name}
+                                    src={r.avatarUrl}
+                                    size={28}
+                                    className="mr-2 inline-grid size-7 place-items-center rounded-full bg-[var(--mint)] align-middle text-[11px] font-semibold text-[var(--forest)]"
+                                />
                                 {r.name}
                                 {!r.linked && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">desvinculado</span>}
                             </td>

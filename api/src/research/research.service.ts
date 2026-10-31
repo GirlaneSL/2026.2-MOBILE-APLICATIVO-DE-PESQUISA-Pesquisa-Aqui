@@ -525,7 +525,7 @@ export class ResearchService {
 
     // ---------- cópias em campo (W11) ----------
 
-    private async copyView(copy: CopyRow, names: Map<number, { name: string; username: string }>, deviceBlocked = false) {
+    private async copyView(copy: CopyRow, names: Map<number, { name: string; username: string; avatarUrl: string | null }>, deviceBlocked = false) {
         const owner = copy.userId != null ? names.get(copy.userId) : undefined;
         const revoker = copy.revokedById != null ? names.get(copy.revokedById) : undefined;
         const unblocker = copy.unblockedById != null ? names.get(copy.unblockedById) : undefined;
@@ -536,6 +536,7 @@ export class ResearchService {
             userId: copy.userId,
             researcherName: owner?.name ?? null,
             researcherUsername: owner?.username ?? null,
+            researcherAvatarUrl: owner?.avatarUrl ?? null,
             deviceId: copy.deviceId,
             downloadedAt: copy.createdAt,
             returnedAt: copy.returnedAt ?? null,
@@ -568,13 +569,13 @@ export class ResearchService {
         type Copy = (typeof copies)[number];
         const revokedUsers = new Map<
             string,
-            { key: string; name: string | null; username: string | null; devices: Copy[]; blocked: number; revocations: number }
+            { key: string; name: string | null; username: string | null; avatarUrl: string | null; devices: Copy[]; blocked: number; revocations: number }
         >();
         for (const c of copies) {
             if (c.status !== 'REVOKED') continue;
             const key = c.userId != null ? `u${c.userId}` : `d${c.deviceId}`;
             const entry = revokedUsers.get(key) ?? {
-                key, name: c.researcherName, username: c.researcherUsername, devices: [], blocked: 0, revocations: 0,
+                key, name: c.researcherName, username: c.researcherUsername, avatarUrl: c.researcherAvatarUrl, devices: [], blocked: 0, revocations: 0,
             };
             entry.revocations += 1;
             if (!entry.devices.some((d) => d.deviceId === c.deviceId)) {
@@ -632,7 +633,7 @@ export class ResearchService {
         const orm = this.prisma.client.orm.public;
         const rows = (await orm.ResearchDownload.where({ researchId }).all()) as CopyRow[];
 
-        const names = new Map<number, { name: string; username: string }>();
+        const names = new Map<number, { name: string; username: string; avatarUrl: string | null }>();
         const ids = new Set<number>();
         for (const row of rows) {
             if (row.userId != null) ids.add(row.userId);
@@ -641,7 +642,7 @@ export class ResearchService {
         }
         for (const id of ids) {
             const u = await orm.User.where({ id }).first();
-            if (u) names.set(id, { name: u.name, username: u.username });
+            if (u) names.set(id, { name: u.name, username: u.username, avatarUrl: u.avatarUrl ?? null });
         }
 
         const blockedDevices = new Set<string>();
@@ -752,11 +753,11 @@ export class ResearchService {
     }
 
     private async revocationResult(copy: CopyRow, research: { id: number; status: string }, orm: any) {
-        const names = new Map<number, { name: string; username: string }>();
+        const names = new Map<number, { name: string; username: string; avatarUrl: string | null }>();
         for (const id of [copy.userId, copy.revokedById, copy.unblockedById]) {
             if (id == null) continue;
             const u = await orm.User.where({ id }).first();
-            if (u) names.set(id, { name: u.name, username: u.username });
+            if (u) names.set(id, { name: u.name, username: u.username, avatarUrl: u.avatarUrl ?? null });
         }
         const lock = await getLockState(orm, research);
         return {

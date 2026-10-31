@@ -6,7 +6,7 @@ import { Camera, ImageIcon, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { cloudinaryResize, UserAvatar } from "@/components/ui/user-avatar";
+import { imageSrc, UserAvatar } from "@/components/ui/user-avatar";
 import {
     COMPANY_IMAGE_MAX_BYTES,
     COMPANY_IMAGE_TYPES,
@@ -36,7 +36,7 @@ export function CoverBanner({ url }: { url?: string | null }) {
         <div className="relative h-36 w-full overflow-hidden sm:h-48 lg:h-56">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-                src={cloudinaryResize(url, { width: 1600, height: 480 })}
+                src={imageSrc(url, { width: 1600, height: 480 })}
                 alt="Capa da empresa"
                 onError={() => setFailed(url)}
                 className="absolute inset-0 size-full object-cover object-center"
@@ -165,7 +165,7 @@ function ImageSlot({
                     {url && coverFailed !== url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                            src={cloudinaryResize(url, { width: 1200, height: 360 })}
+                            src={imageSrc(url, { width: 1200, height: 360 })}
                             alt="Capa da empresa"
                             onError={() => setCoverFailed(url)}
                             className="size-full object-cover"

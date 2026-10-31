@@ -276,6 +276,7 @@ export interface ResearchCopy {
     userId: number | null;
     researcherName: string | null;
     researcherUsername: string | null;
+    researcherAvatarUrl?: string | null;
     deviceId: string;
     /** Data do download (ou do último "atualizar" feito nesse aparelho). */
     downloadedAt: string;
@@ -314,6 +315,7 @@ export interface ResearchCopiesRevokedUser {
     key: string;
     name: string | null;
     username: string | null;
+    avatarUrl?: string | null;
     devices: ResearchCopy[];
     blocked: number;
     revocations: number;

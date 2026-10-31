@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaService } from './prisma.service.js';
@@ -11,10 +12,17 @@ import { QuestionModule } from './question/question.module.js';
 import { QuestionRuleModule } from './question-rule/question-rule.module.js';
 import { CollectionModule } from './collection/collection.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
+import { MediaModule } from './media/media.module.js';
+import { MediaUrlInterceptor } from './media/media-url.interceptor.js';
 
 @Module({
-  imports: [CompanyModule, AuthModule, UserModule, ResearchModule, SectionModule, QuestionModule, QuestionRuleModule, CollectionModule, DashboardModule],
+  imports: [CompanyModule, AuthModule, UserModule, ResearchModule, SectionModule, QuestionModule, QuestionRuleModule, CollectionModule, DashboardModule, MediaModule],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [
+    AppService,
+    PrismaService,
+    // Troca o endereço do Cloudinary das imagens por um caminho /media da própria API em todas as respostas.
+    { provide: APP_INTERCEPTOR, useClass: MediaUrlInterceptor },
+  ],
 })
 export class AppModule { }

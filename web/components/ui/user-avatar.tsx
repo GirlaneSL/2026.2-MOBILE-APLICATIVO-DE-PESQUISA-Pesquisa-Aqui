@@ -10,28 +10,26 @@ const initialsOf = (name: string) =>
         .map((part) => part[0]?.toUpperCase())
         .join("") || "?"
 
+// A API devolve as imagens como caminhos dela (`/media/avatars/7?v=123`): o painel as pede pelo próprio domínio
+// (o Next repassa /api/* para a API) e quem entrega é a API, então o endereço do Cloudinary nunca aparece.
+const MEDIA_BASE = "/api"
+
 /**
- * Pede ao Cloudinary a imagem já no tamanho e no recorte desejados (formato e qualidade automáticos).
- * Endereços que não são do Cloudinary voltam como estão. `fill` recorta para preencher; `fit` mostra a imagem inteira.
+ * Endereço da imagem já no tamanho pedido. `width` e `height` em pixels. O recorte (rosto, logo inteiro, capa) é
+ * decidido pela API conforme o tipo da imagem. Endereços que não são `/media/...` voltam como estão.
  */
-export function cloudinaryResize(
-    url: string,
-    { width, height = width, crop = "fill", gravity }: { width: number; height?: number; crop?: "fill" | "fit"; gravity?: string },
-): string {
-    const marker = "/image/upload/"
-    const at = url.indexOf(marker)
-    if (at === -1 || !url.includes("res.cloudinary.com")) return url
+export function imageSrc(url: string, { width, height }: { width: number; height?: number }): string {
+    if (!url.startsWith("/media/")) return url
 
-    const transformation = [`c_${crop}`, gravity ? `g_${gravity}` : "", `w_${Math.round(width)}`, `h_${Math.round(height)}`, "f_auto", "q_auto"]
-        .filter(Boolean)
-        .join(",")
+    const separator = url.includes("?") ? "&" : "?"
+    const size = `w=${Math.round(width)}${height ? `&h=${Math.round(height)}` : ""}`
 
-    return `${url.slice(0, at + marker.length)}${transformation}/${url.slice(at + marker.length)}`
+    return `${MEDIA_BASE}${url}${separator}${size}`
 }
 
-/** Foto de perfil no tamanho pedido (`size` em pixels de tela; pede o dobro para telas nítidas), recortada no rosto. */
+/** Foto de perfil no tamanho pedido (`size` em pixels de tela; pede o dobro para telas nítidas). */
 export function avatarSrc(url: string, size: number): string {
-    return cloudinaryResize(url, { width: size * 2, gravity: "face" })
+    return imageSrc(url, { width: size * 2 })
 }
 
 /**
@@ -46,6 +44,7 @@ export function UserAvatar({
     title,
     ariaHidden = false,
     fit = "cover",
+    inline = false,
 }: {
     name: string
     src?: string | null
@@ -57,15 +56,17 @@ export function UserAvatar({
     ariaHidden?: boolean
     /** `cover` preenche e recorta (fotos de pessoas); `contain` mostra a imagem inteira (logos). */
     fit?: "cover" | "contain"
+    /** Renderiza um `span` (para ficar dentro de um parágrafo ou de um texto corrido). */
+    inline?: boolean
 }) {
     // Guarda qual endereço falhou: ao trocar a imagem o novo endereço volta a ser tentado.
     const [failed, setFailed] = useState<string | null>(null)
     const showImage = !!src && failed !== src
-    const resized =
-        src && fit === "contain" ? cloudinaryResize(src, { width: size * 2, crop: "fit" }) : src ? avatarSrc(src, size) : ""
+    const resized = src ? avatarSrc(src, size) : ""
+    const Tag = inline ? "span" : "div"
 
     return (
-        <div className={`${className} overflow-hidden`} title={title} aria-hidden={ariaHidden || undefined}>
+        <Tag className={`${className} overflow-hidden`} title={title} aria-hidden={ariaHidden || undefined}>
             {showImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -81,6 +82,6 @@ export function UserAvatar({
             ) : (
                 initialsOf(name)
             )}
-        </div>
+        </Tag>
     )
 }

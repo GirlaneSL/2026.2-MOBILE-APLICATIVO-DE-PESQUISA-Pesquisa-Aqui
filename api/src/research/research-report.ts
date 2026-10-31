@@ -29,6 +29,7 @@ export interface ReportResearcher {
     userId: number;
     name: string;
     username: string | null;
+    avatarUrl?: string | null;
     targetCount: number | null;
     linked: boolean;
     lastSyncAt: string | null;
@@ -100,6 +101,7 @@ export function buildPanel(researchers: ReportResearcher[], collections: ReportC
             userId: r.userId,
             name: r.name,
             username: r.username,
+            avatarUrl: r.avatarUrl ?? null,
             linked: r.linked,
             targetCount: r.targetCount,
             collected,

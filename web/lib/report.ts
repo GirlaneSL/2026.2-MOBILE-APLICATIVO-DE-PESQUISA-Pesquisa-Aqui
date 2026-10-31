@@ -14,6 +14,7 @@ export interface PanelResearcher {
     userId: number;
     name: string;
     username: string | null;
+    avatarUrl?: string | null;
     /** false = foi desvinculado depois de entregar coletas. */
     linked: boolean;
     targetCount: number | null;

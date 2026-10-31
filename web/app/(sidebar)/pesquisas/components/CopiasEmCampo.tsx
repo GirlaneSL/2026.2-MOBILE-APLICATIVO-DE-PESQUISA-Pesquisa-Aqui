@@ -1,5 +1,6 @@
 'use client'
 
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { CountUp } from "@/components/ui/count-up";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -187,6 +188,14 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                                 <li key={copy.id} className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4 sm:flex-row sm:items-center">
                                     <div className="min-w-0 grow">
                                         <p className="truncate text-[15px] font-semibold tracking-tight">
+                                            <UserAvatar
+                                                inline
+                                                ariaHidden
+                                                name={copy.researcherName ?? ''}
+                                                src={copy.researcherAvatarUrl}
+                                                size={28}
+                                                className="mr-2 inline-grid size-7 place-items-center rounded-full bg-[var(--mint)] align-middle text-[11px] font-semibold text-[var(--forest)]"
+                                            />
                                             {copy.researcherName ?? 'Pesquisador removido'}
                                             {copy.researcherUsername && (
                                                 <span className="ml-2 text-sm font-normal text-muted-foreground">@{copy.researcherUsername}</span>
@@ -230,6 +239,13 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                             {(user) => (
                                 <li key={user.key} className="rounded-2xl bg-muted/60 p-4">
                                     <div className="flex flex-wrap items-center gap-2">
+                                        <UserAvatar
+                                            ariaHidden
+                                            name={user.name ?? ''}
+                                            src={user.avatarUrl}
+                                            size={32}
+                                            className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--mint)] text-xs font-semibold text-[var(--forest)]"
+                                        />
                                         <span className="text-[15px] font-semibold tracking-tight">{user.name ?? 'Pesquisador removido'}</span>
                                         {user.username && <span className="text-sm text-muted-foreground">@{user.username}</span>}
                                         <Badge variant={user.blocked > 0 ? 'destructive' : 'default'}>
@@ -320,6 +336,13 @@ export default function CopiasEmCampo({ researchId, onChanged }: CopiasEmCampoPr
                         {history.map((copy) => (
                             <li key={copy.id} className="flex flex-col gap-1 rounded-2xl border border-border p-3.5">
                                 <div className="flex flex-wrap items-center gap-2">
+                                    <UserAvatar
+                                        ariaHidden
+                                        name={copy.researcherName ?? ''}
+                                        src={copy.researcherAvatarUrl}
+                                        size={24}
+                                        className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--mint)] text-[10px] font-semibold text-[var(--forest)]"
+                                    />
                                     <span className="text-sm font-semibold">{copy.researcherName ?? 'Pesquisador removido'}</span>
                                     {copy.researcherUsername && <span className="text-xs text-muted-foreground">@{copy.researcherUsername}</span>}
                                     <Badge variant={copy.status === 'REVOKED' ? 'destructive' : 'default'}>

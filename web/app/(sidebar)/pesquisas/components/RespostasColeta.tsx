@@ -1,5 +1,6 @@
 'use client'
 
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LoadingState } from "@/components/ui/loadingState";
@@ -291,6 +292,16 @@ export default function RespostasColeta({ collection, onClose }: RespostasColeta
                 <DialogHeader className="shrink-0">
                     <DialogTitle className="text-2xl">Respostas da coleta #{collection?.id}</DialogTitle>
                     <DialogDescription>
+                        {collection?.researcherName && (
+                            <UserAvatar
+                                inline
+                                ariaHidden
+                                name={collection.researcherName}
+                                src={collection.researcherAvatarUrl}
+                                size={20}
+                                className="mr-1.5 inline-grid size-5 place-items-center rounded-full bg-[var(--mint)] align-middle text-[9px] font-semibold text-[var(--forest)]"
+                            />
+                        )}
                         {collection?.researcherName ?? '-'} · início em {formatDateTime(collection?.startedAt ?? null)} · fim em{' '}
                         {formatDateTime(collection?.finishedAt ?? null)}
                     </DialogDescription>

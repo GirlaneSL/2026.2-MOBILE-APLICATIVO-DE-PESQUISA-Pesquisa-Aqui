@@ -1,22 +1,35 @@
+import { useEffect, useState } from 'react';
+import { API_BASE_URL } from './api';
+import { getToken } from './secureStorage';
+
 /**
- * Endereço da foto de perfil no tamanho pedido: o Cloudinary entrega a imagem já recortada e leve
- * (`c_fill`, formato e qualidade automáticos). `size` em pontos; pede o dobro para telas nítidas.
+ * Cabeçalhos para baixar as imagens (foto de perfil, logo da empresa): a API só entrega imagem para quem está logado.
+ * `null` enquanto o token ainda está sendo lido; depois, um objeto (vazio se não houver token).
  */
-/** Logo da empresa no tamanho pedido: a imagem inteira, sem cortar (`c_fit`). */
-export function logoSrc(url: string, size: number): string {
-    const marker = '/image/upload/';
-    const at = url.indexOf(marker);
-    if (at === -1 || !url.includes('res.cloudinary.com')) return url;
+export function useImageHeaders(): Record<string, string> | null {
+    const [headers, setHeaders] = useState<Record<string, string> | null>(null);
 
-    const px = Math.round(size * 2);
-    return `${url.slice(0, at + marker.length)}c_fit,w_${px},h_${px},f_auto,q_auto/${url.slice(at + marker.length)}`;
+    useEffect(() => {
+        let cancelled = false;
+        getToken()
+            .then((token) => { if (!cancelled) setHeaders(token ? { Authorization: `Bearer ${token}` } : {}); })
+            .catch(() => { if (!cancelled) setHeaders({}); });
+        return () => { cancelled = true; };
+    }, []);
+
+    return headers;
 }
 
-export function avatarSrc(url: string, size: number): string {
-    const marker = '/image/upload/';
-    const at = url.indexOf(marker);
-    if (at === -1 || !url.includes('res.cloudinary.com')) return url;
+/**
+ * Endereço da imagem no tamanho pedido. A API devolve as imagens como caminhos dela (`/media/avatars/7?v=123`) e é ela
+ * quem entrega, então o endereço do Cloudinary nunca aparece. `size` em pontos; pede o dobro para telas nítidas.
+ * O recorte (rosto na foto, logo inteiro) a API decide pelo tipo da imagem.
+ */
+export function imageSrc(url: string, size: number): string {
+    if (!url.startsWith('/media/')) return url;
 
-    const px = Math.round(size * 2);
-    return `${url.slice(0, at + marker.length)}c_fill,g_face,w_${px},h_${px},f_auto,q_auto/${url.slice(at + marker.length)}`;
+    return `${API_BASE_URL}${url}${url.includes('?') ? '&' : '?'}w=${Math.round(size * 2)}`;
 }
+
+export const avatarSrc = imageSrc;
+export const logoSrc = imageSrc;

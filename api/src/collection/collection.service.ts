@@ -364,7 +364,7 @@ export class CollectionService {
         if (interviewExpected && interviewReceived) receivedCount += 1;
 
         return {
-            ...this.toSummary(collection, researcher?.name ?? null, confirmedBy?.name ?? null),
+            ...this.toSummary(collection, researcher?.name ?? null, confirmedBy?.name ?? null, researcher?.avatarUrl ?? null),
             filesSummary: {
                 expected: expectedCount,
                 received: receivedCount,

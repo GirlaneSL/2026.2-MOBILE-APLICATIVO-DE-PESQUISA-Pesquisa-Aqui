@@ -220,6 +220,7 @@ export default function ListaPesquisadores({
                     id={r.id}
                     name={r.name}
                     username={r.username}
+                    avatarUrl={r.avatarUrl}
                     badge={isNew(r) ? <TableChip tone="live">Novo</TableChip> : undefined}
                 />
             ),

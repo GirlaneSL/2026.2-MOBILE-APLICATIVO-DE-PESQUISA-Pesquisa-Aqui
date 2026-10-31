@@ -7,7 +7,7 @@ import Chip from '@/components/Chip';
 import Contour from '@/components/Contour';
 import { Brand, Radius, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { useAuth } from '@/context/AuthContext';
-import { avatarSrc, logoSrc } from '@/lib/avatar';
+import { avatarSrc, logoSrc, useImageHeaders } from '@/lib/avatar';
 import MenuCard from './_components/MenuCard';
 
 const PROFILE_LABELS: Record<string, string> = {
@@ -30,6 +30,7 @@ export default function Usuario() {
     // Se a foto não carregar (sem rede, por exemplo), voltam as iniciais.
     const [photoFailed, setPhotoFailed] = useState(false);
     const [logoFailed, setLogoFailed] = useState(false);
+    const imageHeaders = useImageHeaders();
 
     const handleLogout = () => {
         Alert.alert(
@@ -58,9 +59,9 @@ export default function Usuario() {
             <View style={styles.hero}>
                 <Contour seed={3.6} rings={10} cx={0.85} cy={0.35} size={1} opacity={0.8} color={Brand.green} />
                 <View style={styles.avatar}>
-                    {user?.avatarUrl && !photoFailed ? (
+                    {user?.avatarUrl && !photoFailed && imageHeaders ? (
                         <Image
-                            source={{ uri: avatarSrc(user.avatarUrl, 64) }}
+                            source={{ uri: avatarSrc(user.avatarUrl, 64), headers: imageHeaders }}
                             style={styles.avatarImage}
                             contentFit="cover"
                             transition={150}
@@ -83,9 +84,9 @@ export default function Usuario() {
                     <MenuCard
                         label={user.companyName}
                         icon={
-                            user.companyLogoUrl && !logoFailed ? (
+                            user.companyLogoUrl && !logoFailed && imageHeaders ? (
                                 <Image
-                                    source={{ uri: logoSrc(user.companyLogoUrl, 26) }}
+                                    source={{ uri: logoSrc(user.companyLogoUrl, 26), headers: imageHeaders }}
                                     style={{ width: 26, height: 26 }}
                                     contentFit="contain"
                                     accessibilityLabel="Logo da empresa"
