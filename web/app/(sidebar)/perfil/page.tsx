@@ -1,11 +1,12 @@
 'use client';
 
-import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
     ArrowUpRight,
     CalendarDays,
+    Camera,
     Check,
     Eye,
     EyeOff,
@@ -23,9 +24,19 @@ import { Contour, Pin } from "@/components/ui/contour";
 import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/ui/loadingState";
 import { Spinner } from "@/components/ui/spinner";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { logout } from "@/lib/auth";
-import { getProfile, updateProfile, type ProfileData, type UpdateProfileInput } from "@/lib/profile";
+import {
+    AVATAR_MAX_BYTES,
+    AVATAR_TYPES,
+    getProfile,
+    removeAvatar,
+    updateProfile,
+    uploadAvatar,
+    type ProfileData,
+    type UpdateProfileInput,
+} from "@/lib/profile";
 
 const PROFILE_LABELS: Record<string, string> = {
     SUPERADMINISTRATOR: 'Superadministrador',
@@ -40,14 +51,6 @@ const formatLong = (iso?: string) => {
         ? '—'
         : d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 };
-
-const initialsOf = (name: string) =>
-    name
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0]?.toUpperCase())
-        .join('') || '?';
 
 /** Painel branco com cantos amplos, igual aos do dashboard. */
 function Panel({
@@ -99,6 +102,98 @@ function SaveLabel({ saving, label }: { saving: boolean; label: string }) {
         </span>
     ) : (
         <>{label}</>
+    );
+}
+
+/** Foto de perfil: escolher, trocar ou remover. A imagem fica no Cloudinary; o servidor também confere tipo e tamanho. */
+function AvatarEditor({ profile, onChanged }: { profile: ProfileData; onChanged: (updated: ProfileData) => void }) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [busy, setBusy] = useState<"upload" | "remove" | null>(null);
+
+    const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // permite escolher o mesmo arquivo de novo depois
+        if (!file) return;
+
+        if (!AVATAR_TYPES.includes(file.type)) {
+            toast.error('Use uma imagem JPG, PNG ou WebP');
+            return;
+        }
+        if (file.size > AVATAR_MAX_BYTES) {
+            toast.error('A foto deve ter no máximo 5 MB');
+            return;
+        }
+
+        setBusy('upload');
+        try {
+            onChanged(await uploadAvatar(file));
+            toast.success('Foto atualizada!');
+        } catch (error) {
+            console.error(error);
+            toast.error(error instanceof Error ? error.message : 'Erro ao enviar a foto');
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const handleRemove = async () => {
+        setBusy('remove');
+        try {
+            onChanged(await removeAvatar());
+            toast.success('Foto removida');
+        } catch (error) {
+            console.error(error);
+            toast.error(error instanceof Error ? error.message : 'Erro ao remover a foto');
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    return (
+        <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-muted/50 p-4">
+            <UserAvatar
+                name={profile.name}
+                src={profile.avatarUrl}
+                size={64}
+                className="grid size-16 shrink-0 place-items-center rounded-full bg-[var(--mint)] text-xl font-semibold text-[var(--forest)]"
+            />
+
+            <div className="min-w-0 grow basis-48">
+                <p className="text-sm font-semibold">Foto de perfil</p>
+                <p className="text-xs text-muted-foreground">
+                    JPG, PNG ou WebP, até 5 MB. Aparece no menu e no seu perfil.
+                </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+                <input
+                    ref={inputRef}
+                    type="file"
+                    accept={AVATAR_TYPES.join(',')}
+                    className="hidden"
+                    onChange={handleFile}
+                    aria-label="Escolher foto de perfil"
+                />
+                <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={() => inputRef.current?.click()}>
+                    {busy === 'upload' ? (
+                        <span className="flex items-center gap-2">
+                            <Spinner />
+                            Enviando...
+                        </span>
+                    ) : (
+                        <>
+                            <Camera />
+                            {profile.avatarUrl ? 'Trocar foto' : 'Escolher foto'}
+                        </>
+                    )}
+                </Button>
+                {profile.avatarUrl && (
+                    <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={handleRemove}>
+                        {busy === 'remove' ? 'Removendo...' : 'Remover'}
+                    </Button>
+                )}
+            </div>
+        </div>
     );
 }
 
@@ -357,9 +452,12 @@ export default function PerfilPage() {
                 </div>
 
                 <div className="relative flex flex-col gap-6 p-7 sm:flex-row sm:items-center sm:p-9">
-                    <div className="grid size-24 shrink-0 place-items-center rounded-[28px] bg-[var(--mint)] text-[34px] font-semibold tracking-tight text-[var(--forest)] shadow-[0_18px_40px_-18px_rgba(191,227,208,0.7)] ring-8 ring-[rgba(191,227,208,0.12)]">
-                        {initialsOf(profile.name)}
-                    </div>
+                    <UserAvatar
+                        name={profile.name}
+                        src={profile.avatarUrl}
+                        size={96}
+                        className="grid size-24 shrink-0 place-items-center rounded-[28px] bg-[var(--mint)] text-[34px] font-semibold tracking-tight text-[var(--forest)] shadow-[0_18px_40px_-18px_rgba(191,227,208,0.7)] ring-8 ring-[rgba(191,227,208,0.12)]"
+                    />
 
                     <div className="min-w-0">
                         <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted-dark)]">
@@ -401,22 +499,26 @@ export default function PerfilPage() {
                     title="Dados pessoais"
                     description="Como você aparece no painel e o usuário que usa para entrar."
                 >
-                    {isResearcher ? (
-                        <div className="flex flex-col gap-5">
-                            <Field id="perfil-nome" label="Nome">
-                                <Input id="perfil-nome" value={profile.name} readOnly />
-                            </Field>
-                            <Field id="perfil-usuario" label="Usuário">
-                                <Input id="perfil-usuario" value={profile.username} readOnly />
-                            </Field>
-                            <p className="rounded-2xl bg-muted/60 p-4 text-sm text-[#3c4a42]">
-                                Seu cadastro é feito pelo administrador da empresa. Para alterar o nome, o usuário
-                                ou a senha, fale com ele.
-                            </p>
-                        </div>
-                    ) : (
-                        <PersonalForm profile={profile} onSaved={setProfile} />
-                    )}
+                    <div className="flex flex-col gap-5">
+                        <AvatarEditor profile={profile} onChanged={setProfile} />
+
+                        {isResearcher ? (
+                            <div className="flex flex-col gap-5">
+                                <Field id="perfil-nome" label="Nome">
+                                    <Input id="perfil-nome" value={profile.name} readOnly />
+                                </Field>
+                                <Field id="perfil-usuario" label="Usuário">
+                                    <Input id="perfil-usuario" value={profile.username} readOnly />
+                                </Field>
+                                <p className="rounded-2xl bg-muted/60 p-4 text-sm text-[#3c4a42]">
+                                    Seu cadastro é feito pelo administrador da empresa. Para alterar o nome, o usuário
+                                    ou a senha, fale com ele.
+                                </p>
+                            </div>
+                        ) : (
+                            <PersonalForm profile={profile} onSaved={setProfile} />
+                        )}
+                    </div>
                 </Panel>
 
                 <Panel

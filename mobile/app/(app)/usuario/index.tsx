@@ -1,10 +1,13 @@
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Building2, LogOut, Smartphone } from 'lucide-react-native';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Chip from '@/components/Chip';
 import Contour from '@/components/Contour';
 import { Brand, Radius, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { useAuth } from '@/context/AuthContext';
+import { avatarSrc } from '@/lib/avatar';
 import MenuCard from './_components/MenuCard';
 
 const PROFILE_LABELS: Record<string, string> = {
@@ -24,6 +27,8 @@ const initialsOf = (name?: string) =>
 export default function Usuario() {
     const router = useRouter();
     const { user, logout } = useAuth();
+    // Se a foto não carregar (sem rede, por exemplo), voltam as iniciais.
+    const [photoFailed, setPhotoFailed] = useState(false);
 
     const handleLogout = () => {
         Alert.alert(
@@ -52,7 +57,18 @@ export default function Usuario() {
             <View style={styles.hero}>
                 <Contour seed={3.6} rings={10} cx={0.85} cy={0.35} size={1} opacity={0.8} color={Brand.green} />
                 <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{initialsOf(user?.name)}</Text>
+                    {user?.avatarUrl && !photoFailed ? (
+                        <Image
+                            source={{ uri: avatarSrc(user.avatarUrl, 64) }}
+                            style={styles.avatarImage}
+                            contentFit="cover"
+                            transition={150}
+                            accessibilityLabel="Foto de perfil"
+                            onError={() => setPhotoFailed(true)}
+                        />
+                    ) : (
+                        <Text style={styles.avatarText}>{initialsOf(user?.name)}</Text>
+                    )}
                 </View>
                 <Text style={styles.name}>{user?.name ?? 'Usuário'}</Text>
                 {user?.sub ? <Text style={styles.login}>{user.sub}</Text> : null}
@@ -107,7 +123,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 16,
+        overflow: 'hidden',
     },
+    avatarImage: { width: '100%', height: '100%' },
     avatarText: { color: Brand.forest, fontWeight: '700', fontSize: 22 },
     name: { fontSize: 28, fontWeight: '600', letterSpacing: -0.8, color: '#fff' },
     login: { fontSize: 14, color: Brand.mutedDark, marginTop: 4 },

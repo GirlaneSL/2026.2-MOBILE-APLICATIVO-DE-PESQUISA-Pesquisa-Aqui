@@ -1,5 +1,6 @@
 'use client'
 
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { CountUp } from "@/components/ui/count-up";
 import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
@@ -38,14 +39,6 @@ const TONES = [
 ];
 
 const toneOf = (id: number) => TONES[Math.abs(id) % TONES.length];
-
-const initialsOf = (name?: string) =>
-    (name ?? '')
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0]?.toUpperCase())
-        .join('') || '?';
 
 const MAX_TARGET = 1_000_000;
 
@@ -185,7 +178,7 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
             id: 'name',
             header: 'Pesquisador',
             minWidth: '14rem',
-            cell: (user) => <PersonCell id={user.id} name={user.name} username={user.username} />,
+            cell: (user) => <PersonCell id={user.id} name={user.name} username={user.username} avatarUrl={user.avatarUrl} />,
         },
         {
             id: 'status',
@@ -297,13 +290,14 @@ export default function PesquisadoresVinculados({ researchId }: { researchId: nu
                         {linkedUsers.length > 0 && (
                             <div className="flex -space-x-2.5" aria-hidden="true">
                                 {linkedUsers.slice(0, 5).map((u) => (
-                                    <span
+                                    <UserAvatar
                                         key={u.id}
+                                        name={u.name}
+                                        src={u.avatarUrl}
+                                        size={40}
                                         title={u.name}
                                         className={`grid size-10 place-items-center rounded-full border-[3px] border-[#d6e8de] text-[12px] font-bold ${toneOf(u.id)}`}
-                                    >
-                                        {initialsOf(u.name)}
-                                    </span>
+                                    />
                                 ))}
                                 {linkedCount > 5 && (
                                     <span className="grid size-10 place-items-center rounded-full border-[3px] border-[#d6e8de] bg-[var(--forest)] text-[12px] font-bold text-[var(--mint)]">

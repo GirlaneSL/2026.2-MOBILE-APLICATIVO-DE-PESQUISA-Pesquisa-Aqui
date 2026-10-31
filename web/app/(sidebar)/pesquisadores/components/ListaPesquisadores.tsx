@@ -17,7 +17,8 @@ import {
     type DataColumn,
 } from "@/components/ui/data-table";
 import { LoadingState } from "@/components/ui/loadingState";
-import { avatarTone, initialsOf } from "@/lib/fieldData";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { avatarTone } from "@/lib/fieldData";
 import { deleteUser, getResearchersPage, setUserSituation, UserItem } from "@/lib/user";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import EditUserDialog from "@/components/ui/edit-user-dialog";
@@ -104,12 +105,13 @@ function Avatar({ user, size = 'md' }: { user: UserItem; size?: 'sm' | 'md' | 'l
     };
 
     return (
-        <div
-            aria-hidden="true"
+        <UserAvatar
+            name={user.name}
+            src={user.avatarUrl}
+            size={size === 'lg' ? 56 : size === 'md' ? 44 : 36}
+            ariaHidden
             className={`avatar-pa ${sizes[size]} ${AVATAR_TONES[avatarTone(user.id)]}`}
-        >
-            {initialsOf(user.name)}
-        </div>
+        />
     );
 }
 

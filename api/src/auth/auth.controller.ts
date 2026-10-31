@@ -1,7 +1,9 @@
-import { Body, Controller, Get, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
+import { AVATAR_MAX_BYTES, type UploadedImage } from './avatar-storage.js';
 import type { Response } from 'express';
 import { AuthGuard } from './auth.guard.js';
 
@@ -65,4 +67,18 @@ export class AuthController {
         return profile;
     }
 
+    // Foto de perfil (multipart/form-data, campo `file`: JPG, PNG ou WebP). Devolve o perfil já com o novo endereço.
+    @UseGuards(AuthGuard)
+    @Post('avatar')
+    @HttpCode(200)
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: AVATAR_MAX_BYTES, files: 1 } }))
+    async uploadAvatar(@Req() req: Request, @UploadedFile() file: UploadedImage | undefined) {
+        return this.authService.setAvatar(req['user'], file);
+    }
+
+    @UseGuards(AuthGuard)
+    @Delete('avatar')
+    async removeAvatar(@Req() req: Request) {
+        return this.authService.removeAvatar(req['user']);
+    }
 }

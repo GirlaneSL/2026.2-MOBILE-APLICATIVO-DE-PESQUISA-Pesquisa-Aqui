@@ -9,6 +9,8 @@ export interface CurrentUser {
     profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER';
     companyId: number | null;
     companyName: string | null;
+    /** Foto de perfil (endereço no Cloudinary); nulo = sem foto. */
+    avatarUrl?: string | null;
 }
 
 export async function login(username: string, password: string): Promise<void> {

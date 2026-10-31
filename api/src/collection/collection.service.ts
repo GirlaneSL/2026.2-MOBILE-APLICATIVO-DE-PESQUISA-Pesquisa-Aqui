@@ -259,8 +259,9 @@ export class CollectionService {
             ];
             const people = personIds.length > 0 ? [...(await orm.User.where((u) => u.id.in(personIds)).all())] : [];
             const nameById = new Map(people.map((p) => [p.id, p.name]));
+            const avatarById = new Map(people.map((p) => [p.id, p.avatarUrl ?? null]));
             const nameOf = (id: number | null) => (id === null ? null : (nameById.get(id) ?? null));
-            return rows.map((c) => this.toSummary(c, nameOf(c.researcherId), nameOf(c.consentConfirmedById)));
+            return rows.map((c) => this.toSummary(c, nameOf(c.researcherId), nameOf(c.consentConfirmedById), avatarById.get(c.researcherId) ?? null));
         };
 
         const params = pageParams(query);
@@ -698,12 +699,14 @@ export class CollectionService {
         },
         researcherName: string | null,
         consentConfirmedByName: string | null,
+        researcherAvatarUrl: string | null = null,
     ) {
         return {
             id: collection.id,
             researchId: collection.researchId,
             researcherId: collection.researcherId,
             researcherName,
+            researcherAvatarUrl,
             startedAt: collection.startedAt,
             finishedAt: collection.finishedAt,
             receivedAt: collection.receivedAt,

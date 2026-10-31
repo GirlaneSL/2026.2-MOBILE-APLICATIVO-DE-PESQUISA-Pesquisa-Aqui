@@ -1,3 +1,4 @@
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { usePagedResource } from "@/hooks/usePagedResource";
 import { getResearchesPage, type Research, type ResearchListItem } from "@/lib/research";
 import {
@@ -21,7 +22,6 @@ import {
     avatarTone,
     daysUntilEnd,
     formatPeriod,
-    initialsOf,
     periodProgress,
 } from "@/lib/fieldData";
 import { useState } from "react";
@@ -96,7 +96,7 @@ export default function PesquisasEquipeTabela({ now }: PesquisasEquipeTabelaProp
                 return (
                     <div className="pa-stack" title={team.map((u) => u.name).join(", ")}>
                         {team.slice(0, MAX_AVATARS).map((u) => (
-                            <div key={u.id} className={`avatar-pa ${avatarTone(u.id)}`}>{initialsOf(u.name)}</div>
+                            <UserAvatar key={u.id} name={u.name} src={u.avatarUrl} size={32} className={`avatar-pa ${avatarTone(u.id)}`} />
                         ))}
                         {team.length > MAX_AVATARS && <div className="avatar-pa more">+{team.length - MAX_AVATARS}</div>}
                     </div>

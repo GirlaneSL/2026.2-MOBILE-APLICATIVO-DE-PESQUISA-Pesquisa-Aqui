@@ -1,4 +1,5 @@
-import { avatarTone, daysUntilEnd, initialsOf, parseCalendarDate, periodProgress } from "@/lib/fieldData";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { avatarTone, daysUntilEnd, parseCalendarDate, periodProgress } from "@/lib/fieldData";
 import type { Research } from "@/lib/research";
 import type { UserItem } from "@/lib/user";
 import { situationOf } from "../../(home)/components/PesquisasEquipeTabela";
@@ -185,7 +186,7 @@ export function TeamStack({ team, loading }: { team: UserItem[]; loading: boolea
     return (
         <div className="pa-stack" title={team.map((u) => u.name).join(", ")}>
             {team.slice(0, MAX_AVATARS).map((u) => (
-                <div key={u.id} className={`avatar-pa ${avatarTone(u.id)}`}>{initialsOf(u.name)}</div>
+                <UserAvatar key={u.id} name={u.name} src={u.avatarUrl} size={32} className={`avatar-pa ${avatarTone(u.id)}`} />
             ))}
             {team.length > MAX_AVATARS && <div className="avatar-pa more">+{team.length - MAX_AVATARS}</div>}
         </div>

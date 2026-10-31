@@ -24,7 +24,7 @@ export interface AdminDashboard {
     pins: { id: number; title: string; endDate: string }[];
     team: {
         total: number;
-        rows: { id: number; name: string; username: string; collectionsToday: number; lastAt: string | null; inField: boolean }[];
+        rows: { id: number; name: string; username: string; avatarUrl?: string | null; collectionsToday: number; lastAt: string | null; inField: boolean }[];
     };
     heatmap: Heatmap;
     activities: { id: string; kind: "company" | "admin" | "research" | "researcher"; message: string; date: string }[];
@@ -69,7 +69,7 @@ export function loadAdminDashboard(force = false): Promise<AdminDashboard> {
 export const IN_FIELD_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 export interface TeamRow {
-    user: Pick<UserItem, "id" | "name" | "username">;
+    user: Pick<UserItem, "id" | "name" | "username" | "avatarUrl">;
     collectionsToday: number;
     lastAt: Date | null;
     inField: boolean;
@@ -78,7 +78,7 @@ export interface TeamRow {
 /** Linhas da equipe do painel (já ordenadas pelo servidor: quem está em campo vem primeiro). */
 export function teamRowsOf(dashboard: Pick<AdminDashboard, "team"> | null | undefined): TeamRow[] {
     return (dashboard?.team.rows ?? []).map((row) => ({
-        user: { id: row.id, name: row.name, username: row.username },
+        user: { id: row.id, name: row.name, username: row.username, avatarUrl: row.avatarUrl ?? null },
         collectionsToday: row.collectionsToday,
         lastAt: row.lastAt ? new Date(row.lastAt) : null,
         inField: row.inField,

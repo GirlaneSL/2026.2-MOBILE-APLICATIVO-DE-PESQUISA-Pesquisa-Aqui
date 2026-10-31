@@ -4,7 +4,8 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Contour } from "@/components/ui/contour"
 import { LoadingState } from "@/components/ui/loadingState"
 import { DEFAULT_PAGE_SIZES, Pagination, usePagination } from "@/components/ui/pagination"
-import { avatarTone, initialsOf } from "@/lib/fieldData"
+import { avatarTone } from "@/lib/fieldData"
+import { UserAvatar } from "@/components/ui/user-avatar"
 import { cn } from "@/lib/utils"
 import { ArrowDownAZ, CalendarClock, LayoutGrid, List, RefreshCw, Search, SearchX, X } from "lucide-react"
 import Link from "next/link"
@@ -432,12 +433,26 @@ export function TableTabs<V extends string>(props: {
    Células
    ------------------------------------------------------------------ */
 
-/** Avatar com as iniciais; a cor é fixa por id. */
-export function TableAvatar({ id, name, square = false }: { id: number; name?: string | null; square?: boolean }) {
+/** Foto do usuário, ou as iniciais quando não há foto; a cor das iniciais é fixa por id. */
+export function TableAvatar({
+    id,
+    name,
+    square = false,
+    avatarUrl,
+}: {
+    id: number
+    name?: string | null
+    square?: boolean
+    avatarUrl?: string | null
+}) {
     return (
-        <span className={`avatar-pa pa-dt-av ${avatarTone(id)} ${square ? "sq" : ""}`} aria-hidden="true">
-            {initialsOf(name ?? "")}
-        </span>
+        <UserAvatar
+            name={name ?? ""}
+            src={avatarUrl}
+            size={40}
+            ariaHidden
+            className={`avatar-pa pa-dt-av ${avatarTone(id)} ${square ? "sq" : ""}`}
+        />
     )
 }
 
@@ -449,6 +464,7 @@ export function PersonCell({
     sub,
     badge,
     square = false,
+    avatarUrl,
 }: {
     id: number
     name: string
@@ -457,10 +473,12 @@ export function PersonCell({
     sub?: ReactNode
     badge?: ReactNode
     square?: boolean
+    /** Foto do usuário (nulo = iniciais). */
+    avatarUrl?: string | null
 }) {
     return (
         <div className="pa-dt-person">
-            <TableAvatar id={id} name={name} square={square} />
+            <TableAvatar id={id} name={name} square={square} avatarUrl={avatarUrl} />
             <div className="tx">
                 <b title={name}>{name}</b>
                 {(sub ?? username) && <small>{sub ?? `@${username}`}</small>}

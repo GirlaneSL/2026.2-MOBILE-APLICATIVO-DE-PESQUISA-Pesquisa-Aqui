@@ -5,13 +5,15 @@ import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { UserService } from '../user/user.service.js';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma.service.js';
+import { AvatarStorage, type UploadedImage } from './avatar-storage.js';
 
 @Injectable()
 export class AuthService {
     constructor(
         private userService: UserService,
         private jwtService: JwtService,
-        private prisma: PrismaService
+        private prisma: PrismaService,
+        private avatarStorage: AvatarStorage,
     ) { }
 
     async login(loginDto: LoginDto): Promise<{ access_token: string }> {
@@ -53,12 +55,17 @@ export class AuthService {
     }
 
     async getMe(payload: any) {
-        if (!payload.companyId) return payload;
+        // A foto não vai no token (ela muda sem o usuário entrar de novo): vem do banco a cada chamada.
+        const user = await this.prisma.client.orm.public.User.where({ username: String(payload.sub) }).first();
+        const avatarUrl = user?.avatarUrl ?? null;
+
+        if (!payload.companyId) return { ...payload, avatarUrl };
 
         const company = await this.prisma.client.orm.public.Company.where({ id: payload.companyId }).first();
 
         return {
             ...payload,
+            avatarUrl,
             companyName: company?.legalName ?? null,
         };
     }
@@ -121,6 +128,35 @@ export class AuthService {
         });
 
         return { profile: await this.toProfile(updated), access_token };
+    }
+
+    // Foto de perfil: qualquer usuário logado (inclusive pesquisador) troca a própria. A imagem vai para o Cloudinary
+    // e só o endereço dela fica no banco.
+    async setAvatar(payload: any, file: UploadedImage | undefined) {
+        this.avatarStorage.assertValid(file);
+
+        const user = await this.userService.findOne(String(payload.sub));
+        const avatarUrl = await this.avatarStorage.save(user.id, file!.buffer);
+
+        await this.prisma.client.orm.public.User.where({ username: user.username }).update({ avatarUrl });
+
+        // A foto nova substitui a antiga no mesmo endereço; se o endereço mudou (pasta do Cloudinary trocada), apaga a antiga.
+        if (user.avatarUrl && !this.avatarStorage.samePicture(user.avatarUrl, avatarUrl)) {
+            await this.avatarStorage.remove(user.avatarUrl);
+        }
+
+        return this.toProfile(await this.userService.findOne(user.username));
+    }
+
+    async removeAvatar(payload: any) {
+        const user = await this.userService.findOne(String(payload.sub));
+
+        if (user.avatarUrl) {
+            await this.avatarStorage.remove(user.avatarUrl);
+            await this.prisma.client.orm.public.User.where({ username: user.username }).update({ avatarUrl: null });
+        }
+
+        return this.toProfile(await this.userService.findOne(user.username));
     }
 
     private async toProfile(user: Awaited<ReturnType<UserService['findOne']>>) {

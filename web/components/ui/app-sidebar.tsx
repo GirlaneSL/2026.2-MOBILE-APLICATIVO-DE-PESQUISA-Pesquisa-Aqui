@@ -4,6 +4,7 @@ import { CountUp } from "@/components/ui/count-up";
 import { BrandMark, Contour } from "@/components/ui/contour"
 import { GlobalSearch } from "@/components/ui/global-search"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { UserAvatar } from "@/components/ui/user-avatar"
 import { useFieldSnapshot } from "@/hooks/useFieldSnapshot"
 import { logout } from "@/lib/auth"
 import { avatarTone, teamRowsOf } from "@/lib/fieldData"
@@ -35,14 +36,6 @@ const PROFILE_LABELS: Record<string, string> = {
     ADMINISTRATOR: "Administrador",
     RESEARCHER: "Pesquisador",
 }
-
-const initialsOf = (name?: string) =>
-    (name ?? "")
-        .split(" ")
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase())
-        .join("") || "?"
 
 export function AppSidebar() {
     const pathname = usePathname()
@@ -100,7 +93,7 @@ export function AppSidebar() {
     const identityClass = "flex min-w-0 flex-1 items-center gap-[10px]"
     const identity = user && (
         <>
-            <div className="avatar-pa avatar">{initialsOf(user.name)}</div>
+            <UserAvatar name={user.name} src={user.avatarUrl} size={38} className="avatar-pa avatar" />
             <div className="who">
                 <b>{user.name}</b>
                 <span>{PROFILE_LABELS[user.profile] ?? user.profile}</span>
@@ -189,7 +182,7 @@ export function AppSidebar() {
                         {inField.length > 0 && (
                             <div className="pa-stack" title={inField.map((row) => row.user.name).join(", ")}>
                                 {inField.slice(0, 3).map(({ user: person }) => (
-                                    <div key={person.id} className={`avatar-pa ${avatarTone(person.id)}`}>{initialsOf(person.name)}</div>
+                                    <UserAvatar key={person.id} name={person.name} src={person.avatarUrl} size={32} className={`avatar-pa ${avatarTone(person.id)}`} />
                                 ))}
                                 {inField.length > 3 && <div className="avatar-pa more">+{inField.length - 3}</div>}
                             </div>

@@ -5,6 +5,8 @@ export interface AuthUser {
     name: string;
     profile: 'SUPERADMINISTRATOR' | 'ADMINISTRATOR' | 'RESEARCHER';
     companyId: number;
+    /** Foto de perfil (endereço no Cloudinary). Nulo = sem foto. */
+    avatarUrl?: string | null;
 }
 
 /** Disparado quando o usuário altera o próprio perfil: quem mostra o nome dele (menu lateral) busca de novo. */

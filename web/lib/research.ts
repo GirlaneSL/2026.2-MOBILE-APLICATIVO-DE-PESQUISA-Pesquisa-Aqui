@@ -75,7 +75,7 @@ export const getResearches = async (): Promise<Research[]> => {
 /** Pesquisa da lista paginada: já traz as coletas recebidas e a equipe (só desta página). */
 export type ResearchListItem = Research & {
     collected: number;
-    team: { id: number; name: string; username: string }[];
+    team: { id: number; name: string; username: string; avatarUrl?: string | null }[];
 };
 
 /** Uma página de pesquisas (painel web). Filtros e busca são feitos no servidor. */
@@ -195,6 +195,7 @@ export interface ResearchResearcherLink {
     userId: number;
     name?: string | null;
     username?: string | null;
+    avatarUrl?: string | null;
     /** Meta de coletas deste pesquisador nesta pesquisa; null = sem meta definida. */
     targetCount?: number | null;
     /** Quantas coletas ele já entregou nesta pesquisa. */
@@ -227,7 +228,7 @@ export const getResearchLinkedPage = async (researchId: number, params: PagePara
 export type ResearchTeamMember = UserItem & { link: ResearchResearcherLink | null };
 
 export type ResearchTeamPage = Page<ResearchTeamMember> & {
-    summary: { total: number; linked: number; linkedPreview: { id: number; name: string }[] };
+    summary: { total: number; linked: number; linkedPreview: { id: number; name: string; avatarUrl?: string | null }[] };
 };
 
 /** Uma página da equipe da pesquisa: pesquisadores da empresa, vinculados primeiro (busca e filtro no servidor). */

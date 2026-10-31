@@ -1,5 +1,6 @@
 'use client'
 
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { CountUp } from "@/components/ui/count-up";
 import { Button } from "@/components/ui/button";
 import { Contour } from "@/components/ui/contour";
@@ -40,14 +41,6 @@ const TONES = [
 
 const toneOfName = (name?: string | null) =>
     TONES[[...(name ?? '?')].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % TONES.length];
-
-const initialsOf = (name?: string | null) =>
-    (name ?? '')
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0]?.toUpperCase())
-        .join('') || '?';
 
 const timeOf = (value: string | null) => (value ? new Date(value).getTime() : 0) || 0;
 
@@ -227,9 +220,13 @@ function ColetasView({
             minWidth: '12rem',
             cell: (c) => (
                 <div className="pa-dt-person">
-                    <span className={`avatar-pa pa-dt-av ${toneOfName(c.researcherName)}`} aria-hidden="true">
-                        {initialsOf(c.researcherName)}
-                    </span>
+                    <UserAvatar
+                        name={c.researcherName ?? ''}
+                        src={c.researcherAvatarUrl}
+                        size={40}
+                        ariaHidden
+                        className={`avatar-pa pa-dt-av ${toneOfName(c.researcherName)}`}
+                    />
                     <div className="tx"><b>{c.researcherName ?? '-'}</b></div>
                 </div>
             ),

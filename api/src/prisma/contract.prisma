@@ -55,6 +55,8 @@ model User {
   passwordHash String
   profile      Profile
   situation    UserSituation @default(ACTIVE)
+  // Foto de perfil: endereço da imagem no Cloudinary (nulo = sem foto, o painel mostra as iniciais).
+  avatarUrl    String?
   companyId    Int?
   company      Company?  @relation(fields: [companyId], references: [id])
   researchLinks ResearchResearcher[]

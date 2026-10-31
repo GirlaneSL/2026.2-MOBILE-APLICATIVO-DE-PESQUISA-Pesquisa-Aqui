@@ -314,7 +314,7 @@ export default function ExibirEditar({
             id: 'name',
             header: 'Administrador',
             minWidth: '14rem',
-            cell: (a) => <PersonCell id={Number(a.id) || a.name.length} name={a.name} username={a.username} />,
+            cell: (a) => <PersonCell id={Number(a.id) || a.name.length} name={a.name} username={a.username} avatarUrl={a.avatarUrl} />,
         },
         {
             id: 'profile',

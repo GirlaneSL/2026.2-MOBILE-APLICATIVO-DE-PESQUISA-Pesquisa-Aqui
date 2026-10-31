@@ -6,6 +6,7 @@ export interface CollectionSummary {
     researchId: number;
     researcherId: number;
     researcherName: string | null;
+    researcherAvatarUrl?: string | null;
     startedAt: string;
     finishedAt: string;
     receivedAt: string;

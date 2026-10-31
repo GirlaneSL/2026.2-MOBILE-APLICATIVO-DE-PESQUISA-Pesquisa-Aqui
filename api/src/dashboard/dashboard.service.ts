@@ -147,6 +147,7 @@ export class DashboardService {
                     id: u.id,
                     name: u.name,
                     username: u.username,
+                    avatarUrl: u.avatarUrl ?? null,
                     collectionsToday: entry?.today ?? 0,
                     lastAt: last === null ? null : new Date(last).toISOString(),
                     inField: last !== null && now - last <= IN_FIELD_WINDOW_MS && last <= now + 60_000,

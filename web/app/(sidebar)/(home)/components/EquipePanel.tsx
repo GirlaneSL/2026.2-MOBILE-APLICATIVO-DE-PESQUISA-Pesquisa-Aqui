@@ -1,4 +1,5 @@
-import { avatarTone, initialsOf, type TeamRow } from "@/lib/fieldData";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { avatarTone, type TeamRow } from "@/lib/fieldData";
 import { LoadingState } from "@/components/ui/loadingState";
 import { formatRelativeTime } from "@/lib/dashboard";
 import type { ReactNode } from "react";
@@ -37,7 +38,7 @@ export default function EquipePanel({ rows, now, loading = false, error = false,
                     <ul className="pa-team">
                         {rows.map(({ user, collectionsToday, lastAt, inField }) => (
                             <li key={user.id}>
-                                <div className={`avatar-pa ${avatarTone(user.id)}`} aria-hidden="true">{initialsOf(user.name)}</div>
+                                <UserAvatar name={user.name} src={user.avatarUrl} size={40} ariaHidden className={`avatar-pa ${avatarTone(user.id)}`} />
                                 <div className="who">
                                     <b title={user.name}>{user.name}</b>
                                     <span>

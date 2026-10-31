@@ -145,6 +145,8 @@ export interface UserItem {
     /** Ausente em respostas antigas: tratar como ACTIVE. */
     situation?: UserSituation;
     companyId: number | null;
+    /** Foto de perfil (endereço no Cloudinary); nulo ou ausente = sem foto, mostra as iniciais. */
+    avatarUrl?: string | null;
     /** Vem nas listas paginadas (evita carregar todas as empresas só para mostrar o nome). */
     companyName?: string | null;
     createdAt?: string;

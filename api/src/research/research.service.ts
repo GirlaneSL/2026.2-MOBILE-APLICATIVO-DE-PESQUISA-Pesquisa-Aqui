@@ -161,7 +161,7 @@ export class ResearchService {
 
         const collectedByResearch = new Map<number, number>();
         const downloadedIds = new Set<number>();
-        const teamByResearch = new Map<number, { id: number; name: string; username: string }[]>();
+        const teamByResearch = new Map<number, { id: number; name: string; username: string; avatarUrl: string | null }[]>();
 
         if (ids.length > 0) {
             const counts = await orm.Collection.where((c) => c.researchId.in(ids))
@@ -182,7 +182,7 @@ export class ResearchService {
                 const user = userById.get(link.userId);
                 if (!user) continue;
                 const team = teamByResearch.get(link.researchId) ?? [];
-                if (team.length < TEAM_LIMIT) team.push({ id: user.id, name: user.name, username: user.username });
+                if (team.length < TEAM_LIMIT) team.push({ id: user.id, name: user.name, username: user.username, avatarUrl: user.avatarUrl ?? null });
                 teamByResearch.set(link.researchId, team);
             }
         }
@@ -404,6 +404,7 @@ export class ResearchService {
                     userId: link.userId,
                     name: user?.name ?? null,
                     username: user?.username ?? null,
+                    avatarUrl: user?.avatarUrl ?? null,
                     situation: user?.situation ?? null,
                     targetCount,
                     collected,
@@ -456,7 +457,7 @@ export class ResearchService {
             summary: {
                 total: rows.length,
                 linked: linkedMembers.length,
-                linkedPreview: linkedMembers.slice(0, 5).map((row) => ({ id: row.id, name: row.name })),
+                linkedPreview: linkedMembers.slice(0, 5).map((row) => ({ id: row.id, name: row.name, avatarUrl: row.avatarUrl ?? null })),
             },
         };
     }
