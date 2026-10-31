@@ -1,12 +1,22 @@
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Building2, LogOut, Smartphone } from 'lucide-react-native';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Building2, LogOut, Pencil, Smartphone } from 'lucide-react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+    Easing,
+    FadeInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
+} from 'react-native-reanimated';
 import Chip from '@/components/Chip';
 import Contour from '@/components/Contour';
+import CountUp from '@/components/home/CountUp';
 import { Brand, Radius, TAB_BAR_CLEARANCE } from '@/constants/brand';
 import { useAuth } from '@/context/AuthContext';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { avatarSrc, logoSrc, useImageHeaders } from '@/lib/avatar';
 import { listSendQueue } from '@/lib/collectionStore';
 import { getCachedResearches } from '@/lib/researchCache';
@@ -35,11 +45,25 @@ interface Stats {
     researches: number;
 }
 
-function Stat({ value, label, highlight = false }: { value: number; label: string; highlight?: boolean }) {
+/** Entrada escalonada, igual à da Home: cada bloco sobe e aparece um pouco depois do anterior. */
+const enter = (index: number) =>
+    FadeInDown.delay(120 + index * 80)
+        .duration(480)
+        .easing(Easing.out(Easing.cubic));
+
+function HeroStat({ value, label, highlight = false }: { value: number; label: string; highlight?: boolean }) {
     return (
         <View style={styles.stat}>
             <Text style={[styles.statValue, highlight && styles.statValueHighlight]}>{value}</Text>
             <Text style={styles.statLabel}>{label}</Text>
+        </View>
+    );
+}
+
+function SectionHeader({ title }: { title: string }) {
+    return (
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{title}</Text>
         </View>
     );
 }
@@ -51,25 +75,41 @@ export default function Usuario() {
     const [photoFailed, setPhotoFailed] = useState(false);
     const [logoFailed, setLogoFailed] = useState(false);
     const [stats, setStats] = useState<Stats | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
+    const isOnline = useNetworkStatus();
     const imageHeaders = useImageHeaders();
     const isResearcher = user?.profile === 'RESEARCHER';
+
+    // As curvas de nível "respiram" devagar, como na Home.
+    const breathe = useSharedValue(0);
+    useEffect(() => {
+        breathe.value = withRepeat(withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }), -1, true);
+    }, [breathe]);
+    const contourStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: 1 + breathe.value * 0.07 }, { translateX: breathe.value * -6 }],
+    }));
+
+    const loadStats = useCallback(async () => {
+        const [sent, queue, cached] = await Promise.all([
+            listSent().catch(() => []),
+            listSendQueue().catch(() => []),
+            getCachedResearches().catch(() => []),
+        ]);
+        setStats({ sent: sent.length, queued: queue.length, researches: cached.length });
+    }, []);
 
     // Números do próprio aparelho: atualizam toda vez que a aba é aberta.
     useFocusEffect(
         useCallback(() => {
-            let active = true;
-            Promise.all([
-                listSent().catch(() => []),
-                listSendQueue().catch(() => []),
-                getCachedResearches().catch(() => []),
-            ]).then(([sent, queue, cached]) => {
-                if (active) setStats({ sent: sent.length, queued: queue.length, researches: cached.length });
-            });
-            return () => {
-                active = false;
-            };
-        }, []),
+            loadStats();
+        }, [loadStats]),
     );
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await loadStats();
+        setRefreshing(false);
+    };
 
     const handleLogout = () => {
         Alert.alert(
@@ -90,52 +130,81 @@ export default function Usuario() {
     };
 
     const showStats = isResearcher && stats !== null;
+    let sectionIndex = 0;
 
     return (
         <ScrollView
             style={styles.container}
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Brand.green} />}
         >
-            <View style={[styles.hero, showStats && styles.heroWithStats]}>
-                <Contour seed={3.6} rings={10} cx={0.85} cy={0.35} size={1} opacity={0.8} color={Brand.green} />
-                <View style={styles.avatarRing}>
-                    <View style={styles.avatar}>
-                        {user?.avatarUrl && !photoFailed && imageHeaders ? (
-                            <Image
-                                source={{ uri: avatarSrc(user.avatarUrl, 96), headers: imageHeaders }}
-                                style={styles.avatarImage}
-                                contentFit="cover"
-                                transition={150}
-                                accessibilityLabel="Foto de perfil"
-                                onError={() => setPhotoFailed(true)}
-                            />
-                        ) : (
-                            <Text style={styles.avatarText}>{initialsOf(user?.name)}</Text>
-                        )}
+            <View style={styles.hero}>
+                <Animated.View style={[StyleSheet.absoluteFill, contourStyle]} pointerEvents="none">
+                    <Contour seed={3.6} rings={10} cx={0.85} cy={0.35} size={1} opacity={0.8} color={Brand.green} />
+                </Animated.View>
+
+                <View style={styles.heroRow}>
+                    <Chip label={user?.profile ? PROFILE_LABELS[user.profile] ?? user.profile : 'Sem perfil'} tone="dark" />
+                    <Chip label={isOnline ? 'Online' : 'Offline'} tone={isOnline ? 'dark' : 'clay'} />
+                </View>
+
+                <View style={styles.identity}>
+                    <Pressable
+                        onPress={() => router.push('/editar-perfil')}
+                        accessibilityRole="button"
+                        accessibilityLabel="Editar foto de perfil"
+                        style={styles.avatarRing}
+                    >
+                        <View style={styles.avatar}>
+                            {user?.avatarUrl && !photoFailed && imageHeaders ? (
+                                <Image
+                                    source={{ uri: avatarSrc(user.avatarUrl, 96), headers: imageHeaders }}
+                                    style={styles.avatarImage}
+                                    contentFit="cover"
+                                    transition={150}
+                                    accessibilityLabel="Foto de perfil"
+                                    onError={() => setPhotoFailed(true)}
+                                />
+                            ) : (
+                                <Text style={styles.avatarText}>{initialsOf(user?.name)}</Text>
+                            )}
+                        </View>
+                        <View style={styles.avatarBadge}>
+                            <Pencil size={12} color={Brand.forest} strokeWidth={2.2} />
+                        </View>
+                    </Pressable>
+                    <View style={styles.identityText}>
+                        <Text style={styles.name} numberOfLines={1}>{user?.name ?? 'Usuário'}</Text>
+                        {user?.sub ? <Text style={styles.login} numberOfLines={1}>@{user.sub}</Text> : null}
                     </View>
                 </View>
-                <Text style={styles.name} numberOfLines={1}>{user?.name ?? 'Usuário'}</Text>
-                {user?.sub ? <Text style={styles.login} numberOfLines={1}>@{user.sub}</Text> : null}
-                <View style={styles.chips}>
-                    <Chip label={user?.profile ? PROFILE_LABELS[user.profile] ?? user.profile : 'Sem perfil'} tone="dark" />
-                </View>
+
+                {showStats && stats ? (
+                    <>
+                        <Text style={styles.monthLabel}>Neste aparelho</Text>
+                        <CountUp
+                            value={stats.sent}
+                            style={styles.big}
+                            accessibilityLabel={`${stats.sent} coletas enviadas`}
+                        />
+                        <Text style={styles.cap}>{stats.sent === 1 ? 'coleta enviada' : 'coletas enviadas'}</Text>
+
+                        <Animated.View entering={enter(0)} style={styles.strip} accessibilityLabel="Resumo neste aparelho">
+                            <HeroStat value={stats.sent} label="Enviadas" />
+                            <View style={styles.stripDivider} />
+                            <HeroStat value={stats.queued} label="Aguardando envio" highlight={stats.queued > 0} />
+                            <View style={styles.stripDivider} />
+                            <HeroStat value={stats.researches} label="Pesquisas" />
+                        </Animated.View>
+                    </>
+                ) : null}
             </View>
 
-            <View style={[styles.body, showStats && styles.bodyWithStats]}>
-                {showStats && stats ? (
-                    <View style={styles.stats} accessibilityLabel="Resumo neste aparelho">
-                        <Stat value={stats.sent} label="Enviadas" />
-                        <View style={styles.statDivider} />
-                        <Stat value={stats.queued} label="Aguardando envio" highlight={stats.queued > 0} />
-                        <View style={styles.statDivider} />
-                        <Stat value={stats.researches} label="Pesquisas" />
-                    </View>
-                ) : null}
-
+            <View style={styles.body}>
                 {user?.companyName ? (
-                    <>
-                        <Text style={styles.section}>Empresa</Text>
+                    <Animated.View entering={enter(++sectionIndex)} style={styles.section}>
+                        <SectionHeader title="Empresa" />
                         <View style={styles.company}>
                             <View style={styles.companyLogo}>
                                 {user.companyLogoUrl && !logoFailed && imageHeaders ? (
@@ -156,25 +225,38 @@ export default function Usuario() {
                                 <Text style={styles.companyName} numberOfLines={2}>{user.companyName}</Text>
                             </View>
                         </View>
-                    </>
+                    </Animated.View>
                 ) : null}
 
-                <Text style={styles.section}>Aplicativo</Text>
-                <MenuCard
-                    label="Sobre o aplicativo"
-                    value={`v${APP_VERSION}`}
-                    icon={<Smartphone size={18} color={Brand.greenDeep} strokeWidth={1.8} />}
-                />
+                <Animated.View entering={enter(++sectionIndex)} style={styles.section}>
+                    <SectionHeader title="Conta" />
+                    <MenuCard
+                        label="Editar perfil"
+                        onPress={() => router.push('/editar-perfil')}
+                        icon={<Pencil size={18} color={Brand.greenDeep} strokeWidth={1.8} />}
+                    />
+                </Animated.View>
 
-                <Pressable
-                    style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
-                    onPress={handleLogout}
-                    accessibilityRole="button"
-                    accessibilityLabel="Sair da conta"
-                >
-                    <LogOut size={18} color={Brand.clayInk} strokeWidth={1.8} />
-                    <Text style={styles.logoutText}>Sair da conta</Text>
-                </Pressable>
+                <Animated.View entering={enter(++sectionIndex)} style={styles.section}>
+                    <SectionHeader title="Aplicativo" />
+                    <MenuCard
+                        label="Sobre o aplicativo"
+                        value={`v${APP_VERSION}`}
+                        icon={<Smartphone size={18} color={Brand.greenDeep} strokeWidth={1.8} />}
+                    />
+                </Animated.View>
+
+                <Animated.View entering={enter(++sectionIndex)}>
+                    <Pressable
+                        style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
+                        onPress={handleLogout}
+                        accessibilityRole="button"
+                        accessibilityLabel="Sair da conta"
+                    >
+                        <LogOut size={18} color={Brand.clayInk} strokeWidth={1.8} />
+                        <Text style={styles.logoutText}>Sair da conta</Text>
+                    </Pressable>
+                </Animated.View>
             </View>
         </ScrollView>
     );
@@ -186,70 +268,80 @@ const styles = StyleSheet.create({
     hero: {
         backgroundColor: Brand.forest,
         paddingHorizontal: 22,
-        paddingTop: 26,
-        paddingBottom: 30,
+        paddingTop: 18,
+        paddingBottom: 22,
         borderBottomLeftRadius: Radius.hero,
         borderBottomRightRadius: Radius.hero,
         overflow: 'hidden',
     },
-    // Com o cartão de números por cima da base da faixa escura, ela precisa de mais espaço embaixo.
-    heroWithStats: { paddingBottom: 54 },
+    heroRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    identity: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 22 },
+    identityText: { flex: 1, minWidth: 0 },
     avatarRing: {
-        width: 108,
-        height: 108,
-        borderRadius: 54,
-        borderWidth: 2,
-        borderColor: 'rgba(191, 227, 208, 0.35)',
+        width: 84,
+        height: 84,
+        borderRadius: 42,
+        borderWidth: 1,
+        borderColor: Brand.lineDark,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 16,
     },
     avatar: {
-        width: 96,
-        height: 96,
-        borderRadius: 48,
+        width: 74,
+        height: 74,
+        borderRadius: 37,
         backgroundColor: Brand.mint,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
     },
     avatarImage: { width: '100%', height: '100%' },
-    avatarText: { color: Brand.forest, fontWeight: '700', fontSize: 32 },
-    name: { fontSize: 30, fontWeight: '600', letterSpacing: -0.8, color: '#fff' },
-    login: { fontSize: 15, color: Brand.mutedDark, marginTop: 4 },
-    chips: { flexDirection: 'row', marginTop: 14 },
-    body: { padding: 18, gap: 12 },
-    // O cartão de números sobe sobre a base da faixa escura.
-    bodyWithStats: { marginTop: -30 },
-    stats: {
+    avatarText: { color: Brand.forest, fontWeight: '700', fontSize: 26 },
+    avatarBadge: {
+        position: 'absolute',
+        right: 0,
+        bottom: 2,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: Brand.mint,
+        borderWidth: 2,
+        borderColor: Brand.forest,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    name: { color: Brand.fgDark, fontSize: 22, fontWeight: '600', letterSpacing: -0.5 },
+    login: { color: Brand.mutedDark, marginTop: 2, fontSize: 13.5 },
+    monthLabel: { color: Brand.mutedDark, marginTop: 22, fontSize: 14 },
+    big: {
+        color: '#fff',
+        fontSize: 88,
+        fontWeight: '300',
+        letterSpacing: -6,
+        lineHeight: 92,
+        marginTop: 4,
+        fontVariant: ['tabular-nums'],
+    },
+    cap: { color: Brand.fgDark, fontSize: 15, marginTop: 2 },
+    strip: {
         flexDirection: 'row',
-        alignItems: 'stretch',
-        paddingVertical: 16,
-        borderRadius: 22,
+        alignItems: 'center',
+        marginTop: 22,
+        paddingVertical: 14,
+        borderRadius: 20,
         borderWidth: 1,
-        borderColor: Brand.line,
-        backgroundColor: Brand.card,
-        shadowColor: '#000',
-        shadowOpacity: 0.08,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 3,
+        borderColor: Brand.lineDark,
+        backgroundColor: 'rgba(191, 227, 208, 0.07)',
     },
-    stat: { flex: 1, alignItems: 'center', paddingHorizontal: 6 },
-    statValue: { fontSize: 24, fontWeight: '600', letterSpacing: -0.6, color: Brand.ink },
-    statValueHighlight: { color: Brand.clayInk },
-    statLabel: { fontSize: 12, color: Brand.muted, marginTop: 2, textAlign: 'center' },
-    statDivider: { width: 1, backgroundColor: Brand.line, marginVertical: 4 },
-    section: {
-        fontSize: 12,
-        fontWeight: '600',
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-        color: Brand.muted,
-        marginTop: 8,
-        marginLeft: 6,
-        marginBottom: -2,
-    },
+    stat: { flex: 1, alignItems: 'center', gap: 2, paddingHorizontal: 6 },
+    statValue: { color: Brand.fgDark, fontSize: 22, fontWeight: '300', letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
+    statValueHighlight: { color: Brand.clay },
+    statLabel: { color: Brand.mutedDark, fontSize: 11.5, textAlign: 'center' },
+    stripDivider: { width: 1, height: 28, backgroundColor: Brand.lineDark },
+    body: { padding: 18, gap: 22 },
+    section: { gap: 12 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+    sectionTitle: { fontSize: 16, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink },
     company: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -261,25 +353,24 @@ const styles = StyleSheet.create({
         backgroundColor: Brand.card,
     },
     companyLogo: {
-        width: 60,
-        height: 60,
-        borderRadius: 18,
+        width: 46,
+        height: 46,
+        borderRadius: 16,
         backgroundColor: Brand.chipLight,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
     },
-    companyLogoImage: { width: 44, height: 44 },
-    companyText: { flex: 1 },
-    companyCaption: { fontSize: 12, color: Brand.muted },
-    companyName: { fontSize: 17, fontWeight: '600', letterSpacing: -0.3, color: Brand.ink, marginTop: 2 },
+    companyLogoImage: { width: 36, height: 36 },
+    companyText: { flex: 1, minWidth: 0 },
+    companyCaption: { fontSize: 12.5, color: Brand.muted },
+    companyName: { fontSize: 15, fontWeight: '600', letterSpacing: -0.2, color: Brand.ink, marginTop: 2 },
     logout: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 10,
         height: 50,
-        marginTop: 8,
         borderRadius: 999,
         backgroundColor: Brand.clayLight,
     },

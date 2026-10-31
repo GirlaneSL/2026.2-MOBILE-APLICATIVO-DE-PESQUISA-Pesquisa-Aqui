@@ -2,6 +2,7 @@ import { API_BASE_URL, apiFetch } from './api';
 import { saveToken, getToken, clearToken } from './secureStorage';
 import { clearResearchesCache } from './researchCache';
 import { returnAllCopies } from './researchReturn';
+import { filePart } from './collectionUpload';
 
 export interface CurrentUser {
     sub: string;
@@ -61,4 +62,27 @@ export async function logout(): Promise<void> {
     await returnAllCopies().catch(() => undefined);
     await clearToken();
     await clearResearchesCache();
+}
+
+async function readError(response: Response, fallback: string): Promise<string> {
+    const data = await response.json().catch(() => ({}));
+    const message = Array.isArray(data?.message) ? data.message[0] : data?.message;
+    return typeof message === 'string' && message ? message : fallback;
+}
+
+/** Envia a foto de perfil (JPEG já reduzido, no aparelho). A API troca a foto do próprio usuário logado. */
+export async function uploadAvatar(uri: string): Promise<void> {
+    const form = new FormData();
+    form.append('file', filePart(uri, 'avatar.jpg', 'image/jpeg'));
+
+    const response = await apiFetch('/auth/avatar', { method: 'POST', body: form });
+
+    if (!response.ok) throw new Error(await readError(response, 'Não foi possível enviar a foto. Tente novamente.'));
+}
+
+/** Remove a foto de perfil: o app volta a mostrar as iniciais. */
+export async function removeAvatar(): Promise<void> {
+    const response = await apiFetch('/auth/avatar', { method: 'DELETE' });
+
+    if (!response.ok) throw new Error(await readError(response, 'Não foi possível remover a foto. Tente novamente.'));
 }

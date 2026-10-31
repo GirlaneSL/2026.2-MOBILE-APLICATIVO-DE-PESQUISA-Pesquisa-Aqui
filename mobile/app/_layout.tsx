@@ -32,6 +32,7 @@ function RootLayoutNav() {
             <Stack.Screen name="(app)" options={{ gestureEnabled: false }} />
             {/* Entrevista em tela cheia, sem a barra de abas; o gesto de voltar fica desligado para não fechar a coleta por engano */}
             <Stack.Screen name="coleta/[researchId]" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="editar-perfil" />
         </Stack>
     );
 }

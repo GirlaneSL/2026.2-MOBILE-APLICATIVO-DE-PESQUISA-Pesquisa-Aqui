@@ -13,6 +13,8 @@ interface AuthContextValue {
   user: CurrentUser | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Lê o usuário de novo na API (ex.: depois de trocar a foto de perfil). */
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,8 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    const me = await getCurrentUser();
+    if (me) setUser(me);
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
